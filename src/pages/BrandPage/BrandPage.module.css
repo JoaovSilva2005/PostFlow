@@ -1,0 +1,275 @@
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 53px;
+}
+
+.pageHeader p,
+.previewLabel {
+  margin-bottom: 8px;
+  color: var(--color-primary);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.3px;
+}
+
+.pageHeader h1 {
+  margin-bottom: 8px;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -1px;
+}
+
+.pageHeader span {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.step {
+  display: grid;
+  gap: 3px;
+  color: #aaaab2;
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  text-align: right;
+}
+
+.step strong {
+  color: #383840;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(550px, 650px) minmax(320px, 370px);
+  gap: 40px;
+}
+
+.formCard,
+.previewCard {
+  border: 1px solid #ececf0;
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: 0 12px 35px rgba(22, 22, 29, 0.035);
+}
+
+.formCard {
+  min-height: 660px;
+  padding: 41px 45px 32px;
+}
+
+.cardTitle {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 37px;
+}
+
+.cardTitle > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: var(--color-primary);
+  border-radius: 9px;
+  background: #efefff;
+}
+
+.cardTitle h2 {
+  margin-bottom: 5px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.cardTitle p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 9px;
+}
+
+.formGrid {
+  display: grid;
+  gap: 23px;
+}
+
+.colorField {
+  padding: 0;
+  border: 0;
+}
+
+.colorField legend {
+  margin-bottom: 11px;
+  color: #28282f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.colors {
+  display: flex;
+  gap: 12px;
+}
+
+.colors button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: #fff;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #dddde2;
+}
+
+.colors button.selectedColor {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.formFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 42px;
+  padding-top: 27px;
+  border-top: 1px solid #eeeeF1;
+}
+
+.formFooter p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: #8a8a94;
+  font-size: 8px;
+}
+
+.previewCard {
+  align-self: start;
+  min-height: 420px;
+  padding: 36px 34px;
+  text-align: center;
+}
+
+.previewLabel {
+  margin-bottom: 25px;
+  color: #92929b;
+}
+
+.brandMark {
+  display: grid;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 16px;
+  place-items: center;
+  color: #fff;
+  border-radius: 17px;
+  font-size: 24px;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.2);
+}
+
+.previewCard > h2 {
+  margin-bottom: 4px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.previewCard > p:not(.previewLabel, .previewHint) {
+  color: var(--color-muted);
+  font-size: 9px;
+}
+
+.previewLine {
+  height: 1px;
+  margin: 22px 0;
+  background: #eeeeF1;
+}
+
+.examplePost {
+  padding: 16px;
+  border: 1px solid #eeeeF1;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.exampleHeader {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.exampleHeader > span {
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+}
+
+.exampleHeader div {
+  display: grid;
+}
+
+.exampleHeader strong {
+  font-size: 8px;
+}
+
+.exampleHeader small {
+  color: #a2a2aa;
+  font-size: 7px;
+}
+
+.examplePost > p {
+  margin: 13px 0 9px;
+  color: #606069;
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+.postTag {
+  color: var(--color-primary);
+  font-size: 7px;
+}
+
+.previewHint {
+  margin: 18px 0 0;
+  color: #aaaab2;
+  font-size: 7px;
+}
+
+@media (max-width: 1180px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+
+  .previewCard {
+    width: min(500px, 100%);
+  }
+}
+
+@media (max-width: 700px) {
+  .pageHeader {
+    align-items: flex-start;
+  }
+
+  .step {
+    display: none;
+  }
+
+  .columns {
+    display: block;
+  }
+
+  .formCard {
+    min-height: 0;
+    padding: 30px 24px;
+  }
+
+  .formFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .previewCard {
+    margin-top: 24px;
+  }
+}
