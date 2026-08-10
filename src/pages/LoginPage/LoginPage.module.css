@@ -1,0 +1,284 @@
+.page {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 510px 1fr;
+  background: #f8f8fb;
+}
+
+.hero {
+  position: relative;
+  display: flex;
+  min-height: 900px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 52px 62px 44px;
+  overflow: hidden;
+  color: #fff;
+  background: var(--color-primary);
+}
+
+.hero::before,
+.hero::after {
+  position: absolute;
+  content: '';
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 50%;
+}
+
+.hero::before {
+  width: 430px;
+  height: 430px;
+  right: -245px;
+  top: 52px;
+}
+
+.hero::after {
+  width: 310px;
+  height: 310px;
+  left: -190px;
+  bottom: 80px;
+}
+
+.logo {
+  position: relative;
+  z-index: 1;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -1.1px;
+}
+
+.logo span {
+  color: #c7c3ff;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+  margin-top: 4px;
+}
+
+.badge {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 27px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.hero h1 {
+  margin-bottom: 20px;
+  font-size: 43px;
+  font-weight: 600;
+  line-height: 1.13;
+  letter-spacing: -2.1px;
+}
+
+.heroContent > p {
+  max-width: 345px;
+  margin-bottom: 56px;
+  color: #d7d4ff;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.flowLine {
+  display: grid;
+  width: 350px;
+  grid-template-columns: 22px 32px 1fr;
+  align-items: center;
+  gap: 9px;
+  margin-top: 21px;
+  color: #e9e8ff;
+  font-size: 11px;
+}
+
+.flowLine > span:first-child {
+  color: #b9b5ff;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.flowLine > div {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.heroFooter {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: #b9b5ef;
+  font-size: 9px;
+}
+
+.loginArea {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  padding: 70px;
+}
+
+.card {
+  width: min(520px, 100%);
+  min-height: 620px;
+  padding: 62px 68px 46px;
+  border: 1px solid #eeeeF2;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--shadow-card);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 43px;
+}
+
+.mark {
+  display: grid;
+  width: 45px;
+  height: 45px;
+  place-items: center;
+  color: #fff;
+  border-radius: 12px;
+  background: var(--color-primary);
+}
+
+.cardHeader h2 {
+  margin-bottom: 4px;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -0.8px;
+}
+
+.cardHeader p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.fields {
+  display: grid;
+  gap: 23px;
+}
+
+.passwordField {
+  position: relative;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: 13px;
+  top: 37px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: #9a9aa4;
+  border: 0;
+  background: transparent;
+}
+
+.formMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 19px 0 25px;
+  color: #72727c;
+  font-size: 10px;
+}
+
+.formMeta label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.formMeta input {
+  accent-color: var(--color-primary);
+}
+
+.formMeta button,
+.signup button {
+  padding: 0;
+  color: var(--color-primary);
+  border: 0;
+  background: transparent;
+  font-weight: 600;
+}
+
+.demoNotice {
+  margin: 18px 0 0;
+  padding: 9px 12px;
+  color: #66666f;
+  border-radius: 7px;
+  background: #f7f7fa;
+  font-size: 9px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.signup {
+  margin: 21px 0 0;
+  color: #85858e;
+  font-size: 10px;
+  text-align: center;
+}
+
+.areaFooter {
+  position: absolute;
+  bottom: 31px;
+  margin: 0;
+  color: #aaaab2;
+  font-size: 9px;
+}
+
+@media (max-width: 1000px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    min-height: 360px;
+    padding: 34px 30px;
+  }
+
+  .heroContent {
+    margin: 36px 0;
+  }
+
+  .hero h1 {
+    font-size: 36px;
+  }
+
+  .heroContent > p {
+    margin-bottom: 0;
+  }
+
+  .flowLine {
+    display: none;
+  }
+
+  .loginArea {
+    padding: 42px 20px 72px;
+  }
+}
+
+@media (max-width: 540px) {
+  .card {
+    min-height: 0;
+    padding: 40px 28px;
+  }
+}
