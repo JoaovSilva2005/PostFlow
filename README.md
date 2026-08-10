@@ -1,40 +1,90 @@
 # PostFlow
 
-Projeto acadêmico desenvolvido para o **Projeto Integrador VI**.
+Frontend demonstrável de uma plataforma para planejar conteúdo de redes sociais com apoio de inteligência artificial. O projeto foi desenvolvido para o **Projeto Multidisciplinar VI**.
 
-## Sobre o projeto
+Nesta versão, o usuário configura a identidade da marca, descreve um post no chat, revisa o conteúdo gerado e adiciona o rascunho a uma agenda mensal, onde pode editá-lo ou excluí-lo.
 
-O PostFlow é uma proposta de plataforma para ajudar pequenas empresas, profissionais autônomos e equipes de marketing a planejar conteúdos para redes sociais com apoio de inteligência artificial.
+## Executar o projeto
 
-A ideia inicial é permitir que o usuário configure sua marca, solicite posts por meio de um chat e organize os conteúdos gerados em uma agenda para revisão.
+Requisitos: Node.js 20.19 ou superior e npm.
 
-## Problema
+```bash
+git clone https://github.com/JoaovSilva2005/PostFlow.git
+cd PostFlow
+npm install
+npm run dev
+```
 
-Muitas empresas têm dificuldade para manter uma rotina de criação e organização de conteúdo para redes sociais.
+Abra o endereço informado pelo Vite. No login demonstrativo, use qualquer e-mail válido e uma senha com pelo menos seis caracteres.
 
-## Solução proposta
+## Verificações de qualidade
 
-Uma plataforma que utiliza IA para:
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
+```
 
-- gerar textos e imagens;
-- organizar os conteúdos em um calendário;
-- permitir a revisão e edição dos rascunhos.
+## Arquitetura
 
-## Escopo inicial
+O código usa React, TypeScript, Vite, React Router, CSS Modules, Context com `useReducer`, Vitest e React Testing Library.
 
-- Cadastro e acesso do usuário;
-- Configuração básica da marca;
-- Solicitação de conteúdo pelo chat;
-- Geração de textos e imagens;
-- Organização de rascunhos no calendário.
+```text
+src/
+├── app/         # rotas, proteção de acesso e estado compartilhado
+├── components/  # menu lateral e componentes reutilizáveis
+├── domain/      # tipos e conceitos do PostFlow
+├── pages/       # uma pasta por tela, com componente, estilo e teste
+├── services/    # armazenamento local e serviço de IA simulado
+├── styles/      # tokens do Figma, fonte e estilos globais
+└── test/        # configuração e utilitários de teste
+```
 
-## Planejamento
+Os nomes de arquivos, componentes e tipos estão em inglês. A interface e a documentação estão em português para manter o código técnico consistente sem prejudicar a apresentação acadêmica.
 
-O backlog inicial possui **4 épicos e 6 histórias de usuário**, representando somente as funcionalidades essenciais para validar a ideia.
+## O que é simulado
 
+- **Autenticação:** valida apenas o formato dos campos e salva uma sessão local.
+- **Inteligência artificial:** `MockAiService` gera deterministicamente um rascunho após um pequeno carregamento.
+- **Persistência:** marca, sessão e rascunhos são armazenados no `localStorage` com chaves iniciadas por `postflow:`.
+- **Publicação:** não existe integração real com redes sociais neste incremento.
+
+Backend, banco de dados, IA real e publicação automática ficam fora do escopo desta primeira versão.
+
+## Rastreabilidade
+
+| Figma | Rota | Componente | Jira | Teste automatizado |
+|---|---|---|---|---|
+| Login | `/login` | `LoginPage` | `SCRUM-9` | valida campos e navegação |
+| Configuração da marca | `/brand` | `BrandPage` | `SCRUM-12` | salva e recupera a marca |
+| Chat e geração | `/chat` | `ChatPage` | `SCRUM-15`, `SCRUM-16` | carregamento, prévia e inclusão na agenda |
+| Agenda | `/calendar` | `CalendarPage` | `SCRUM-19`, `SCRUM-20` | data correta, edição, exclusão e menu ativo |
+
+## Telas codificadas
+
+### Login
+
+![Tela de login do PostFlow](docs/screenshots/login.png)
+
+### Configuração da marca
+
+![Tela de configuração da marca](docs/screenshots/brand.png)
+
+### Chat e geração de posts
+
+![Tela de chat com prévia gerada](docs/screenshots/chat.png)
+
+### Agenda de conteúdo
+
+![Tela da agenda mensal](docs/screenshots/calendar.png)
+
+## Links do projeto
+
+- [Protótipo no Figma](https://www.figma.com/design/lYt49rDTT6Hf568TiP9zu9)
 - [Backlog no Jira](https://joaovsilva3530.atlassian.net/issues/?jql=project%20%3D%20SCRUM%20ORDER%20BY%20key%20ASC)
-- [Visão inicial no Confluence](https://joaovsilva3530.atlassian.net/wiki/spaces/DDS/pages/2162689/PostFlow+Vis+o+Inicial+do+Projeto)
+- [Documentação no Confluence](https://joaovsilva3530.atlassian.net/wiki/spaces/DDS/pages/2162689/PostFlow+Vis+o+Inicial+do+Projeto)
 
-## Situação atual
+## Estado do incremento
 
-Entrega 1 — definição da ideia, documentação inicial e organização do backlog.
+As quatro telas principais estão codificadas e o fluxo **Login → Marca → Chat → Prévia → Agenda → Editar rascunho** pode ser demonstrado sem backend. Os testes automatizados cobrem os comportamentos essenciais desta entrega.
