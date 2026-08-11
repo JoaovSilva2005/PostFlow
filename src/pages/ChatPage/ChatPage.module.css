@@ -180,7 +180,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .composer {
@@ -265,8 +267,13 @@
   font-size: 8px;
 }
 
-.error { color: var(--color-danger); }
-.disclaimer { color: #aaaab2; text-align: center; }
+.error {
+  color: var(--color-danger);
+}
+.disclaimer {
+  color: #aaaab2;
+  text-align: center;
+}
 
 .previewCard {
   overflow-y: auto;
@@ -319,9 +326,16 @@
   font-weight: 600;
 }
 
-.socialHeader > div:last-child { display: grid; }
-.socialHeader strong { font-size: 9px; }
-.socialHeader span { color: #9b9ba4; font-size: 7px; }
+.socialHeader > div:last-child {
+  display: grid;
+}
+.socialHeader strong {
+  font-size: 9px;
+}
+.socialHeader span {
+  color: #9b9ba4;
+  font-size: 7px;
+}
 
 .generatedImage {
   position: relative;
@@ -342,7 +356,7 @@
   right: -70px;
   bottom: -90px;
   content: '';
-  border: 1px solid rgba(255,255,255,.22);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 50%;
 }
 
@@ -365,7 +379,7 @@
   position: absolute;
   left: 27px;
   bottom: 20px;
-  color: rgba(255,255,255,.7);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 6px;
   letter-spacing: 1px;
 }
@@ -398,9 +412,18 @@
   background: #f5f4ff;
 }
 
-.scheduleInfo div { display: grid; }
-.scheduleInfo span { color: #92919d; font-size: 6px; letter-spacing: .7px; }
-.scheduleInfo strong { color: #474750; font-size: 8px; }
+.scheduleInfo div {
+  display: grid;
+}
+.scheduleInfo span {
+  color: #92919d;
+  font-size: 6px;
+  letter-spacing: 0.7px;
+}
+.scheduleInfo strong {
+  color: #474750;
+  font-size: 8px;
+}
 
 .emptyPreview {
   display: grid;
@@ -421,16 +444,34 @@
   background: #f2f2f6;
 }
 
-.emptyPreview h3 { margin-bottom: 7px; color: #55555f; font-size: 12px; }
-.emptyPreview p { max-width: 220px; font-size: 9px; line-height: 1.6; }
+.emptyPreview h3 {
+  margin-bottom: 7px;
+  color: #55555f;
+  font-size: 12px;
+}
+.emptyPreview p {
+  max-width: 220px;
+  font-size: 9px;
+  line-height: 1.6;
+}
 
 @media (max-width: 1180px) {
-  .workspace { grid-template-columns: 1fr; }
-  .previewCard { width: min(500px, 100%); }
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .previewCard {
+    width: min(500px, 100%);
+  }
 }
 
 @media (max-width: 700px) {
-  .aiStatus { display: none; }
-  .chatCard { height: 650px; }
-  .suggestions { flex-wrap: wrap; }
+  .aiStatus {
+    display: none;
+  }
+  .chatCard {
+    height: 650px;
+  }
+  .suggestions {
+    flex-wrap: wrap;
+  }
 }

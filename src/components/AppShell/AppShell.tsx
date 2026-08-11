@@ -1,4 +1,10 @@
-import { CalendarDays, LogOut, MessageSquareText, Palette, Sparkles } from 'lucide-react'
+import {
+  CalendarDays,
+  LogOut,
+  MessageSquareText,
+  Palette,
+  Sparkles,
+} from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router'
 import type { ReactNode } from 'react'
 import { useApp } from '../../app/AppContext'
@@ -23,7 +29,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className={styles.layout}>
       <aside className={styles.sidebar}>
         <div>
-          <NavLink className={styles.logo} to="/brand" aria-label="Início do PostFlow">
+          <NavLink
+            className={styles.logo}
+            to="/brand"
+            aria-label="Início do PostFlow"
+          >
             PostFlow<span>.</span>
           </NavLink>
           <p className={styles.sectionLabel}>ESPAÇO DE TRABALHO</p>
@@ -32,7 +42,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <NavLink
                 key={to}
                 to={to}
-                className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
+                className={({ isActive }) =>
+                  `${styles.navItem} ${isActive ? styles.active : ''}`
+                }
               >
                 <Icon size={18} strokeWidth={1.8} />
                 {label}
@@ -42,7 +54,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className={styles.profile}>
-          <div className={styles.avatar}>{brand?.name?.slice(0, 1).toUpperCase() || 'P'}</div>
+          <div className={styles.avatar}>
+            {brand?.name?.slice(0, 1).toUpperCase() || 'P'}
+          </div>
           <div className={styles.profileCopy}>
             <strong>{brand?.name || 'Sua marca'}</strong>
             <span>Plano acadêmico</span>

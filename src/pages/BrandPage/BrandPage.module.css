@@ -132,7 +132,7 @@
   gap: 16px;
   margin-top: 42px;
   padding-top: 27px;
-  border-top: 1px solid #eeeeF1;
+  border-top: 1px solid #eeeef1;
 }
 
 .formFooter p {
@@ -183,12 +183,12 @@
 .previewLine {
   height: 1px;
   margin: 22px 0;
-  background: #eeeeF1;
+  background: #eeeef1;
 }
 
 .examplePost {
   padding: 16px;
-  border: 1px solid #eeeeF1;
+  border: 1px solid #eeeef1;
   border-radius: 10px;
   text-align: left;
 }

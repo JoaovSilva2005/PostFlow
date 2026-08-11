@@ -15,7 +15,9 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/^Senha/), '123456')
     await user.click(screen.getByRole('button', { name: 'Entrar no PostFlow' }))
 
-    expect(await screen.findByRole('heading', { name: 'Configuração da marca' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Configuração da marca' }),
+    ).toBeInTheDocument()
     expect(localStorage.getItem('postflow:session')).toBe('true')
   })
 })

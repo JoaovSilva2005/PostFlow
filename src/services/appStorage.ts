@@ -1,6 +1,6 @@
 import type { BrandProfile, PostDraft } from '../domain/models'
 
-const keys = {
+const STORAGE_KEYS = {
   session: 'postflow:session',
   brand: 'postflow:brand',
   drafts: 'postflow:drafts',
@@ -15,17 +15,16 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
+function writeJson<T>(key: string, value: T): void {
+  localStorage.setItem(key, JSON.stringify(value))
+}
+
 export const AppStorage = {
-  loadSession: () => readJson(keys.session, false),
-  saveSession: (isAuthenticated: boolean) => {
-    localStorage.setItem(keys.session, JSON.stringify(isAuthenticated))
-  },
-  loadBrand: () => readJson<BrandProfile | null>(keys.brand, null),
-  saveBrand: (brand: BrandProfile) => {
-    localStorage.setItem(keys.brand, JSON.stringify(brand))
-  },
-  loadDrafts: () => readJson<PostDraft[]>(keys.drafts, []),
-  saveDrafts: (drafts: PostDraft[]) => {
-    localStorage.setItem(keys.drafts, JSON.stringify(drafts))
-  },
+  loadSession: () => readJson(STORAGE_KEYS.session, false),
+  saveSession: (isAuthenticated: boolean) =>
+    writeJson(STORAGE_KEYS.session, isAuthenticated),
+  loadBrand: () => readJson<BrandProfile | null>(STORAGE_KEYS.brand, null),
+  saveBrand: (brand: BrandProfile) => writeJson(STORAGE_KEYS.brand, brand),
+  loadDrafts: () => readJson<PostDraft[]>(STORAGE_KEYS.drafts, []),
+  saveDrafts: (drafts: PostDraft[]) => writeJson(STORAGE_KEYS.drafts, drafts),
 }

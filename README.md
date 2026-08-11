@@ -54,12 +54,25 @@ Backend, banco de dados, IA real e publicação automática ficam fora do escopo
 
 ## Rastreabilidade
 
-| Figma | Rota | Componente | Jira | Teste automatizado |
-|---|---|---|---|---|
-| Login | `/login` | `LoginPage` | `SCRUM-9` | valida campos e navegação |
-| Configuração da marca | `/brand` | `BrandPage` | `SCRUM-12` | salva e recupera a marca |
-| Chat e geração | `/chat` | `ChatPage` | `SCRUM-15`, `SCRUM-16` | carregamento, prévia e inclusão na agenda |
-| Agenda | `/calendar` | `CalendarPage` | `SCRUM-19`, `SCRUM-20` | data correta, edição, exclusão e menu ativo |
+| Figma                 | Rota        | Componente                       | Jira       | Teste automatizado                          |
+| --------------------- | ----------- | -------------------------------- | ---------- | ------------------------------------------- |
+| Login                 | `/login`    | `LoginPage`                      | `SCRUM-9`  | valida campos e navegação                   |
+| Configuração da marca | `/brand`    | `BrandPage`                      | `SCRUM-12` | salva e recupera a marca                    |
+| Entrada do chat       | `/chat`     | `ChatPage`                       | `SCRUM-15` | valida pedido e exibe carregamento          |
+| Geração e prévia      | `/chat`     | `PostPreview` + `MockAiService`  | `SCRUM-16` | gera a prévia e inclui o rascunho na agenda |
+| Agenda mensal         | `/calendar` | `CalendarPage` + `calendarUtils` | `SCRUM-19` | apresenta cada rascunho na data correta     |
+| Edição e exclusão     | `/calendar` | `EditDraftDialog`                | `SCRUM-20` | altera ou exclui somente o item selecionado |
+
+### Ordem sugerida para apresentar o código
+
+1. `src/app/App.tsx`: mostra as rotas das quatro telas.
+2. `src/pages/LoginPage/LoginPage.tsx`: validação e início do fluxo.
+3. `src/pages/BrandPage/BrandPage.tsx`: configuração da identidade da marca.
+4. `src/pages/ChatPage/ChatPage.tsx`: pedido do usuário e chamada da IA simulada.
+5. `src/services/mockAiService.ts`: geração simulada do conteúdo.
+6. `src/pages/ChatPage/PostPreview.tsx`: prévia e inclusão na agenda.
+7. `src/pages/CalendarPage/CalendarPage.tsx`: calendário e rascunhos por data.
+8. `src/pages/CalendarPage/EditDraftDialog.tsx`: edição e exclusão do rascunho.
 
 ## Telas codificadas
 

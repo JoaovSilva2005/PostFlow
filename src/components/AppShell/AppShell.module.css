@@ -54,7 +54,9 @@
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
-  transition: color 150ms ease, background 150ms ease;
+  transition:
+    color 150ms ease,
+    background 150ms ease;
 }
 
 .navItem:hover {

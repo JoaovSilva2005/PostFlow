@@ -1,4 +1,8 @@
-import type { InputHTMLAttributes, SelectHTMLAttributes } from 'react'
+import {
+  useId,
+  type InputHTMLAttributes,
+  type SelectHTMLAttributes,
+} from 'react'
 import styles from './FormField.module.css'
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -13,31 +17,81 @@ interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
   options: Array<{ label: string; value: string }>
 }
 
-export function TextField({ label, error, hint, id, ...props }: TextFieldProps) {
-  const inputId = id ?? props.name
+export function TextField({
+  label,
+  error,
+  hint,
+  id,
+  ...props
+}: TextFieldProps) {
+  const generatedId = useId()
+  const inputId = id ?? props.name ?? generatedId
+  const descriptionId = error
+    ? `${inputId}-error`
+    : hint
+      ? `${inputId}-hint`
+      : undefined
+
   return (
-    <label className={styles.field} htmlFor={inputId}>
-      <span className={styles.label}>{label}</span>
-      <input id={inputId} className={`${styles.control} ${error ? styles.invalid : ''}`} {...props} />
-      {hint && !error ? <span className={styles.hint}>{hint}</span> : null}
-      {error ? <span className={styles.error}>{error}</span> : null}
-    </label>
+    <div className={styles.field}>
+      <label className={styles.label} htmlFor={inputId}>
+        {label}
+      </label>
+      <input
+        id={inputId}
+        className={`${styles.control} ${error ? styles.invalid : ''}`}
+        aria-invalid={Boolean(error)}
+        aria-describedby={descriptionId}
+        {...props}
+      />
+      {hint && !error ? (
+        <span id={descriptionId} className={styles.hint}>
+          {hint}
+        </span>
+      ) : null}
+      {error ? (
+        <span id={descriptionId} className={styles.error}>
+          {error}
+        </span>
+      ) : null}
+    </div>
   )
 }
 
-export function SelectField({ label, error, options, id, ...props }: SelectFieldProps) {
-  const inputId = id ?? props.name
+export function SelectField({
+  label,
+  error,
+  options,
+  id,
+  ...props
+}: SelectFieldProps) {
+  const generatedId = useId()
+  const inputId = id ?? props.name ?? generatedId
+  const descriptionId = error ? `${inputId}-error` : undefined
+
   return (
-    <label className={styles.field} htmlFor={inputId}>
-      <span className={styles.label}>{label}</span>
-      <select id={inputId} className={`${styles.control} ${error ? styles.invalid : ''}`} {...props}>
+    <div className={styles.field}>
+      <label className={styles.label} htmlFor={inputId}>
+        {label}
+      </label>
+      <select
+        id={inputId}
+        className={`${styles.control} ${error ? styles.invalid : ''}`}
+        aria-invalid={Boolean(error)}
+        aria-describedby={descriptionId}
+        {...props}
+      >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
       </select>
-      {error ? <span className={styles.error}>{error}</span> : null}
-    </label>
+      {error ? (
+        <span id={descriptionId} className={styles.error}>
+          {error}
+        </span>
+      ) : null}
+    </div>
   )
 }

@@ -10,7 +10,9 @@ describe('BrandPage', () => {
 
     await user.type(screen.getByLabelText('Nome da marca'), 'Café Aurora')
     await user.selectOptions(screen.getByLabelText('Tom de voz'), 'Inspirador')
-    await user.click(screen.getByRole('button', { name: 'Selecionar cor #F97316' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Selecionar cor #F97316' }),
+    )
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
     const saved = JSON.parse(localStorage.getItem('postflow:brand') ?? '{}')

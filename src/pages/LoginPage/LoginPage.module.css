@@ -133,7 +133,7 @@
   width: min(520px, 100%);
   min-height: 620px;
   padding: 62px 68px 46px;
-  border: 1px solid #eeeeF2;
+  border: 1px solid #eeeef2;
   border-radius: 20px;
   background: #fff;
   box-shadow: var(--shadow-card);

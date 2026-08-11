@@ -1,4 +1,11 @@
-import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  type ReactNode,
+} from 'react'
 import type { AppState, BrandProfile, PostDraft } from '../domain/models'
 import { AppStorage } from '../services/appStorage'
 
@@ -18,44 +25,60 @@ interface AppContextValue extends AppState {
   removeDraft: (id: string) => void
 }
 
-const initialState = (): AppState => ({
-  isAuthenticated: AppStorage.loadSession(),
-  brand: AppStorage.loadBrand(),
-  drafts: AppStorage.loadDrafts(),
-})
+function createInitialState(): AppState {
+  return {
+    isAuthenticated: AppStorage.loadSession(),
+    brand: AppStorage.loadBrand(),
+    drafts: AppStorage.loadDrafts(),
+  }
+}
 
-function reducer(state: AppState, action: AppAction): AppState {
+function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SET_SESSION':
-      AppStorage.saveSession(action.payload)
       return { ...state, isAuthenticated: action.payload }
     case 'SAVE_BRAND':
-      AppStorage.saveBrand(action.payload)
       return { ...state, brand: action.payload }
-    case 'ADD_DRAFT': {
-      const drafts = [...state.drafts, action.payload]
-      AppStorage.saveDrafts(drafts)
-      return { ...state, drafts }
-    }
-    case 'UPDATE_DRAFT': {
-      const drafts = state.drafts.map((draft) =>
-        draft.id === action.payload.id ? action.payload : draft,
-      )
-      AppStorage.saveDrafts(drafts)
-      return { ...state, drafts }
-    }
-    case 'REMOVE_DRAFT': {
-      const drafts = state.drafts.filter((draft) => draft.id !== action.payload)
-      AppStorage.saveDrafts(drafts)
-      return { ...state, drafts }
-    }
+    case 'ADD_DRAFT':
+      return { ...state, drafts: [...state.drafts, action.payload] }
+    case 'UPDATE_DRAFT':
+      return {
+        ...state,
+        drafts: state.drafts.map((draft) =>
+          draft.id === action.payload.id ? action.payload : draft,
+        ),
+      }
+    case 'REMOVE_DRAFT':
+      return {
+        ...state,
+        drafts: state.drafts.filter((draft) => draft.id !== action.payload),
+      }
   }
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, initialState)
+  const [state, dispatch] = useReducer(
+    appReducer,
+    undefined,
+    createInitialState,
+  )
+
+  useEffect(() => {
+    AppStorage.saveSession(state.isAuthenticated)
+  }, [state.isAuthenticated])
+
+  useEffect(() => {
+    if (state.brand) {
+      AppStorage.saveBrand(state.brand)
+    }
+  }, [state.brand])
+
+  useEffect(() => {
+    AppStorage.saveDrafts(state.drafts)
+  }, [state.drafts])
+
   const value = useMemo<AppContextValue>(
     () => ({
       ...state,
@@ -63,7 +86,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       logout: () => dispatch({ type: 'SET_SESSION', payload: false }),
       saveBrand: (brand) => dispatch({ type: 'SAVE_BRAND', payload: brand }),
       addDraft: (draft) => dispatch({ type: 'ADD_DRAFT', payload: draft }),
-      updateDraft: (draft) => dispatch({ type: 'UPDATE_DRAFT', payload: draft }),
+      updateDraft: (draft) =>
+        dispatch({ type: 'UPDATE_DRAFT', payload: draft }),
       removeDraft: (id) => dispatch({ type: 'REMOVE_DRAFT', payload: id }),
     }),
     [state],
@@ -74,6 +98,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 export function useApp() {
   const context = useContext(AppContext)
-  if (!context) throw new Error('useApp deve ser usado dentro de AppProvider')
+
+  if (!context) {
+    throw new Error('useApp deve ser usado dentro de AppProvider')
+  }
+
   return context
 }

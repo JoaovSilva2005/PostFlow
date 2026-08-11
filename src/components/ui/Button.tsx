@@ -16,11 +16,17 @@ export function Button({
   className = '',
   ...props
 }: ButtonProps) {
+  const buttonClasses = [
+    styles.button,
+    styles[variant],
+    fullWidth && styles.fullWidth,
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <button
-      className={`${styles.button} ${styles[variant]} ${fullWidth ? styles.fullWidth : ''} ${className}`}
-      {...props}
-    >
+    <button className={buttonClasses} {...props}>
       {children}
     </button>
   )
