@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 src/assets/hero.png
+database/postflow.db
+database/postflow.db-shm
+database/postflow.db-wal
 
 # Editor directories and files
 .vscode/*

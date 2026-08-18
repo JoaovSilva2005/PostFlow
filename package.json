@@ -8,8 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "typecheck": "tsc -b",
-    "test": "vitest run",
+    "test": "vitest run && node --no-warnings scripts/test-database.mjs",
     "test:watch": "vitest",
+    "db:setup": "node --no-warnings scripts/setup-database.mjs",
+    "db:verify": "node --no-warnings scripts/verify-database.mjs",
     "format:check": "prettier --check .",
     "preview": "vite preview"
   },
