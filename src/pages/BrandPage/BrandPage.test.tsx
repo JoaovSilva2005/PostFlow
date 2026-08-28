@@ -3,10 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
 
 describe('BrandPage', () => {
-  it('salva a configuração da marca no armazenamento local', async () => {
+  it('salva a configuração da marca no repositório de dados', async () => {
     authenticateDemo()
     const user = userEvent.setup()
-    renderApp('/brand')
+    const { repository } = renderApp('/brand')
 
     await user.type(screen.getByLabelText('Nome da marca'), 'Café Aurora')
     await user.selectOptions(screen.getByLabelText('Tom de voz'), 'Inspirador')
@@ -15,7 +15,7 @@ describe('BrandPage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
-    const saved = JSON.parse(localStorage.getItem('postflow:brand') ?? '{}')
+    const saved = repository.snapshot().brand
     expect(saved).toMatchObject({
       name: 'Café Aurora',
       toneOfVoice: 'Inspirador',

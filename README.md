@@ -1,32 +1,38 @@
 # PostFlow
 
-Aplicação demonstrável para planejar conteúdo de redes sociais com apoio de inteligência artificial. O projeto foi desenvolvido para o **Projeto Multidisciplinar VI** e atualmente possui frontend e a primeira versão do banco de dados relacional.
+Aplicação demonstrável para planejar conteúdo de redes sociais com apoio de inteligência artificial. O projeto foi desenvolvido para o **Projeto Multidisciplinar VI** e possui frontend React conectado a um banco PostgreSQL hospedado no Supabase.
 
 Nesta versão, o usuário configura a identidade da marca, descreve um post no chat, revisa o conteúdo gerado e adiciona o rascunho a uma agenda mensal, onde pode editá-lo ou excluí-lo.
 
 ## Executar o projeto
 
-Requisitos: Node.js 22.14 ou superior e npm.
+Requisitos: Node.js 22.14 ou superior, npm e um projeto no Supabase.
 
 ```bash
 git clone https://github.com/JoaovSilva2005/PostFlow.git
 cd PostFlow
 npm install
+npm run db:verify
 npm run dev
 ```
+
+Antes de executar, copie `.env.example` para `.env` e informe `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`. A preparação completa está em [`database/README.md`](database/README.md).
 
 Abra o endereço informado pelo Vite. No login demonstrativo, use qualquer e-mail válido e uma senha com pelo menos seis caracteres.
 
 ## Executar o banco de dados
 
-O banco da Entrega 3 utiliza SQLite e pode ser criado sem instalar um servidor adicional:
+No **SQL Editor** do Supabase, execute nesta ordem:
+
+1. [`database/schema.sql`](database/schema.sql);
+2. [`database/seed.sql`](database/seed.sql).
+
+Depois, valide a conexão e o CRUD real:
 
 ```bash
-npm run db:setup
 npm run db:verify
+npm run db:test-crud
 ```
-
-O primeiro comando cria as tabelas e carrega os dados de teste. O segundo apresenta as tabelas, as quantidades, os relacionamentos e a verificação de integridade. A modelagem completa e o DER estão em [`database/README.md`](database/README.md).
 
 ## Verificações de qualidade
 
@@ -39,7 +45,7 @@ npm run build
 
 ## Arquitetura
 
-O código usa React, TypeScript, Vite, React Router, CSS Modules, Context com `useReducer`, SQLite, Vitest e React Testing Library.
+O código usa React, TypeScript, Vite, React Router, CSS Modules, Context com `useReducer`, Supabase/PostgreSQL, Vitest e React Testing Library.
 
 ```text
 src/
@@ -47,23 +53,23 @@ src/
 ├── components/  # menu lateral e componentes reutilizáveis
 ├── domain/      # tipos e conceitos do PostFlow
 ├── pages/       # uma pasta por tela, com componente, estilo e teste
-├── services/    # armazenamento local e serviço de IA simulado
+├── services/    # conexão Supabase, repositório de dados e IA simulada
 ├── styles/      # tokens do Figma, fonte e estilos globais
 └── test/        # configuração e utilitários de teste
-database/        # schema SQL, carga inicial e documentação do DER
-scripts/         # criação, verificação e testes do banco de dados
+database/        # schema PostgreSQL, carga inicial e documentação do DER
+scripts/         # verificação da conexão e teste de CRUD no Supabase
 ```
 
 Os nomes de arquivos, componentes e tipos estão em inglês. A interface e a documentação estão em português para manter o código técnico consistente sem prejudicar a apresentação acadêmica.
 
 ## O que é simulado
 
-- **Autenticação:** valida apenas o formato dos campos e salva uma sessão local.
+- **Autenticação:** valida apenas o formato dos campos e mantém uma sessão demonstrativa no `localStorage`.
 - **Inteligência artificial:** `MockAiService` gera deterministicamente um rascunho após um pequeno carregamento.
-- **Persistência do frontend:** marca, sessão e rascunhos ainda são armazenados no `localStorage` com chaves iniciadas por `postflow:`.
+- **Persistência:** marcas, posts e hashtags são armazenados no Supabase/PostgreSQL.
 - **Publicação:** não existe integração real com redes sociais neste incremento.
 
-O banco relacional está implementado e testado, mas ainda não é consumido pelo frontend. A API, a autenticação real, a IA real e a publicação automática ficam para as próximas Sprints.
+O banco relacional é consumido pelo frontend por meio da Data API do Supabase. A autenticação real, a IA real e a publicação automática ficam para as próximas Sprints.
 
 ## Rastreabilidade
 
@@ -75,7 +81,7 @@ O banco relacional está implementado e testado, mas ainda não é consumido pel
 | Geração e prévia      | `/chat`     | `PostPreview` + `MockAiService`  | `SCRUM-16` | gera a prévia e inclui o rascunho na agenda |
 | Agenda mensal         | `/calendar` | `CalendarPage` + `calendarUtils` | `SCRUM-19` | apresenta cada rascunho na data correta     |
 | Edição e exclusão     | `/calendar` | `EditDraftDialog`                | `SCRUM-20` | altera ou exclui somente o item selecionado |
-| Banco de dados        | —           | `schema.sql` + `seed.sql`        | `SCRUM-38` | estrutura, carga e integridade referencial  |
+| Banco de dados        | fluxo todo  | `postFlowRepository.ts`          | `SCRUM-39` | conexão, CRUD, seed e integridade           |
 
 ### Ordem sugerida para apresentar o código
 
@@ -87,9 +93,11 @@ O banco relacional está implementado e testado, mas ainda não é consumido pel
 6. `src/pages/ChatPage/PostPreview.tsx`: prévia e inclusão na agenda.
 7. `src/pages/CalendarPage/CalendarPage.tsx`: calendário e rascunhos por data.
 8. `src/pages/CalendarPage/EditDraftDialog.tsx`: edição e exclusão do rascunho.
-9. `database/schema.sql`: tabelas, chaves, restrições e índices.
-10. `database/seed.sql`: dados iniciais usados na demonstração.
-11. `scripts/verify-database.mjs`: consulta de evidência da Entrega 3.
+9. `src/services/supabaseClient.ts`: conexão por variáveis de ambiente.
+10. `src/services/postFlowRepository.ts`: operações de CRUD.
+11. `database/schema.sql`: tabelas, chaves, RLS, restrições e índices.
+12. `database/seed.sql`: dados iniciais usados na demonstração.
+13. `scripts/test-supabase-crud.mjs`: evidência automatizada do CRUD real.
 
 ## Telas codificadas
 
@@ -117,4 +125,4 @@ O banco relacional está implementado e testado, mas ainda não é consumido pel
 
 ## Estado do incremento
 
-As quatro telas principais estão codificadas e o fluxo **Login → Marca → Chat → Prévia → Agenda → Editar rascunho** pode ser demonstrado sem backend. A Entrega 3 acrescenta cinco tabelas relacionais, carga inicial de dados e verificação automatizada de integridade. Os testes cobrem o frontend e o banco de dados.
+As quatro telas principais estão codificadas e o fluxo **Login → Marca → Chat → Prévia → Agenda → Editar/Excluir rascunho** está conectado ao Supabase. A Entrega 3 possui cinco tabelas PostgreSQL, massa de testes, PKs, FKs, RLS e CRUD verificável pela aplicação e pelo terminal.

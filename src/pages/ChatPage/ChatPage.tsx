@@ -27,6 +27,7 @@ export function ChatPage() {
   const [prompt, setPrompt] = useState('')
   const [platform, setPlatform] = useState('Instagram')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
   const [draft, setDraft] = useState<PostDraft | null>(null)
   const [error, setError] = useState('')
 
@@ -56,13 +57,22 @@ export function ChatPage() {
     }
   }
 
-  function handleAddToCalendar() {
+  async function handleAddToCalendar() {
     if (!draft) {
       return
     }
 
-    addDraft(draft)
-    navigate('/calendar')
+    setError('')
+    setIsAdding(true)
+
+    try {
+      await addDraft(draft)
+      navigate('/calendar')
+    } catch {
+      setError('Não foi possível salvar o post no Supabase.')
+    } finally {
+      setIsAdding(false)
+    }
   }
 
   return (
@@ -190,6 +200,7 @@ export function ChatPage() {
         <PostPreview
           brandName={brand?.name}
           draft={draft}
+          isAdding={isAdding}
           onAdd={handleAddToCalendar}
         />
       </div>

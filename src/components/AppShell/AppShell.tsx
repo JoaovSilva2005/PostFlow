@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  Database,
   LogOut,
   MessageSquareText,
   Palette,
@@ -18,7 +19,13 @@ const links = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
-  const { brand, logout } = useApp()
+  const { brand, databaseError, databaseStatus, logout } = useApp()
+
+  const databaseLabel = {
+    connecting: 'Conectando ao Supabase',
+    connected: 'Supabase conectado',
+    error: 'Banco não conectado',
+  }[databaseStatus]
 
   function handleLogout() {
     logout()
@@ -51,6 +58,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               </NavLink>
             ))}
           </nav>
+          <div
+            className={`${styles.databaseStatus} ${styles[databaseStatus]}`}
+            title={databaseError ?? databaseLabel}
+          >
+            <Database size={14} />
+            <span>{databaseLabel}</span>
+          </div>
         </div>
 
         <div className={styles.profile}>

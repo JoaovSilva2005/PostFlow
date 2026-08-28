@@ -1,4 +1,4 @@
-export type PostStatus = 'draft'
+export type PostStatus = 'draft' | 'scheduled' | 'published'
 
 export interface BrandProfile {
   name: string
@@ -28,4 +28,6 @@ export interface AppState {
   isAuthenticated: boolean
   brand: BrandProfile | null
   drafts: PostDraft[]
+  databaseStatus: 'connecting' | 'connected' | 'error'
+  databaseError: string | null
 }

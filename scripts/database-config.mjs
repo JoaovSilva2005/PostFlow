@@ -1,15 +1,34 @@
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { existsSync } from 'node:fs'
+import { loadEnvFile } from 'node:process'
+import { createClient } from '@supabase/supabase-js'
 
-const scriptsDirectory = dirname(fileURLToPath(import.meta.url))
+if (existsSync('.env')) {
+  loadEnvFile('.env')
+}
 
-export const projectDirectory = resolve(scriptsDirectory, '..')
-export const databaseDirectory = resolve(projectDirectory, 'database')
-export const databaseFile = resolve(databaseDirectory, 'postflow.db')
-export const schemaFile = resolve(databaseDirectory, 'schema.sql')
-export const seedFile = resolve(databaseDirectory, 'seed.sql')
+function requiredEnvironmentVariable(name) {
+  const value = process.env[name]?.trim()
 
-export function readSqlFile(filePath) {
-  return readFileSync(filePath, 'utf8')
+  if (!value) {
+    throw new Error(
+      `Variável ${name} ausente. Copie .env.example para .env e informe os dados do Supabase.`,
+    )
+  }
+
+  return value
+}
+
+export function createDatabaseClient() {
+  const url = requiredEnvironmentVariable('VITE_SUPABASE_URL')
+  const publishableKey = requiredEnvironmentVariable(
+    'VITE_SUPABASE_PUBLISHABLE_KEY',
+  )
+
+  return createClient(url, publishableKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
 }

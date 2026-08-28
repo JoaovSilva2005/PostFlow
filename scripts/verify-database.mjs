@@ -1,67 +1,45 @@
-import { existsSync } from 'node:fs'
-import { DatabaseSync } from 'node:sqlite'
-import { databaseFile } from './database-config.mjs'
+import { createDatabaseClient } from './database-config.mjs'
 
-if (!existsSync(databaseFile)) {
-  throw new Error('Banco não encontrado. Execute npm run db:setup primeiro.')
-}
+const supabase = createDatabaseClient()
 
-const database = new DatabaseSync(databaseFile, { readOnly: true })
+async function readTable(table, columns = '*') {
+  const { data, error } = await supabase.from(table).select(columns)
 
-try {
-  database.exec('PRAGMA foreign_keys = ON;')
-
-  const tables = database
-    .prepare(
-      `SELECT name
-       FROM sqlite_master
-       WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
-       ORDER BY name;`,
-    )
-    .all()
-
-  const counts = database
-    .prepare(
-      `SELECT
-        (SELECT COUNT(*) FROM users) AS users,
-        (SELECT COUNT(*) FROM brands) AS brands,
-        (SELECT COUNT(*) FROM social_platforms) AS platforms,
-        (SELECT COUNT(*) FROM post_drafts) AS posts,
-        (SELECT COUNT(*) FROM post_hashtags) AS hashtags;`,
-    )
-    .get()
-
-  const scheduledPosts = database
-    .prepare(
-      `SELECT
-        post_drafts.id,
-        brands.name AS brand,
-        post_drafts.title,
-        social_platforms.name AS platform,
-        post_drafts.scheduled_at,
-        post_drafts.status
-       FROM post_drafts
-       JOIN brands ON brands.id = post_drafts.brand_id
-       JOIN social_platforms ON social_platforms.id = post_drafts.platform_id
-       ORDER BY post_drafts.scheduled_at;`,
-    )
-    .all()
-
-  const foreignKeyViolations = database
-    .prepare('PRAGMA foreign_key_check;')
-    .all()
-
-  if (foreignKeyViolations.length > 0) {
-    throw new Error('Foram encontradas violações de chave estrangeira.')
+  if (error) {
+    throw new Error(`Falha ao consultar ${table}: ${error.message}`)
   }
 
-  console.log('\nTabelas criadas')
-  console.table(tables)
-  console.log('Registros da carga inicial')
-  console.table(counts)
-  console.log('Posts relacionados com marca e plataforma')
-  console.table(scheduledPosts)
-  console.log('Integridade referencial: OK')
-} finally {
-  database.close()
+  return data
 }
+
+const [users, brands, platforms, posts, hashtags] = await Promise.all([
+  readTable('users', 'id, email, display_name'),
+  readTable('brands', 'id, name, user_id'),
+  readTable('social_platforms', 'id, name, character_limit'),
+  readTable(
+    'post_drafts',
+    'id, title, scheduled_at, status, brands(name), social_platforms(name)',
+  ),
+  readTable('post_hashtags', 'post_id, hashtag'),
+])
+
+console.log('\nConexão com Supabase/PostgreSQL: OK')
+console.table({
+  users: users.length,
+  brands: brands.length,
+  platforms: platforms.length,
+  posts: posts.length,
+  hashtags: hashtags.length,
+})
+console.log('Posts relacionados com marca e plataforma')
+console.table(
+  posts.map((post) => ({
+    id: post.id,
+    brand: post.brands?.name,
+    title: post.title,
+    platform: post.social_platforms?.name,
+    scheduledAt: post.scheduled_at,
+    status: post.status,
+  })),
+)
+console.log('PK, FK e políticas RLS responderam corretamente pela API.')

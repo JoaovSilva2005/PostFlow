@@ -6,16 +6,23 @@ import styles from './ChatPage.module.css'
 interface PostPreviewProps {
   brandName?: string
   draft: PostDraft | null
-  onAdd: () => void
+  isAdding: boolean
+  onAdd: () => Promise<void>
 }
 
 interface GeneratedPostProps {
   brandName?: string
   draft: PostDraft
-  onAdd: () => void
+  isAdding: boolean
+  onAdd: () => Promise<void>
 }
 
-export function PostPreview({ brandName, draft, onAdd }: PostPreviewProps) {
+export function PostPreview({
+  brandName,
+  draft,
+  isAdding,
+  onAdd,
+}: PostPreviewProps) {
   return (
     <aside className={styles.previewCard} aria-label="Prévia do post gerado">
       <div className={styles.previewHeader}>
@@ -27,7 +34,12 @@ export function PostPreview({ brandName, draft, onAdd }: PostPreviewProps) {
       </div>
 
       {draft ? (
-        <GeneratedPost brandName={brandName} draft={draft} onAdd={onAdd} />
+        <GeneratedPost
+          brandName={brandName}
+          draft={draft}
+          isAdding={isAdding}
+          onAdd={onAdd}
+        />
       ) : (
         <EmptyPreview />
       )}
@@ -35,7 +47,12 @@ export function PostPreview({ brandName, draft, onAdd }: PostPreviewProps) {
   )
 }
 
-function GeneratedPost({ brandName, draft, onAdd }: GeneratedPostProps) {
+function GeneratedPost({
+  brandName,
+  draft,
+  isAdding,
+  onAdd,
+}: GeneratedPostProps) {
   return (
     <>
       <div className={styles.socialPost}>
@@ -80,8 +97,9 @@ function GeneratedPost({ brandName, draft, onAdd }: GeneratedPostProps) {
         </div>
       </div>
 
-      <Button fullWidth type="button" onClick={onAdd}>
-        <CalendarPlus size={17} /> Adicionar à agenda
+      <Button fullWidth type="button" onClick={onAdd} disabled={isAdding}>
+        <CalendarPlus size={17} />
+        {isAdding ? 'Salvando no Supabase...' : 'Adicionar à agenda'}
       </Button>
     </>
   )

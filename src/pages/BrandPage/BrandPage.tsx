@@ -36,6 +36,8 @@ export function BrandPage() {
   const { brand, saveBrand } = useApp()
   const [form, setForm] = useState<BrandProfile>(brand ?? EMPTY_BRAND_PROFILE)
   const [error, setError] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
   function updateFormField<Key extends keyof BrandProfile>(
     field: Key,
@@ -44,7 +46,7 @@ export function BrandPage() {
     setForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
 
     if (!form.name.trim()) {
@@ -53,8 +55,17 @@ export function BrandPage() {
     }
 
     setError('')
-    saveBrand({ ...form, name: form.name.trim() })
-    navigate('/chat')
+    setSaveError('')
+    setIsSaving(true)
+
+    try {
+      await saveBrand({ ...form, name: form.name.trim() })
+      navigate('/chat')
+    } catch {
+      setSaveError('Não foi possível salvar a marca no Supabase.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -140,8 +151,15 @@ export function BrandPage() {
               <Sparkles size={14} /> Você poderá alterar essas informações
               quando quiser.
             </p>
-            <Button type="submit">Salvar e continuar</Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? 'Salvando no banco...' : 'Salvar e continuar'}
+            </Button>
           </div>
+          {saveError ? (
+            <p className={styles.saveError} role="alert">
+              {saveError}
+            </p>
+          ) : null}
         </form>
 
         <aside

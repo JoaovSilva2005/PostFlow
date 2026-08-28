@@ -69,6 +69,30 @@
   background: var(--color-primary);
 }
 
+.databaseStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 26px 14px 0;
+  padding: 10px 11px;
+  color: #8f8f9c;
+  border: 1px solid #30303a;
+  border-radius: 8px;
+  font-size: 9px;
+}
+
+.databaseStatus.connected {
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.databaseStatus.error {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+}
+
 .profile {
   display: flex;
   align-items: center;
@@ -156,6 +180,7 @@
   }
 
   .sectionLabel,
+  .databaseStatus,
   .profile {
     display: none;
   }

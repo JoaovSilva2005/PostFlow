@@ -16,6 +16,12 @@ import {
 import { EditDraftDialog } from './EditDraftDialog'
 import styles from './CalendarPage.module.css'
 
+const STATUS_LABELS: Record<PostDraft['status'], string> = {
+  draft: 'Rascunho',
+  scheduled: 'Agendado',
+  published: 'Publicado',
+}
+
 export function CalendarPage() {
   const navigate = useNavigate()
   const { drafts, updateDraft, removeDraft } = useApp()
@@ -47,13 +53,13 @@ export function CalendarPage() {
     )
   }
 
-  function handleSaveDraft(updatedDraft: PostDraft) {
-    updateDraft(updatedDraft)
+  async function handleSaveDraft(updatedDraft: PostDraft) {
+    await updateDraft(updatedDraft)
     setSelectedDraft(null)
   }
 
-  function handleDeleteDraft(draftId: string) {
-    removeDraft(draftId)
+  async function handleDeleteDraft(draftId: string) {
+    await removeDraft(draftId)
     setSelectedDraft(null)
   }
 
@@ -130,7 +136,9 @@ export function CalendarPage() {
                       <span style={{ background: draft.color }} />
                       <div>
                         <strong>{draft.title}</strong>
-                        <small>{draft.platform} · Rascunho</small>
+                        <small>
+                          {draft.platform} · {STATUS_LABELS[draft.status]}
+                        </small>
                       </div>
                     </button>
                   ))}

@@ -144,6 +144,13 @@
   font-size: 8px;
 }
 
+.saveError {
+  margin: 14px 0 0;
+  color: var(--color-danger);
+  font-size: 10px;
+  text-align: right;
+}
+
 .previewCard {
   align-self: start;
   min-height: 420px;

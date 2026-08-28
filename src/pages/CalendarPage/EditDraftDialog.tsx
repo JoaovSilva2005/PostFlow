@@ -14,8 +14,8 @@ const PLATFORM_OPTIONS = [
 interface EditDraftDialogProps {
   draft: PostDraft
   onClose: () => void
-  onSave: (draft: PostDraft) => void
-  onDelete: (id: string) => void
+  onSave: (draft: PostDraft) => Promise<void>
+  onDelete: (id: string) => Promise<void>
 }
 
 export function EditDraftDialog({
@@ -25,6 +25,8 @@ export function EditDraftDialog({
   onDelete,
 }: EditDraftDialogProps) {
   const [form, setForm] = useState(draft)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState('')
 
   function updateFormField<Key extends keyof PostDraft>(
     field: Key,
@@ -33,9 +35,29 @@ export function EditDraftDialog({
     setForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    onSave(form)
+    setError('')
+    setIsSaving(true)
+
+    try {
+      await onSave(form)
+    } catch {
+      setError('Não foi possível editar o post no Supabase.')
+      setIsSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    setError('')
+    setIsSaving(true)
+
+    try {
+      await onDelete(form.id)
+    } catch {
+      setError('Não foi possível excluir o post do Supabase.')
+      setIsSaving(false)
+    }
   }
 
   function handleOverlayMouseDown(event: MouseEvent<HTMLDivElement>) {
@@ -108,19 +130,33 @@ export function EditDraftDialog({
             />
           </div>
 
+          {error ? (
+            <p className={styles.dialogError} role="alert">
+              {error}
+            </p>
+          ) : null}
+
           <footer>
             <Button
               type="button"
               variant="danger"
-              onClick={() => onDelete(form.id)}
+              onClick={handleDelete}
+              disabled={isSaving}
             >
               <Trash2 size={16} /> Excluir
             </Button>
             <div>
-              <Button type="button" variant="ghost" onClick={onClose}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onClose}
+                disabled={isSaving}
+              >
                 Cancelar
               </Button>
-              <Button type="submit">Salvar alterações</Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? 'Salvando...' : 'Salvar alterações'}
+              </Button>
             </div>
           </footer>
         </form>
