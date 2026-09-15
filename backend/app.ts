@@ -1,6 +1,14 @@
 import cors from 'cors'
 import express, { type ErrorRequestHandler } from 'express'
+import { environment } from './config/environment.js'
 import { createSupabaseServerClient } from './config/supabaseServer.js'
+import {
+  requireAuthentication,
+  requireRoles,
+} from './modules/auth/authMiddleware.js'
+import { createAuthRouter } from './modules/auth/authRoutes.js'
+import { AuthService } from './modules/auth/authService.js'
+import { SupabaseAuthProvider } from './modules/auth/supabaseAuthProvider.js'
 import {
   SupabaseFinancialTransactionRepository,
   type FinancialTransactionRepository,
@@ -14,20 +22,39 @@ import {
 import { ResilientFinancialTransactionRepository } from './modules/finance/resilientFinancialRepository.js'
 import { HttpError } from './shared/HttpError.js'
 
-export function createApp(repository?: FinancialTransactionRepository) {
+interface AppOptions {
+  authService?: AuthService
+  financialRepository?: FinancialTransactionRepository
+}
+
+export function createApp(options: AppOptions = {}) {
   const app = express()
-  const financialRepository = repository
-    ? repository
+  const supabase = createSupabaseServerClient()
+  const authService =
+    options.authService ??
+    new AuthService(new SupabaseAuthProvider(createSupabaseServerClient))
+  const financialRepository = options.financialRepository
+    ? options.financialRepository
     : new ResilientFinancialTransactionRepository(
-        new SupabaseFinancialTransactionRepository(
-          createSupabaseServerClient(),
-        ),
+        new SupabaseFinancialTransactionRepository(supabase),
         new MemoryFinancialTransactionRepository(
           createDemoFinancialTransactions(),
         ),
       )
 
-  app.use(cors({ origin: true }))
+  app.use(
+    cors({
+      credentials: true,
+      origin: (origin, callback) => {
+        if (!origin || environment.isAllowedOrigin(origin)) {
+          callback(null, true)
+          return
+        }
+
+        callback(new HttpError(403, 'Origem não autorizada.'))
+      },
+    }),
+  )
   app.use(express.json())
 
   app.get('/api/health', (_request, response) => {
@@ -40,9 +67,14 @@ export function createApp(repository?: FinancialTransactionRepository) {
     })
   })
 
+  app.use('/api/auth', createAuthRouter(authService))
+  app.use('/api/finance', requireAuthentication(authService))
   app.use(
     '/api/finance',
-    createFinancialRouter(new FinancialService(financialRepository)),
+    createFinancialRouter(
+      new FinancialService(financialRepository),
+      requireRoles(authService, 'owner', 'admin', 'editor'),
+    ),
   )
 
   app.use((_request, response) => {
@@ -55,9 +87,15 @@ export function createApp(repository?: FinancialTransactionRepository) {
     response,
     _next,
   ) => {
-    const statusCode = error instanceof HttpError ? error.statusCode : 500
-    const message =
-      error instanceof Error ? error.message : 'Erro interno da aplicação.'
+    const isExpectedError = error instanceof HttpError
+    const statusCode = isExpectedError ? error.statusCode : 500
+    const message = isExpectedError
+      ? error.message
+      : 'Erro interno da aplicação.'
+
+    if (!isExpectedError) {
+      console.error('Erro não tratado na API:', error)
+    }
 
     response.status(statusCode).json({ error: message })
   }

@@ -4,17 +4,25 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   type ReactNode,
 } from 'react'
+import type {
+  LoginCredentials,
+  RegistrationInput,
+  RegistrationResponse,
+} from '../domain/auth'
 import type { AppState, BrandProfile, PostDraft } from '../domain/models'
+import { authApi, type AuthGateway } from '../features/auth/authApi'
 import {
   SupabasePostFlowRepository,
   type PostFlowDataRepository,
 } from '../services/postFlowRepository'
-import { SessionStorage } from '../services/sessionStorage'
 
 type AppAction =
-  | { type: 'SET_SESSION'; payload: boolean }
+  | { type: 'AUTH_CHECKING' }
+  | { type: 'AUTHENTICATED'; payload: AppState['authUser'] }
+  | { type: 'AUTH_ANONYMOUS'; payload?: string }
   | {
       type: 'DATABASE_CONNECTED'
       payload: { brand: BrandProfile | null; drafts: PostDraft[] }
@@ -26,8 +34,10 @@ type AppAction =
   | { type: 'REMOVE_DRAFT'; payload: string }
 
 interface AppContextValue extends AppState {
-  login: () => void
-  logout: () => void
+  login: (credentials: LoginCredentials) => Promise<void>
+  logout: () => Promise<void>
+  recoverPassword: (email: string) => Promise<string>
+  register: (input: RegistrationInput) => Promise<RegistrationResponse>
   saveBrand: (brand: BrandProfile) => Promise<void>
   addDraft: (draft: PostDraft) => Promise<void>
   updateDraft: (draft: PostDraft) => Promise<void>
@@ -36,12 +46,16 @@ interface AppContextValue extends AppState {
 
 interface AppProviderProps {
   children: ReactNode
+  authGateway?: AuthGateway
   repository?: PostFlowDataRepository
 }
 
 function createInitialState(): AppState {
   return {
-    isAuthenticated: SessionStorage.load(),
+    authError: null,
+    authStatus: 'checking',
+    authUser: null,
+    isAuthenticated: false,
     brand: null,
     drafts: [],
     databaseStatus: 'connecting',
@@ -51,8 +65,24 @@ function createInitialState(): AppState {
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'SET_SESSION':
-      return { ...state, isAuthenticated: action.payload }
+    case 'AUTH_CHECKING':
+      return { ...state, authError: null, authStatus: 'checking' }
+    case 'AUTHENTICATED':
+      return {
+        ...state,
+        authError: null,
+        authStatus: 'authenticated',
+        authUser: action.payload,
+        isAuthenticated: true,
+      }
+    case 'AUTH_ANONYMOUS':
+      return {
+        ...state,
+        authError: action.payload ?? null,
+        authStatus: 'anonymous',
+        authUser: null,
+        isAuthenticated: false,
+      }
     case 'DATABASE_CONNECTED':
       return {
         ...state,
@@ -97,10 +127,17 @@ function errorMessage(error: unknown): string {
     : 'Não foi possível acessar o banco de dados.'
 }
 
+function authenticationError(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : 'Não foi possível autenticar agora.'
+}
+
 const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({
   children,
+  authGateway = authApi,
   repository = SupabasePostFlowRepository,
 }: AppProviderProps) {
   const [state, dispatch] = useReducer(
@@ -108,6 +145,36 @@ export function AppProvider({
     undefined,
     createInitialState,
   )
+  const authOperation = useRef(0)
+
+  useEffect(() => {
+    let isActive = true
+    const operation = authOperation.current
+
+    authGateway
+      .currentUser()
+      .then((user) => {
+        if (!isActive || operation !== authOperation.current) return
+
+        dispatch(
+          user
+            ? { type: 'AUTHENTICATED', payload: user }
+            : { type: 'AUTH_ANONYMOUS' },
+        )
+      })
+      .catch((error: unknown) => {
+        if (isActive && operation === authOperation.current) {
+          dispatch({
+            type: 'AUTH_ANONYMOUS',
+            payload: authenticationError(error),
+          })
+        }
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [authGateway])
 
   useEffect(() => {
     let isActive = true
@@ -133,13 +200,49 @@ export function AppProvider({
   const value = useMemo<AppContextValue>(
     () => ({
       ...state,
-      login: () => {
-        SessionStorage.save(true)
-        dispatch({ type: 'SET_SESSION', payload: true })
+      login: async (credentials) => {
+        authOperation.current += 1
+        dispatch({ type: 'AUTH_CHECKING' })
+
+        try {
+          const user = await authGateway.login(credentials)
+          dispatch({ type: 'AUTHENTICATED', payload: user })
+        } catch (error) {
+          dispatch({
+            type: 'AUTH_ANONYMOUS',
+            payload: authenticationError(error),
+          })
+          throw error
+        }
       },
-      logout: () => {
-        SessionStorage.save(false)
-        dispatch({ type: 'SET_SESSION', payload: false })
+      logout: async () => {
+        authOperation.current += 1
+        try {
+          await authGateway.logout()
+        } finally {
+          dispatch({ type: 'AUTH_ANONYMOUS' })
+        }
+      },
+      recoverPassword: (email) => authGateway.recoverPassword(email),
+      register: async (input) => {
+        authOperation.current += 1
+        dispatch({ type: 'AUTH_CHECKING' })
+
+        try {
+          const result = await authGateway.register(input)
+          dispatch(
+            result.requiresEmailConfirmation
+              ? { type: 'AUTH_ANONYMOUS' }
+              : { type: 'AUTHENTICATED', payload: result.user },
+          )
+          return result
+        } catch (error) {
+          dispatch({
+            type: 'AUTH_ANONYMOUS',
+            payload: authenticationError(error),
+          })
+          throw error
+        }
       },
       saveBrand: async (brand) => {
         try {
@@ -178,7 +281,7 @@ export function AppProvider({
         }
       },
     }),
-    [repository, state],
+    [authGateway, repository, state],
   )
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

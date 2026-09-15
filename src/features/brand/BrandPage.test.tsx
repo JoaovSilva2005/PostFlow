@@ -8,7 +8,10 @@ describe('BrandPage', () => {
     const user = userEvent.setup()
     const { repository } = renderApp('/brand')
 
-    await user.type(screen.getByLabelText('Nome da marca'), 'Café Aurora')
+    await user.type(
+      await screen.findByLabelText('Nome da marca'),
+      'Café Aurora',
+    )
     await user.selectOptions(screen.getByLabelText('Tom de voz'), 'Inspirador')
     await user.click(
       screen.getByRole('button', { name: 'Selecionar cor #F97316' }),

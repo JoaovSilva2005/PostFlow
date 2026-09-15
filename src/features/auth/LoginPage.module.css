@@ -219,15 +219,30 @@
   font-weight: 600;
 }
 
-.demoNotice {
+.securityNotice,
+.error,
+.success {
   margin: 18px 0 0;
   padding: 9px 12px;
-  color: #66666f;
   border-radius: 7px;
-  background: #f7f7fa;
   font-size: 9px;
   line-height: 1.55;
   text-align: center;
+}
+
+.securityNotice {
+  color: #66666f;
+  background: #f7f7fa;
+}
+
+.error {
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.success {
+  color: #166534;
+  background: #f0fdf4;
 }
 
 .signup {

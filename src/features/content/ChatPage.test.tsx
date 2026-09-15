@@ -9,7 +9,7 @@ describe('ChatPage', () => {
     const { repository } = renderApp('/chat')
 
     await user.type(
-      screen.getByLabelText('Pedido para a IA'),
+      await screen.findByLabelText('Pedido para a IA'),
       'Post sobre café especial',
     )
     await user.click(screen.getByRole('button', { name: 'Gerar post' }))

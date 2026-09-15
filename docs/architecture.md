@@ -7,6 +7,7 @@ PostFlow/
 ├── api/                       # adaptador serverless usado pela Vercel
 ├── backend/                   # API, regras de negócio e acesso ao banco
 │   ├── config/                # ambiente e cliente Supabase do servidor
+│   ├── modules/auth/          # autenticação, cookies e autorização
 │   ├── modules/finance/       # módulo financeiro completo
 │   ├── shared/                # recursos compartilhados pelo backend
 │   └── test/                  # apoios reutilizáveis para testes
@@ -28,8 +29,9 @@ PostFlow/
 ## Fluxo de uma requisição
 
 ```text
-Tela React → financialApi → rota Express → FinancialService
-          → FinancialRepository → Supabase/PostgreSQL
+Login React → authApi → AuthRoutes → Supabase Auth → cookie HttpOnly
+Tela financeira → financialApi → middleware de autenticação
+                → FinancialService → Repository → Supabase/PostgreSQL
 ```
 
 - A **tela** coleta os dados e apresenta o resultado.
@@ -46,7 +48,7 @@ Cada pasta em `src/features` reúne a tela, o estilo, o teste e os auxiliares es
 
 | Funcionalidade | Frontend                | Backend                   | Banco                           |
 | -------------- | ----------------------- | ------------------------- | ------------------------------- |
-| Login          | `src/features/auth`     | simulado neste incremento | `users`                         |
+| Login          | `src/features/auth`     | `backend/modules/auth`    | Supabase Auth                   |
 | Marca          | `src/features/brand`    | Data API do Supabase      | `brands`                        |
 | Geração        | `src/features/content`  | IA simulada               | `post_drafts` e `post_hashtags` |
 | Agenda         | `src/features/calendar` | Data API do Supabase      | `post_drafts`                   |

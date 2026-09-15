@@ -25,9 +25,13 @@ export interface PostDraft {
 }
 
 export interface AppState {
+  authError: string | null
+  authStatus: 'checking' | 'authenticated' | 'anonymous'
+  authUser: AuthUser | null
   isAuthenticated: boolean
   brand: BrandProfile | null
   drafts: PostDraft[]
   databaseStatus: 'connecting' | 'connected' | 'error'
   databaseError: string | null
 }
+import type { AuthUser } from './auth'

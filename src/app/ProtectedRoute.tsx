@@ -4,7 +4,11 @@ import { useApp } from './AppContext'
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const location = useLocation()
-  const { isAuthenticated } = useApp()
+  const { authStatus, isAuthenticated } = useApp()
+
+  if (authStatus === 'checking') {
+    return <div role="status">Verificando sua sessão...</div>
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />

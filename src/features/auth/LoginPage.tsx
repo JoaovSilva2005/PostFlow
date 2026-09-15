@@ -7,6 +7,7 @@ import { TextField } from '../../components/ui/FormField'
 import styles from './LoginPage.module.css'
 
 interface FormErrors {
+  displayName?: string
   email?: string
   password?: string
 }
@@ -19,8 +20,16 @@ const LOGIN_FLOW_STEPS = [
   'Organize tudo na agenda',
 ]
 
-function validateLogin(email: string, password: string): FormErrors {
+function validateCredentials(
+  email: string,
+  password: string,
+  displayName?: string,
+): FormErrors {
   const errors: FormErrors = {}
+
+  if (displayName !== undefined && displayName.trim().length < 2) {
+    errors.displayName = 'Informe seu nome.'
+  }
 
   if (!email.trim()) {
     errors.email = 'Informe seu e-mail.'
@@ -39,27 +48,101 @@ function validateLogin(email: string, password: string): FormErrors {
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const { isAuthenticated, login } = useApp()
+  const { isAuthenticated, login, recoverPassword, register } = useApp()
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [feedback, setFeedback] = useState<{
+    message: string
+    type: 'error' | 'success'
+  } | null>(null)
+  const isBusy = isSubmitting
 
   if (isAuthenticated) {
     return <Navigate to="/brand" replace />
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    const nextErrors = validateLogin(email, password)
+    const nextErrors = validateCredentials(
+      email,
+      password,
+      mode === 'register' ? displayName : undefined,
+    )
 
     setErrors(nextErrors)
+    setFeedback(null)
     if (Object.keys(nextErrors).length > 0) {
       return
     }
 
-    login()
-    navigate('/brand')
+    setIsSubmitting(true)
+
+    try {
+      if (mode === 'register') {
+        const result = await register({ displayName, email, password })
+
+        if (result.requiresEmailConfirmation) {
+          setFeedback({
+            message: 'Conta criada. Confirme seu e-mail antes de entrar.',
+            type: 'success',
+          })
+          setMode('login')
+          return
+        }
+      } else {
+        await login({ email, password })
+      }
+
+      navigate('/brand', { replace: true })
+    } catch (error) {
+      setFeedback({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível autenticar.',
+        type: 'error',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handlePasswordRecovery() {
+    const emailError = validateCredentials(email, '123456').email
+
+    if (emailError) {
+      setErrors((current) => ({ ...current, email: emailError }))
+      return
+    }
+
+    setIsSubmitting(true)
+    setFeedback(null)
+
+    try {
+      const message = await recoverPassword(email)
+      setFeedback({ message, type: 'success' })
+    } catch (error) {
+      setFeedback({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível recuperar a senha.',
+        type: 'error',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  function toggleMode() {
+    setMode((current) => (current === 'login' ? 'register' : 'login'))
+    setErrors({})
+    setFeedback(null)
   }
 
   return (
@@ -101,12 +184,27 @@ export function LoginPage() {
               <Sparkles size={18} />
             </span>
             <div>
-              <h2>Bem-vindo</h2>
-              <p>Entre para continuar no PostFlow</p>
+              <h2>{mode === 'login' ? 'Bem-vindo' : 'Criar conta'}</h2>
+              <p>
+                {mode === 'login'
+                  ? 'Entre para continuar no PostFlow'
+                  : 'Cadastre-se para começar no PostFlow'}
+              </p>
             </div>
           </div>
 
           <div className={styles.fields}>
+            {mode === 'register' && (
+              <TextField
+                label="Nome"
+                name="displayName"
+                autoComplete="name"
+                placeholder="Seu nome"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                error={errors.displayName}
+              />
+            )}
             <TextField
               label="E-mail"
               name="email"
@@ -139,21 +237,41 @@ export function LoginPage() {
             </div>
           </div>
 
-          <div className={styles.formMeta}>
-            <label>
-              <input type="checkbox" /> Lembrar de mim
-            </label>
-            <button type="button">Esqueceu a senha?</button>
-          </div>
-          <Button fullWidth type="submit">
-            Entrar no PostFlow
+          {mode === 'login' && (
+            <div className={styles.formMeta}>
+              <span>Sessão segura</span>
+              <button
+                type="button"
+                onClick={() => void handlePasswordRecovery()}
+                disabled={isBusy}
+              >
+                Esqueceu a senha?
+              </button>
+            </div>
+          )}
+          <Button fullWidth type="submit" disabled={isBusy}>
+            {isBusy
+              ? 'Aguarde...'
+              : mode === 'login'
+                ? 'Entrar no PostFlow'
+                : 'Criar minha conta'}
           </Button>
-          <p className={styles.demoNotice}>
-            Acesso demonstrativo: use qualquer e-mail válido e uma senha com 6
-            caracteres.
+          {feedback && (
+            <p className={styles[feedback.type]} role="status">
+              {feedback.message}
+            </p>
+          )}
+          <p className={styles.securityNotice}>
+            Sessão protegida por cookie HttpOnly. A senha não é armazenada pelo
+            PostFlow.
           </p>
           <p className={styles.signup}>
-            Ainda não tem uma conta? <button type="button">Criar conta</button>
+            {mode === 'login'
+              ? 'Ainda não tem uma conta?'
+              : 'Já tem uma conta?'}{' '}
+            <button type="button" onClick={toggleMode}>
+              {mode === 'login' ? 'Criar conta' : 'Entrar'}
+            </button>
           </p>
         </form>
         <p className={styles.areaFooter}>

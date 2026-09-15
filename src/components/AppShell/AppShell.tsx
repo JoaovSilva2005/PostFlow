@@ -21,7 +21,7 @@ const links = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
-  const { brand, databaseError, databaseStatus, logout } = useApp()
+  const { authUser, brand, databaseError, databaseStatus, logout } = useApp()
 
   const databaseLabel = {
     connecting: 'Conectando ao Supabase',
@@ -29,9 +29,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     error: 'Banco não conectado',
   }[databaseStatus]
 
-  function handleLogout() {
-    logout()
-    navigate('/login')
+  async function handleLogout() {
+    await logout()
+    navigate('/login', { replace: true })
   }
 
   return (
@@ -75,9 +75,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className={styles.profileCopy}>
             <strong>{brand?.name || 'Sua marca'}</strong>
-            <span>Plano acadêmico</span>
+            <span>{authUser?.displayName || 'Plano acadêmico'}</span>
           </div>
-          <button type="button" onClick={handleLogout} aria-label="Sair">
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            aria-label="Sair"
+          >
             <LogOut size={17} />
           </button>
         </div>

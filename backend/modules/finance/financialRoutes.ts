@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, type RequestHandler } from 'express'
 import { z } from 'zod'
 import { HttpError } from '../../shared/HttpError.js'
 import type { FinancialService } from './financialService.js'
@@ -23,6 +23,8 @@ const statusSchema = z.object({
   status: z.enum(['pending', 'paid']),
 })
 
+const idSchema = z.uuid('Informe um identificador válido.')
+
 function validate<T>(schema: z.ZodType<T>, value: unknown) {
   const result = schema.safeParse(value)
 
@@ -34,7 +36,12 @@ function validate<T>(schema: z.ZodType<T>, value: unknown) {
   return result.data
 }
 
-export function createFinancialRouter(service: FinancialService) {
+const allowWrite: RequestHandler = (_request, _response, next) => next()
+
+export function createFinancialRouter(
+  service: FinancialService,
+  authorizeWrite: RequestHandler = allowWrite,
+) {
   const router = Router()
 
   router.get('/transactions', async (_request, response) => {
@@ -45,27 +52,42 @@ export function createFinancialRouter(service: FinancialService) {
     response.json({ data: await service.summary() })
   })
 
-  router.post('/transactions', async (request, response) => {
+  router.post('/transactions', authorizeWrite, async (request, response) => {
     const input = validate(transactionSchema, request.body)
     response.status(201).json({ data: await service.create(input) })
   })
 
-  router.patch('/transactions/:id', async (request, response) => {
-    const input = validate(updateTransactionSchema, request.body)
-    response.json({ data: await service.update(request.params.id, input) })
-  })
+  router.patch(
+    '/transactions/:id',
+    authorizeWrite,
+    async (request, response) => {
+      const input = validate(updateTransactionSchema, request.body)
+      const id = validate(idSchema, request.params.id)
+      response.json({ data: await service.update(id, input) })
+    },
+  )
 
-  router.patch('/transactions/:id/status', async (request, response) => {
-    const { status } = validate(statusSchema, request.body)
-    response.json({
-      data: await service.updateStatus(request.params.id, status),
-    })
-  })
+  router.patch(
+    '/transactions/:id/status',
+    authorizeWrite,
+    async (request, response) => {
+      const { status } = validate(statusSchema, request.body)
+      const id = validate(idSchema, request.params.id)
+      response.json({
+        data: await service.updateStatus(id, status),
+      })
+    },
+  )
 
-  router.delete('/transactions/:id', async (request, response) => {
-    await service.delete(request.params.id)
-    response.status(204).send()
-  })
+  router.delete(
+    '/transactions/:id',
+    authorizeWrite,
+    async (request, response) => {
+      const id = validate(idSchema, request.params.id)
+      await service.delete(id)
+      response.status(204).send()
+    },
+  )
 
   return router
 }

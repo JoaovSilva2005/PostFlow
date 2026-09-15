@@ -13,6 +13,19 @@ O backend é uma API Express escrita em TypeScript. A entrada local está em `in
 | `shared`         | recursos comuns aos módulos                    |
 | `test`           | implementações auxiliares usadas nos testes    |
 
+## Módulo de autenticação
+
+Dentro de `modules/auth`:
+
+- `authRoutes.ts` valida login, cadastro, recuperação, renovação e logout;
+- `authService.ts` aplica mensagens seguras e regras de autenticação;
+- `supabaseAuthProvider.ts` integra a API ao Supabase Auth;
+- `authCookies.ts` mantém tokens fora do JavaScript do navegador;
+- `authMiddleware.ts` protege rotas e autoriza papéis;
+- `authTypes.ts` define `owner`, `admin`, `editor` e `viewer`.
+
+O endpoint de saúde é público. A API financeira exige autenticação; operações de escrita também rejeitam o papel `viewer`.
+
 ## Módulo financeiro
 
 Dentro de `modules/finance`:
