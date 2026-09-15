@@ -25,12 +25,18 @@ describe('autenticação', () => {
     const allowed = await request(app)
       .options('/api/auth/login')
       .set('Origin', 'http://localhost:5173')
+    const allowedPreview = await request(app)
+      .options('/api/auth/login')
+      .set('Origin', 'https://post-flow-git-main-dranoxs-projects.vercel.app')
     const blocked = await request(app)
       .options('/api/auth/login')
       .set('Origin', 'https://site-nao-autorizado.example')
 
     expect(allowed.headers['access-control-allow-origin']).toBe(
       'http://localhost:5173',
+    )
+    expect(allowedPreview.headers['access-control-allow-origin']).toBe(
+      'https://post-flow-git-main-dranoxs-projects.vercel.app',
     )
     expect(blocked.status).toBe(403)
   })

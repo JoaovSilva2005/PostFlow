@@ -22,6 +22,8 @@ const appUrl = process.env.APP_URL?.trim() || 'http://localhost:5173'
 const deploymentUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : null
+const vercelProjectOrigin =
+  /^https:\/\/post-flow-[a-z0-9-]+-dranoxs-projects\.vercel\.app$/
 
 export const environment = {
   apiPort: Number(process.env.API_PORT ?? 3001),
@@ -31,6 +33,7 @@ export const environment = {
   isAllowedOrigin: (origin: string) =>
     origin === appUrl ||
     origin === deploymentUrl ||
+    vercelProjectOrigin.test(origin) ||
     (!isProduction && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)),
   supabaseUrl: () =>
     process.env.SUPABASE_URL?.trim() ||
