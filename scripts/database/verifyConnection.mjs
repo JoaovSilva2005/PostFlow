@@ -1,4 +1,4 @@
-import { createDatabaseClient } from './database-config.mjs'
+import { createDatabaseClient } from './databaseClient.mjs'
 
 const supabase = createDatabaseClient()
 

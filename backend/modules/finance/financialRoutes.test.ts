@@ -1,8 +1,8 @@
 // @vitest-environment node
 import request from 'supertest'
 import { describe, expect, it } from 'vitest'
-import { createApp } from '../app'
-import { InMemoryFinancialRepository } from '../test/InMemoryFinancialRepository'
+import { createApp } from '../../app'
+import { InMemoryFinancialRepository } from '../../test/InMemoryFinancialRepository'
 
 describe('API financeira', () => {
   it('informa o modo de armazenamento no health check', async () => {

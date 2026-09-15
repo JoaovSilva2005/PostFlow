@@ -88,22 +88,25 @@ npm run build
 O código usa React, TypeScript, Vite, React Router, CSS Modules, Context com `useReducer`, Node.js, Express, Zod, Supabase/PostgreSQL, Vitest e React Testing Library.
 
 ```text
-server/
+api/             # adaptador serverless da Vercel
+backend/
 ├── config/      # variáveis de ambiente e cliente Supabase da API
-├── finance/     # rotas, regras, tipos, repositório e testes financeiros
-├── shared/      # erros HTTP compartilhados
-└── test/        # repositório em memória usado nos testes
+├── modules/     # funcionalidades da API agrupadas por domínio
+├── shared/      # recursos reutilizáveis do backend
+└── test/        # apoios reutilizáveis dos testes
 src/
 ├── app/         # rotas, proteção de acesso e estado compartilhado
 ├── components/  # menu lateral e componentes reutilizáveis
 ├── domain/      # tipos e conceitos do PostFlow
-├── pages/       # uma pasta por tela, com componente, estilo e teste
-├── services/    # conexão Supabase, repositório de dados e IA simulada
+├── features/    # telas, estilos, serviços específicos e testes por função
+├── services/    # conexão, persistência e sessão compartilhadas
 ├── styles/      # tokens do Figma, fonte e estilos globais
 └── test/        # configuração e utilitários de teste
 database/        # schema, migrações, carga inicial e documentação do DER
-scripts/         # verificação da conexão e teste de CRUD no Supabase
+scripts/         # validações da API e do banco agrupadas por finalidade
 ```
+
+A explicação completa, incluindo o fluxo **tela → API → regra → banco**, está em [`docs/architecture.md`](docs/architecture.md). As pastas [`src`](src/README.md), [`backend`](backend/README.md) e [`database`](database/README.md) também possuem guias próprios.
 
 Os nomes de arquivos, componentes e tipos estão em inglês. A interface e a documentação estão em português para manter o código técnico consistente sem prejudicar a apresentação acadêmica.
 
@@ -135,23 +138,23 @@ O fluxo de conteúdo ainda utiliza a Data API do Supabase. O módulo financeiro 
 ### Ordem sugerida para apresentar o código
 
 1. `src/app/App.tsx`: mostra as rotas das quatro telas.
-2. `src/pages/LoginPage/LoginPage.tsx`: validação e início do fluxo.
-3. `src/pages/BrandPage/BrandPage.tsx`: configuração da identidade da marca.
-4. `src/pages/ChatPage/ChatPage.tsx`: pedido do usuário e chamada da IA simulada.
-5. `src/services/mockAiService.ts`: geração simulada do conteúdo.
-6. `src/pages/ChatPage/PostPreview.tsx`: prévia e inclusão na agenda.
-7. `src/pages/CalendarPage/CalendarPage.tsx`: calendário e rascunhos por data.
-8. `src/pages/CalendarPage/EditDraftDialog.tsx`: edição e exclusão do rascunho.
+2. `src/features/auth/LoginPage.tsx`: validação e início do fluxo.
+3. `src/features/brand/BrandPage.tsx`: configuração da identidade da marca.
+4. `src/features/content/ChatPage.tsx`: pedido do usuário e chamada da IA simulada.
+5. `src/features/content/mockAiService.ts`: geração simulada do conteúdo.
+6. `src/features/content/PostPreview.tsx`: prévia e inclusão na agenda.
+7. `src/features/calendar/CalendarPage.tsx`: calendário e rascunhos por data.
+8. `src/features/calendar/EditDraftDialog.tsx`: edição e exclusão do rascunho.
 9. `src/services/supabaseClient.ts`: conexão por variáveis de ambiente.
 10. `src/services/postFlowRepository.ts`: operações de CRUD.
 11. `database/schema.sql`: tabelas, chaves, RLS, restrições e índices.
 12. `database/seed.sql`: dados iniciais usados na demonstração.
-13. `scripts/test-supabase-crud.mjs`: evidência automatizada do CRUD real.
-14. `server/finance/financialRoutes.ts`: entradas e saídas da API.
-15. `server/finance/financialService.ts`: cálculo do saldo e regra de status.
-16. `server/finance/financialRepository.ts`: persistência no Supabase.
-17. `src/pages/FinancePage/FinancePage.tsx`: tela ligada à API.
-18. `server/finance/financialRoutes.test.ts`: teste de CRUD HTTP.
+13. `scripts/database/testCrud.mjs`: evidência automatizada do CRUD real.
+14. `backend/modules/finance/financialRoutes.ts`: entradas e saídas da API.
+15. `backend/modules/finance/financialService.ts`: cálculo do saldo e regra de status.
+16. `backend/modules/finance/financialRepository.ts`: persistência no Supabase.
+17. `src/features/finance/FinancePage.tsx`: tela ligada à API.
+18. `backend/modules/finance/financialRoutes.test.ts`: teste de CRUD HTTP.
 
 ## Telas codificadas
 

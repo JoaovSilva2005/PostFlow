@@ -1,0 +1,61 @@
+# Arquitetura do PostFlow
+
+O projeto é um monorepositório simples: frontend, backend e banco de dados ficam no mesmo repositório, mas cada parte possui uma responsabilidade clara.
+
+```text
+PostFlow/
+├── api/                       # adaptador serverless usado pela Vercel
+├── backend/                   # API, regras de negócio e acesso ao banco
+│   ├── config/                # ambiente e cliente Supabase do servidor
+│   ├── modules/finance/       # módulo financeiro completo
+│   ├── shared/                # recursos compartilhados pelo backend
+│   └── test/                  # apoios reutilizáveis para testes
+├── database/                  # schema, migrations, seed e documentação
+├── scripts/
+│   ├── api/                   # validações executáveis da API
+│   └── database/              # validações executáveis do banco
+├── src/                       # frontend React
+│   ├── app/                   # rotas, proteção e estado global
+│   ├── components/            # componentes visuais compartilhados
+│   ├── domain/                # tipos usados pela aplicação
+│   ├── features/              # telas, serviços e testes por funcionalidade
+│   ├── services/              # infraestrutura compartilhada
+│   ├── styles/                # tokens e estilos globais
+│   └── test/                  # configuração e utilitários dos testes
+└── docs/                      # documentação e evidências visuais
+```
+
+## Fluxo de uma requisição
+
+```text
+Tela React → financialApi → rota Express → FinancialService
+          → FinancialRepository → Supabase/PostgreSQL
+```
+
+- A **tela** coleta os dados e apresenta o resultado.
+- A **API** define as entradas e saídas HTTP.
+- O **serviço** valida as regras e faz os cálculos.
+- O **repositório** isola o acesso ao Supabase.
+- O **banco** garante PKs, FKs, restrições e políticas RLS.
+
+Essa separação permite trocar a interface ou a persistência sem reescrever as regras de negócio.
+
+## Como localizar uma funcionalidade
+
+Cada pasta em `src/features` reúne a tela, o estilo, o teste e os auxiliares específicos daquela funcionalidade:
+
+| Funcionalidade | Frontend                | Backend                   | Banco                           |
+| -------------- | ----------------------- | ------------------------- | ------------------------------- |
+| Login          | `src/features/auth`     | simulado neste incremento | `users`                         |
+| Marca          | `src/features/brand`    | Data API do Supabase      | `brands`                        |
+| Geração        | `src/features/content`  | IA simulada               | `post_drafts` e `post_hashtags` |
+| Agenda         | `src/features/calendar` | Data API do Supabase      | `post_drafts`                   |
+| Financeiro     | `src/features/finance`  | `backend/modules/finance` | `financial_transactions`        |
+
+## Decisões simples para apresentação
+
+- Nomes técnicos em inglês; interface e documentação em português.
+- CSS Modules mantém o estilo perto de cada tela sem criar classes globais acidentais.
+- Context + `useReducer` atende ao estado compartilhado sem adicionar uma biblioteca maior.
+- Interfaces de repositório separam regra de negócio e persistência.
+- Testes ficam próximos do código testado, facilitando mostrar implementação e evidência lado a lado.

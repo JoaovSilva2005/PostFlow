@@ -3,7 +3,7 @@ import type {
   FinancialTransaction,
   FinancialTransactionInput,
   FinancialTransactionStatus,
-} from '../domain/finance'
+} from '../../domain/finance'
 
 const API_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
 

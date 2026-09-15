@@ -4,17 +4,17 @@ O PostFlow utiliza **Supabase com PostgreSQL**. O módulo financeiro é acessado
 
 ## Arquivos
 
-| Arquivo                                    | Responsabilidade                                                  |
-| ------------------------------------------ | ----------------------------------------------------------------- |
-| `schema.sql`                               | Cria tabelas, PKs, FKs, checks, índices, triggers e políticas RLS |
-| `seed.sql`                                 | Cadastra usuários, marcas, plataformas, posts e hashtags de teste |
-| `migrations/20260915_financial_module.sql` | Cria o incremento financeiro em um banco já existente             |
-| `../server/finance/financialRepository.ts` | Implementa a persistência financeira usada pela API               |
-| `../server/finance/financialService.ts`    | Calcula saldo, receitas, despesas e pendências                    |
-| `../src/services/supabaseClient.ts`        | Cria a conexão a partir das variáveis de ambiente                 |
-| `../src/services/postFlowRepository.ts`    | Implementa o CRUD usado pelas telas                               |
-| `../scripts/verify-database.mjs`           | Confirma a conexão e consulta os relacionamentos                  |
-| `../scripts/test-supabase-crud.mjs`        | Executa CREATE, READ, UPDATE e DELETE reais                       |
+| Arquivo                                             | Responsabilidade                                                  |
+| --------------------------------------------------- | ----------------------------------------------------------------- |
+| `schema.sql`                                        | Cria tabelas, PKs, FKs, checks, índices, triggers e políticas RLS |
+| `seed.sql`                                          | Cadastra usuários, marcas, plataformas, posts e hashtags de teste |
+| `migrations/20260915_financial_module.sql`          | Cria o incremento financeiro em um banco já existente             |
+| `../backend/modules/finance/financialRepository.ts` | Implementa a persistência financeira usada pela API               |
+| `../backend/modules/finance/financialService.ts`    | Calcula saldo, receitas, despesas e pendências                    |
+| `../src/services/supabaseClient.ts`                 | Cria a conexão a partir das variáveis de ambiente                 |
+| `../src/services/postFlowRepository.ts`             | Implementa o CRUD usado pelas telas                               |
+| `../scripts/database/verifyConnection.mjs`          | Confirma a conexão e consulta os relacionamentos                  |
+| `../scripts/database/testCrud.mjs`                  | Executa CREATE, READ, UPDATE e DELETE reais                       |
 
 ## Configuração no Supabase
 

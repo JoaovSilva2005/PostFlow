@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import { AppShell } from '../../components/AppShell/AppShell'
 import type { PostDraft } from '../../domain/models'
-import { MockAiService } from '../../services/mockAiService'
+import { MockAiService } from './mockAiService'
 import { PostPreview } from './PostPreview'
 import styles from './ChatPage.module.css'
 

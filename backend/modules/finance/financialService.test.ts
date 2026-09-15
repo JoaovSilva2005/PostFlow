@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { InMemoryFinancialRepository } from '../test/InMemoryFinancialRepository'
+import { InMemoryFinancialRepository } from '../../test/InMemoryFinancialRepository'
 import { FinancialService } from './financialService'
 import type { FinancialTransaction } from './financialTypes'
 

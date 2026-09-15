@@ -4,14 +4,14 @@ import { createSupabaseServerClient } from './config/supabaseServer.js'
 import {
   SupabaseFinancialTransactionRepository,
   type FinancialTransactionRepository,
-} from './finance/financialRepository.js'
-import { createFinancialRouter } from './finance/financialRoutes.js'
-import { FinancialService } from './finance/financialService.js'
+} from './modules/finance/financialRepository.js'
+import { createFinancialRouter } from './modules/finance/financialRoutes.js'
+import { FinancialService } from './modules/finance/financialService.js'
 import {
   createDemoFinancialTransactions,
   MemoryFinancialTransactionRepository,
-} from './finance/memoryFinancialRepository.js'
-import { ResilientFinancialTransactionRepository } from './finance/resilientFinancialRepository.js'
+} from './modules/finance/memoryFinancialRepository.js'
+import { ResilientFinancialTransactionRepository } from './modules/finance/resilientFinancialRepository.js'
 import { HttpError } from './shared/HttpError.js'
 
 export function createApp(repository?: FinancialTransactionRepository) {

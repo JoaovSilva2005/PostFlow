@@ -1,9 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router'
-import { BrandPage } from '../pages/BrandPage/BrandPage'
-import { CalendarPage } from '../pages/CalendarPage/CalendarPage'
-import { ChatPage } from '../pages/ChatPage/ChatPage'
-import { FinancePage } from '../pages/FinancePage/FinancePage'
-import { LoginPage } from '../pages/LoginPage/LoginPage'
+import { LoginPage } from '../features/auth/LoginPage'
+import { BrandPage } from '../features/brand/BrandPage'
+import { CalendarPage } from '../features/calendar/CalendarPage'
+import { ChatPage } from '../features/content/ChatPage'
+import { FinancePage } from '../features/finance/FinancePage'
 import { ProtectedRoute } from './ProtectedRoute'
 
 export function App() {

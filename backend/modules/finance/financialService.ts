@@ -1,4 +1,4 @@
-import { HttpError } from '../shared/HttpError.js'
+import { HttpError } from '../../shared/HttpError.js'
 import type { FinancialTransactionRepository } from './financialRepository.js'
 import type {
   CreateFinancialTransactionInput,

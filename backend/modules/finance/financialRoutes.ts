@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { HttpError } from '../shared/HttpError.js'
+import { HttpError } from '../../shared/HttpError.js'
 import type { FinancialService } from './financialService.js'
 
 const transactionSchema = z.object({

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { createDatabaseClient } from './database-config.mjs'
+import { createDatabaseClient } from './databaseClient.mjs'
 
 const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001'
 const supabase = createDatabaseClient()

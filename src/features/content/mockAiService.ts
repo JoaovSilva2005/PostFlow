@@ -1,4 +1,4 @@
-import type { GenerationRequest, PostDraft } from '../domain/models'
+import type { GenerationRequest, PostDraft } from '../../domain/models'
 
 export interface AiService {
   generate(request: GenerationRequest): Promise<PostDraft>

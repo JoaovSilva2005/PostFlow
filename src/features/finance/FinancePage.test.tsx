@@ -1,10 +1,10 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { financialApi } from '../../services/financialApi'
+import { financialApi } from './financialApi'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
 
-vi.mock('../../services/financialApi', () => ({
+vi.mock('./financialApi', () => ({
   financialApi: {
     health: vi.fn(),
     list: vi.fn(),

@@ -18,7 +18,7 @@ import type {
   FinancialTransaction,
   FinancialTransactionInput,
 } from '../../domain/finance'
-import { financialApi } from '../../services/financialApi'
+import { financialApi } from './financialApi'
 import styles from './FinancePage.module.css'
 
 const emptySummary: FinancialSummary = {
