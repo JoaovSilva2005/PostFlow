@@ -66,7 +66,9 @@ describe('FinancePage', () => {
     await user.type(screen.getByLabelText('Descrição'), 'Consultoria mensal')
     await user.type(screen.getByLabelText('Categoria'), 'Serviços')
     await user.type(screen.getByLabelText('Valor (R$)'), '1200')
-    await user.click(screen.getByRole('button', { name: 'Adicionar lançamento' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Adicionar lançamento' }),
+    )
 
     await waitFor(() => {
       expect(financialApi.create).toHaveBeenCalledWith(

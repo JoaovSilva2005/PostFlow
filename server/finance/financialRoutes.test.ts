@@ -39,9 +39,7 @@ describe('API financeira', () => {
   })
 
   it('rejeita valor negativo', async () => {
-    const response = await request(
-      createApp(new InMemoryFinancialRepository()),
-    )
+    const response = await request(createApp(new InMemoryFinancialRepository()))
       .post('/api/finance/transactions')
       .send({
         type: 'expense',

@@ -31,7 +31,12 @@ export function createApp(repository?: FinancialTransactionRepository) {
     response.status(404).json({ error: 'Rota não encontrada.' })
   })
 
-  const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
+  const errorHandler: ErrorRequestHandler = (
+    error,
+    _request,
+    response,
+    _next,
+  ) => {
     const statusCode = error instanceof HttpError ? error.statusCode : 500
     const message =
       error instanceof Error ? error.message : 'Erro interno da aplicação.'

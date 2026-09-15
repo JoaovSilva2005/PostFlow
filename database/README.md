@@ -1,17 +1,20 @@
 # Banco de Dados - Entrega 3
 
-O PostFlow utiliza **Supabase com PostgreSQL**. A aplicação React acessa o banco pela biblioteca oficial `@supabase/supabase-js`, usando URL e chave publicável configuradas no arquivo `.env`.
+O PostFlow utiliza **Supabase com PostgreSQL**. O módulo financeiro é acessado por uma API Node.js/Express, que usa a biblioteca oficial `@supabase/supabase-js` e as configurações do arquivo `.env`.
 
 ## Arquivos
 
-| Arquivo                                 | Responsabilidade                                                  |
-| --------------------------------------- | ----------------------------------------------------------------- |
-| `schema.sql`                            | Cria tabelas, PKs, FKs, checks, índices, triggers e políticas RLS |
-| `seed.sql`                              | Cadastra usuários, marcas, plataformas, posts e hashtags de teste |
-| `../src/services/supabaseClient.ts`     | Cria a conexão a partir das variáveis de ambiente                 |
-| `../src/services/postFlowRepository.ts` | Implementa o CRUD usado pelas telas                               |
-| `../scripts/verify-database.mjs`        | Confirma a conexão e consulta os relacionamentos                  |
-| `../scripts/test-supabase-crud.mjs`     | Executa CREATE, READ, UPDATE e DELETE reais                       |
+| Arquivo                                    | Responsabilidade                                                  |
+| ------------------------------------------ | ----------------------------------------------------------------- |
+| `schema.sql`                               | Cria tabelas, PKs, FKs, checks, índices, triggers e políticas RLS |
+| `seed.sql`                                 | Cadastra usuários, marcas, plataformas, posts e hashtags de teste |
+| `migrations/20260915_financial_module.sql` | Cria o incremento financeiro em um banco já existente             |
+| `../server/finance/financialRepository.ts` | Implementa a persistência financeira usada pela API               |
+| `../server/finance/financialService.ts`    | Calcula saldo, receitas, despesas e pendências                    |
+| `../src/services/supabaseClient.ts`        | Cria a conexão a partir das variáveis de ambiente                 |
+| `../src/services/postFlowRepository.ts`    | Implementa o CRUD usado pelas telas                               |
+| `../scripts/verify-database.mjs`           | Confirma a conexão e consulta os relacionamentos                  |
+| `../scripts/test-supabase-crud.mjs`        | Executa CREATE, READ, UPDATE e DELETE reais                       |
 
 ## Configuração no Supabase
 
@@ -24,6 +27,8 @@ O PostFlow utiliza **Supabase com PostgreSQL**. A aplicação React acessa o ban
 ```env
 VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=SUA_CHAVE_PUBLICAVEL
+VITE_API_URL=http://localhost:3001/api
+API_PORT=3001
 ```
 
 O `.env` é ignorado pelo Git para evitar o versionamento de configurações locais. A chave utilizada no navegador deve ser apenas a **publishable/anon key**; nunca utilize a `service_role` no frontend.
@@ -45,6 +50,7 @@ npm run dev
 erDiagram
     USERS ||--o| BRANDS : possui
     BRANDS ||--o{ POST_DRAFTS : cria
+    BRANDS ||--o{ FINANCIAL_TRANSACTIONS : registra
     SOCIAL_PLATFORMS ||--o{ POST_DRAFTS : recebe
     POST_DRAFTS ||--o{ POST_HASHTAGS : contem
 
@@ -86,6 +92,18 @@ erDiagram
         uuid post_id PK,FK
         text hashtag PK
     }
+
+    FINANCIAL_TRANSACTIONS {
+        uuid id PK
+        uuid brand_id FK
+        text type
+        text category
+        text description
+        numeric amount
+        date due_date
+        text status
+        timestamptz paid_at
+    }
 ```
 
 ## CRUD demonstrável
@@ -95,13 +113,15 @@ erDiagram
 - **UPDATE:** o diálogo da agenda altera título, legenda, data e plataforma;
 - **DELETE:** a agenda exclui o post e o PostgreSQL remove suas hashtags em cascata.
 
+No financeiro, a API executa o mesmo CRUD em `financial_transactions`. O saldo usa somente registros pagos: receitas pagas menos despesas pagas. Registros pendentes ficam separados para evitar que previsões alterem o caixa atual.
+
 ## Integridade e segurança
 
 - PKs UUID identificam as entidades;
 - FKs mantêm usuário, marca, plataforma, post e hashtag relacionados;
 - `ON DELETE CASCADE` remove dados dependentes;
 - `ON DELETE RESTRICT` impede excluir uma plataforma em uso;
-- `CHECK` valida cor, status, título e hashtag;
+- `CHECK` valida cor, status, título, hashtag, tipo financeiro, valor positivo e coerência entre status e data de pagamento;
 - triggers atualizam `updated_at` automaticamente;
 - índices atendem consultas por marca, plataforma, data e status;
 - RLS limita a chave pública aos dados do usuário acadêmico de demonstração.
@@ -110,10 +130,14 @@ As políticas são adequadas à demonstração sem autenticação real. Em produ
 
 ## Massa de testes
 
-O seed cria 2 usuários, 2 marcas, 3 plataformas, 3 posts e 7 hashtags. A chave pública da aplicação visualiza e altera somente a marca acadêmica `PostFlow Demo`.
+O seed cria 2 usuários, 2 marcas, 3 plataformas, 3 posts, 7 hashtags e 4 lançamentos financeiros. Os dados do módulo resultam em R$ 3.500,00 de receitas pagas, R$ 800,00 de despesas pagas, saldo de R$ 2.700,00 e duas pendências.
 
 ## Rastreabilidade
 
 - Jira anterior: `SCRUM-38` - banco relacional e carga inicial;
 - Jira atual: [`SCRUM-39`](https://joaovsilva3530.atlassian.net/browse/SCRUM-39) - conexão Supabase e CRUD pela aplicação;
+- [`SCRUM-40`](https://joaovsilva3530.atlassian.net/browse/SCRUM-40) - estrutura financeira no Supabase;
+- [`SCRUM-41`](https://joaovsilva3530.atlassian.net/browse/SCRUM-41) - API REST financeira;
+- [`SCRUM-42`](https://joaovsilva3530.atlassian.net/browse/SCRUM-42) - painel e cálculos;
+- [`SCRUM-43`](https://joaovsilva3530.atlassian.net/browse/SCRUM-43) - testes e documentação;
 - documentação técnica: Confluence do PostFlow.

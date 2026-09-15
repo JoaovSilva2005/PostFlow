@@ -64,9 +64,7 @@ function toDatabasePatch(
   }
 }
 
-export class SupabaseFinancialTransactionRepository
-  implements FinancialTransactionRepository
-{
+export class SupabaseFinancialTransactionRepository implements FinancialTransactionRepository {
   private readonly supabase: SupabaseClient
 
   constructor(supabase: SupabaseClient) {
@@ -130,7 +128,8 @@ export class SupabaseFinancialTransactionRepository
       .select('*')
       .maybeSingle()
 
-    if (error) throw new Error(`Falha ao atualizar lançamento: ${error.message}`)
+    if (error)
+      throw new Error(`Falha ao atualizar lançamento: ${error.message}`)
     return data ? toDomain(data as FinancialTransactionRow) : null
   }
 

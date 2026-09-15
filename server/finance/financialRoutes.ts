@@ -12,10 +12,12 @@ const transactionSchema = z.object({
   status: z.enum(['pending', 'paid']).default('pending'),
 })
 
-const updateTransactionSchema = transactionSchema.partial().refine(
-  (input) => Object.keys(input).length > 0,
-  'Informe pelo menos um campo para atualizar.',
-)
+const updateTransactionSchema = transactionSchema
+  .partial()
+  .refine(
+    (input) => Object.keys(input).length > 0,
+    'Informe pelo menos um campo para atualizar.',
+  )
 
 const statusSchema = z.object({
   status: z.enum(['pending', 'paid']),
@@ -55,7 +57,9 @@ export function createFinancialRouter(service: FinancialService) {
 
   router.patch('/transactions/:id/status', async (request, response) => {
     const { status } = validate(statusSchema, request.body)
-    response.json({ data: await service.updateStatus(request.params.id, status) })
+    response.json({
+      data: await service.updateStatus(request.params.id, status),
+    })
   })
 
   router.delete('/transactions/:id', async (request, response) => {

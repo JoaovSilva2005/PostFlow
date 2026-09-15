@@ -188,9 +188,7 @@ export function FinancePage() {
           <h1>Controle financeiro</h1>
           <p>Acompanhe entradas, saídas, saldo atual e valores pendentes.</p>
         </div>
-        <div
-          className={`${styles.apiBadge} ${error ? styles.apiError : ''}`}
-        >
+        <div className={`${styles.apiBadge} ${error ? styles.apiError : ''}`}>
           <span /> {error ? 'API sem conexão' : 'API + Supabase'}
         </div>
       </header>
@@ -226,7 +224,8 @@ export function FinancePage() {
           <span>Pendências</span>
           <strong>{summary.pendingCount}</strong>
           <small>
-            +{currency(summary.pendingIncome)} / -{currency(summary.pendingExpenses)}
+            +{currency(summary.pendingIncome)} / -
+            {currency(summary.pendingExpenses)}
           </small>
         </article>
       </section>
@@ -236,7 +235,11 @@ export function FinancePage() {
           <div className={styles.sectionTitle}>
             <div>
               <span>{editingId ? 'EDITANDO' : 'NOVO LANÇAMENTO'}</span>
-              <h2>{editingId ? 'Atualizar registro' : 'Cadastrar entrada ou saída'}</h2>
+              <h2>
+                {editingId
+                  ? 'Atualizar registro'
+                  : 'Cadastrar entrada ou saída'}
+              </h2>
             </div>
             {editingId ? (
               <button
@@ -287,7 +290,9 @@ export function FinancePage() {
               placeholder="Ex.: Assinatura do plano mensal"
               minLength={3}
               required
-              onChange={(event) => updateForm('description', event.target.value)}
+              onChange={(event) =>
+                updateForm('description', event.target.value)
+              }
             />
             <TextField
               label="Categoria"
@@ -317,7 +322,12 @@ export function FinancePage() {
                 onChange={(event) => updateForm('dueDate', event.target.value)}
               />
             </div>
-            <Button type="submit" variant="secondary" disabled={saving} fullWidth>
+            <Button
+              type="submit"
+              variant="secondary"
+              disabled={saving}
+              fullWidth
+            >
               <Plus size={17} />
               {saving
                 ? 'Salvando...'
@@ -350,7 +360,9 @@ export function FinancePage() {
                     <th>Vencimento</th>
                     <th>Status</th>
                     <th>Valor</th>
-                    <th><span className="sr-only">Ações</span></th>
+                    <th>
+                      <span className="sr-only">Ações</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

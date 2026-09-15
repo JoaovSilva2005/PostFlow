@@ -8,6 +8,7 @@
     "dev:api": "tsx watch server/index.ts",
     "dev:web": "vite",
     "start:api": "tsx server/index.ts",
+    "api:verify": "node scripts/verify-finance-api.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "typecheck": "tsc -b",

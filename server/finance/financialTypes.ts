@@ -24,9 +24,8 @@ export interface CreateFinancialTransactionInput {
   status: FinancialTransactionStatus
 }
 
-export type UpdateFinancialTransactionInput = Partial<
-  CreateFinancialTransactionInput
->
+export type UpdateFinancialTransactionInput =
+  Partial<CreateFinancialTransactionInput>
 
 export interface FinancialSummary {
   paidIncome: number

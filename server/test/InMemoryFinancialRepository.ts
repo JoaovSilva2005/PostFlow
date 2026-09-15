@@ -6,9 +6,7 @@ import type {
   UpdateFinancialTransactionInput,
 } from '../finance/financialTypes'
 
-export class InMemoryFinancialRepository
-  implements FinancialTransactionRepository
-{
+export class InMemoryFinancialRepository implements FinancialTransactionRepository {
   transactions: FinancialTransaction[]
 
   constructor(transactions: FinancialTransaction[] = []) {
@@ -20,7 +18,9 @@ export class InMemoryFinancialRepository
   }
 
   async findById(id: string) {
-    return this.transactions.find((transaction) => transaction.id === id) ?? null
+    return (
+      this.transactions.find((transaction) => transaction.id === id) ?? null
+    )
   }
 
   async create(

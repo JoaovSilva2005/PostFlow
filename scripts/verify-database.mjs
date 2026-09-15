@@ -14,19 +14,19 @@ async function readTable(table, columns = '*') {
 
 const [users, brands, platforms, posts, hashtags, transactions] =
   await Promise.all([
-  readTable('users', 'id, email, display_name'),
-  readTable('brands', 'id, name, user_id'),
-  readTable('social_platforms', 'id, name, character_limit'),
-  readTable(
-    'post_drafts',
-    'id, title, scheduled_at, status, brands(name), social_platforms(name)',
-  ),
-  readTable('post_hashtags', 'post_id, hashtag'),
-  readTable(
-    'financial_transactions',
-    'id, type, description, amount, due_date, status, paid_at',
-  ),
-])
+    readTable('users', 'id, email, display_name'),
+    readTable('brands', 'id, name, user_id'),
+    readTable('social_platforms', 'id, name, character_limit'),
+    readTable(
+      'post_drafts',
+      'id, title, scheduled_at, status, brands(name), social_platforms(name)',
+    ),
+    readTable('post_hashtags', 'post_id, hashtag'),
+    readTable(
+      'financial_transactions',
+      'id, type, description, amount, due_date, status, paid_at',
+    ),
+  ])
 
 console.log('\nConexão com Supabase/PostgreSQL: OK')
 console.table({
