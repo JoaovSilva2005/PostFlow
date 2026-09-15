@@ -5,7 +5,7 @@ import type {
   FinancialTransactionStatus,
 } from '../domain/finance'
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api'
+const API_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
 
 interface ApiResponse<T> {
   data: T

@@ -20,6 +20,30 @@ Antes de executar, copie `.env.example` para `.env` e informe `VITE_SUPABASE_URL
 
 `npm run dev` inicia a API em `http://localhost:3001` e o frontend no endereço informado pelo Vite. No login demonstrativo, use qualquer e-mail válido e uma senha com pelo menos seis caracteres.
 
+## Publicar gratuitamente na Vercel
+
+O frontend Vite e a API Express são publicados juntos no mesmo projeto. O arquivo `api/[...path].ts` adapta a API para uma Vercel Function, enquanto `vercel.json` mantém as rotas do React Router acessíveis por link direto.
+
+1. Envie o repositório para o GitHub e acesse [vercel.com/new](https://vercel.com/new).
+2. Importe `JoaovSilva2005/PostFlow` e mantenha a raiz do repositório como **Root Directory**.
+3. A Vercel usará automaticamente `npm run build` e publicará a pasta `dist`.
+4. Em **Settings > Environment Variables**, cadastre para Production, Preview e Development:
+
+```env
+VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=SUA_CHAVE_PUBLICAVEL
+```
+
+`VITE_API_URL` deve ficar ausente na Vercel. Nesse caso, o frontend usa `/api` no mesmo domínio. Se preferir cadastrá-la, use somente `/api`. `API_PORT` também é desnecessária no deploy serverless.
+
+Antes de publicar, execute `database/schema.sql` e `database/seed.sql` no SQL Editor do Supabase. Depois do deploy, valide:
+
+- `/login`: aplicação carregada e navegação funcionando;
+- `/finance`: indicadores e lançamentos consultados pelo Supabase;
+- `/api/health`: resposta JSON com `status: "ok"` e `storage: "supabase"`.
+
+O `.env` e a pasta local `.vercel` são ignorados pelo Git. Nunca cadastre uma chave `service_role` em variável iniciada com `VITE_`; o projeto utiliza somente a chave publicável protegida pelas políticas RLS.
+
 ## API financeira
 
 | Método   | Endpoint                               | Responsabilidade                   |

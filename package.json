@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "concurrently -k -n API,WEB -c magenta,cyan \"npm run start:api\" \"npm run dev:web\"",
     "dev:api": "tsx watch server/index.ts",
