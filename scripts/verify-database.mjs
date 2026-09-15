@@ -12,7 +12,8 @@ async function readTable(table, columns = '*') {
   return data
 }
 
-const [users, brands, platforms, posts, hashtags] = await Promise.all([
+const [users, brands, platforms, posts, hashtags, transactions] =
+  await Promise.all([
   readTable('users', 'id, email, display_name'),
   readTable('brands', 'id, name, user_id'),
   readTable('social_platforms', 'id, name, character_limit'),
@@ -21,6 +22,10 @@ const [users, brands, platforms, posts, hashtags] = await Promise.all([
     'id, title, scheduled_at, status, brands(name), social_platforms(name)',
   ),
   readTable('post_hashtags', 'post_id, hashtag'),
+  readTable(
+    'financial_transactions',
+    'id, type, description, amount, due_date, status, paid_at',
+  ),
 ])
 
 console.log('\nConexão com Supabase/PostgreSQL: OK')
@@ -30,6 +35,7 @@ console.table({
   platforms: platforms.length,
   posts: posts.length,
   hashtags: hashtags.length,
+  financialTransactions: transactions.length,
 })
 console.log('Posts relacionados com marca e plataforma')
 console.table(
@@ -43,3 +49,5 @@ console.table(
   })),
 )
 console.log('PK, FK e políticas RLS responderam corretamente pela API.')
+console.log('Lançamentos financeiros disponíveis para a API do PostFlow')
+console.table(transactions)

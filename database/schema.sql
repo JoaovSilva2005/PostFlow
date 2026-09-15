@@ -78,6 +78,39 @@ create table if not exists public.post_hashtags (
   constraint post_hashtags_format_check check (hashtag ~ '^#[^[:space:]#]+$')
 );
 
+create table if not exists public.financial_transactions (
+  id uuid primary key default gen_random_uuid(),
+  brand_id uuid not null,
+  type text not null,
+  category text not null,
+  description text not null,
+  amount numeric(12, 2) not null,
+  due_date date not null,
+  status text not null default 'pending',
+  paid_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint financial_transactions_brand_id_fkey
+    foreign key (brand_id) references public.brands (id) on delete cascade,
+  constraint financial_transactions_type_check check (
+    type in ('income', 'expense')
+  ),
+  constraint financial_transactions_status_check check (
+    status in ('pending', 'paid')
+  ),
+  constraint financial_transactions_amount_check check (amount > 0),
+  constraint financial_transactions_category_length_check check (
+    length(trim(category)) >= 2
+  ),
+  constraint financial_transactions_description_length_check check (
+    length(trim(description)) >= 3
+  ),
+  constraint financial_transactions_paid_at_check check (
+    (status = 'paid' and paid_at is not null)
+    or (status = 'pending' and paid_at is null)
+  )
+);
+
 create index if not exists idx_brands_user_id
   on public.brands (user_id);
 create index if not exists idx_post_drafts_brand_id
@@ -88,6 +121,14 @@ create index if not exists idx_post_drafts_scheduled_at
   on public.post_drafts (scheduled_at);
 create index if not exists idx_post_drafts_status
   on public.post_drafts (status);
+create index if not exists idx_financial_transactions_brand_id
+  on public.financial_transactions (brand_id);
+create index if not exists idx_financial_transactions_due_date
+  on public.financial_transactions (due_date);
+create index if not exists idx_financial_transactions_status
+  on public.financial_transactions (status);
+create index if not exists idx_financial_transactions_type
+  on public.financial_transactions (type);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -110,6 +151,12 @@ create trigger post_drafts_set_updated_at
 before update on public.post_drafts
 for each row execute function public.set_updated_at();
 
+drop trigger if exists financial_transactions_set_updated_at
+  on public.financial_transactions;
+create trigger financial_transactions_set_updated_at
+before update on public.financial_transactions
+for each row execute function public.set_updated_at();
+
 -- Segurança da demonstração acadêmica.
 -- A aplicação usa somente o usuário fixo abaixo e uma chave publicável.
 alter table public.users enable row level security;
@@ -117,12 +164,14 @@ alter table public.brands enable row level security;
 alter table public.social_platforms enable row level security;
 alter table public.post_drafts enable row level security;
 alter table public.post_hashtags enable row level security;
+alter table public.financial_transactions enable row level security;
 
 revoke all on table public.users from anon, authenticated;
 revoke all on table public.brands from anon, authenticated;
 revoke all on table public.social_platforms from anon, authenticated;
 revoke all on table public.post_drafts from anon, authenticated;
 revoke all on table public.post_hashtags from anon, authenticated;
+revoke all on table public.financial_transactions from anon, authenticated;
 
 grant select on table public.users to anon, authenticated;
 grant select, insert, update on table public.brands to anon, authenticated;
@@ -131,6 +180,8 @@ grant select, insert, update, delete
   on table public.post_drafts to anon, authenticated;
 grant select, insert, update, delete
   on table public.post_hashtags to anon, authenticated;
+grant select, insert, update, delete
+  on table public.financial_transactions to anon, authenticated;
 
 drop policy if exists "demo_user_can_be_read" on public.users;
 create policy "demo_user_can_be_read"
@@ -284,6 +335,70 @@ using (
     from public.post_drafts
     join public.brands on brands.id = post_drafts.brand_id
     where post_drafts.id = post_hashtags.post_id
+      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
+  )
+);
+
+drop policy if exists "demo_finances_can_be_read"
+  on public.financial_transactions;
+create policy "demo_finances_can_be_read"
+on public.financial_transactions for select
+to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.brands
+    where brands.id = financial_transactions.brand_id
+      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
+  )
+);
+
+drop policy if exists "demo_finances_can_be_created"
+  on public.financial_transactions;
+create policy "demo_finances_can_be_created"
+on public.financial_transactions for insert
+to anon, authenticated
+with check (
+  exists (
+    select 1
+    from public.brands
+    where brands.id = financial_transactions.brand_id
+      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
+  )
+);
+
+drop policy if exists "demo_finances_can_be_updated"
+  on public.financial_transactions;
+create policy "demo_finances_can_be_updated"
+on public.financial_transactions for update
+to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.brands
+    where brands.id = financial_transactions.brand_id
+      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.brands
+    where brands.id = financial_transactions.brand_id
+      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
+  )
+);
+
+drop policy if exists "demo_finances_can_be_deleted"
+  on public.financial_transactions;
+create policy "demo_finances_can_be_deleted"
+on public.financial_transactions for delete
+to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.brands
+    where brands.id = financial_transactions.brand_id
       and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
   )
 );

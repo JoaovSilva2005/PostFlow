@@ -118,4 +118,68 @@ insert into public.post_hashtags (post_id, hashtag) values
   ('30000000-0000-0000-0000-000000000003', '#Sextou')
 on conflict (post_id, hashtag) do nothing;
 
+insert into public.financial_transactions (
+  id,
+  brand_id,
+  type,
+  category,
+  description,
+  amount,
+  due_date,
+  status,
+  paid_at
+) values
+  (
+    '40000000-0000-0000-0000-000000000001',
+    '10000000-0000-0000-0000-000000000001',
+    'income',
+    'Assinaturas',
+    'Receita mensal dos planos PostFlow',
+    3500.00,
+    '2026-09-05',
+    'paid',
+    '2026-09-05 12:00:00+00'
+  ),
+  (
+    '40000000-0000-0000-0000-000000000002',
+    '10000000-0000-0000-0000-000000000001',
+    'expense',
+    'Infraestrutura',
+    'Serviços de hospedagem e banco de dados',
+    800.00,
+    '2026-09-08',
+    'paid',
+    '2026-09-08 15:30:00+00'
+  ),
+  (
+    '40000000-0000-0000-0000-000000000003',
+    '10000000-0000-0000-0000-000000000001',
+    'expense',
+    'Marketing',
+    'Campanha de divulgação do produto',
+    450.00,
+    '2026-09-20',
+    'pending',
+    null
+  ),
+  (
+    '40000000-0000-0000-0000-000000000004',
+    '10000000-0000-0000-0000-000000000001',
+    'income',
+    'Serviços',
+    'Consultoria de conteúdo para cliente',
+    1200.00,
+    '2026-09-25',
+    'pending',
+    null
+  )
+on conflict (id) do update set
+  type = excluded.type,
+  category = excluded.category,
+  description = excluded.description,
+  amount = excluded.amount,
+  due_date = excluded.due_date,
+  status = excluded.status,
+  paid_at = excluded.paid_at;
+
 commit;
