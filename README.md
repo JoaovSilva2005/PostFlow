@@ -22,7 +22,7 @@ Antes de executar, copie `.env.example` para `.env` e informe `VITE_SUPABASE_URL
 
 ## Publicar gratuitamente na Vercel
 
-O frontend Vite e a API Express são publicados juntos no mesmo projeto. O arquivo `api/[...path].ts` adapta a API para uma Vercel Function, enquanto `vercel.json` mantém as rotas do React Router acessíveis por link direto.
+O frontend Vite e a API Express são publicados juntos no mesmo projeto. O arquivo `api/index.ts` adapta a API para uma Vercel Function, enquanto `vercel.json` prioriza `/api/*` e mantém as rotas do React Router acessíveis por link direto.
 
 1. Envie o repositório para o GitHub e acesse [vercel.com/new](https://vercel.com/new).
 2. Importe `JoaovSilva2005/PostFlow` e mantenha a raiz do repositório como **Root Directory**.

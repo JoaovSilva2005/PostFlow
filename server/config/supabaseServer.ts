@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { environment } from './environment'
+import { environment } from './environment.js'
 
 export function createSupabaseServerClient() {
   return createClient(

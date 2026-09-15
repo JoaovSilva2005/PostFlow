@@ -1,5 +1,5 @@
-import { createApp } from './app'
-import { environment } from './config/environment'
+import { createApp } from './app.js'
+import { environment } from './config/environment.js'
 
 createApp().listen(environment.apiPort, () => {
   console.log(

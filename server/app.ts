@@ -1,18 +1,18 @@
 import cors from 'cors'
 import express, { type ErrorRequestHandler } from 'express'
-import { createSupabaseServerClient } from './config/supabaseServer'
+import { createSupabaseServerClient } from './config/supabaseServer.js'
 import {
   SupabaseFinancialTransactionRepository,
   type FinancialTransactionRepository,
-} from './finance/financialRepository'
-import { createFinancialRouter } from './finance/financialRoutes'
-import { FinancialService } from './finance/financialService'
+} from './finance/financialRepository.js'
+import { createFinancialRouter } from './finance/financialRoutes.js'
+import { FinancialService } from './finance/financialService.js'
 import {
   createDemoFinancialTransactions,
   MemoryFinancialTransactionRepository,
-} from './finance/memoryFinancialRepository'
-import { ResilientFinancialTransactionRepository } from './finance/resilientFinancialRepository'
-import { HttpError } from './shared/HttpError'
+} from './finance/memoryFinancialRepository.js'
+import { ResilientFinancialTransactionRepository } from './finance/resilientFinancialRepository.js'
+import { HttpError } from './shared/HttpError.js'
 
 export function createApp(repository?: FinancialTransactionRepository) {
   const app = express()

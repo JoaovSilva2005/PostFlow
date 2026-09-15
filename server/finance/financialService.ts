@@ -1,12 +1,12 @@
-import { HttpError } from '../shared/HttpError'
-import type { FinancialTransactionRepository } from './financialRepository'
+import { HttpError } from '../shared/HttpError.js'
+import type { FinancialTransactionRepository } from './financialRepository.js'
 import type {
   CreateFinancialTransactionInput,
   FinancialSummary,
   FinancialTransaction,
   FinancialTransactionStatus,
   UpdateFinancialTransactionInput,
-} from './financialTypes'
+} from './financialTypes.js'
 
 export function calculateFinancialSummary(
   transactions: FinancialTransaction[],

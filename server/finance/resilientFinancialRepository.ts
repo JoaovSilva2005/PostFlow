@@ -1,8 +1,8 @@
-import type { FinancialTransactionRepository } from './financialRepository'
+import type { FinancialTransactionRepository } from './financialRepository.js'
 import type {
   CreateFinancialTransactionInput,
   UpdateFinancialTransactionInput,
-} from './financialTypes'
+} from './financialTypes.js'
 
 export type FinancialStorageMode = 'supabase' | 'demo'
 

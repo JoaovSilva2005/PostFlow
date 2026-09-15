@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import type { FinancialTransactionRepository } from './financialRepository'
+import type { FinancialTransactionRepository } from './financialRepository.js'
 import type {
   CreateFinancialTransactionInput,
   FinancialTransaction,
   UpdateFinancialTransactionInput,
-} from './financialTypes'
+} from './financialTypes.js'
 
 const DEMO_BRAND_ID = '10000000-0000-0000-0000-000000000001'
 
