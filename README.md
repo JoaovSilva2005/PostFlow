@@ -177,6 +177,7 @@ Acesse `/finance` depois do login para demonstrar os indicadores, o cadastro de 
 
 ## Links do projeto
 
+- [Aplicação publicada na Vercel](https://post-flow-ochre.vercel.app)
 - [Protótipo no Figma](https://www.figma.com/design/lYt49rDTT6Hf568TiP9zu9)
 - [Backlog no Jira](https://joaovsilva3530.atlassian.net/issues/?jql=project%20%3D%20SCRUM%20ORDER%20BY%20key%20ASC)
 - [Documentação no Confluence](https://joaovsilva3530.atlassian.net/wiki/spaces/DDS/pages/2162689/PostFlow+Vis+o+Inicial+do+Projeto)
