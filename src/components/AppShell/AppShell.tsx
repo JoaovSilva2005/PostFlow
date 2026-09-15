@@ -5,6 +5,7 @@ import {
   MessageSquareText,
   Palette,
   Sparkles,
+  WalletCards,
 } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router'
 import type { ReactNode } from 'react'
@@ -15,6 +16,7 @@ const links = [
   { to: '/brand', label: 'Minha marca', icon: Palette },
   { to: '/chat', label: 'Criar com IA', icon: MessageSquareText },
   { to: '/calendar', label: 'Agenda', icon: CalendarDays },
+  { to: '/finance', label: 'Financeiro', icon: WalletCards },
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {
