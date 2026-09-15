@@ -11,6 +11,12 @@ interface ApiResponse<T> {
   data: T
 }
 
+export interface ApiHealth {
+  status: string
+  service: string
+  storage: 'supabase' | 'demo' | 'test'
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -29,6 +35,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const financialApi = {
+  health: () => request<ApiHealth>('/health'),
   list: () => request<FinancialTransaction[]>('/finance/transactions'),
   summary: () => request<FinancialSummary>('/finance/summary'),
   create: (input: FinancialTransactionInput) =>

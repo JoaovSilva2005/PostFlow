@@ -11,13 +11,17 @@ async function read(path) {
   return body.data ?? body
 }
 
-const health = await read('/health')
 const transactions = await read('/finance/transactions')
 const summary = await read('/finance/summary')
+const health = await read('/health')
 
 console.log('\nPostFlow API: OK')
 console.table(health)
 console.log('Resumo financeiro calculado pela API')
 console.table(summary)
-console.log('Lançamentos retornados pelo Supabase')
+console.log(
+  health.storage === 'supabase'
+    ? 'Lançamentos retornados pelo Supabase'
+    : 'Lançamentos retornados pelo modo de demonstração',
+)
 console.table(transactions)

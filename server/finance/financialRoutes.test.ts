@@ -5,6 +5,18 @@ import { createApp } from '../app'
 import { InMemoryFinancialRepository } from '../test/InMemoryFinancialRepository'
 
 describe('API financeira', () => {
+  it('informa o modo de armazenamento no health check', async () => {
+    const response = await request(
+      createApp(new InMemoryFinancialRepository()),
+    ).get('/api/health')
+
+    expect(response.body.data).toEqual({
+      status: 'ok',
+      service: 'PostFlow API',
+      storage: 'test',
+    })
+  })
+
   it('cria, lista, atualiza e exclui um lançamento', async () => {
     const repository = new InMemoryFinancialRepository()
     const app = createApp(repository)

@@ -7,19 +7,37 @@ import {
 } from './finance/financialRepository'
 import { createFinancialRouter } from './finance/financialRoutes'
 import { FinancialService } from './finance/financialService'
+import {
+  createDemoFinancialTransactions,
+  MemoryFinancialTransactionRepository,
+} from './finance/memoryFinancialRepository'
+import { ResilientFinancialTransactionRepository } from './finance/resilientFinancialRepository'
 import { HttpError } from './shared/HttpError'
 
 export function createApp(repository?: FinancialTransactionRepository) {
   const app = express()
-  const financialRepository =
-    repository ??
-    new SupabaseFinancialTransactionRepository(createSupabaseServerClient())
+  const financialRepository = repository
+    ? repository
+    : new ResilientFinancialTransactionRepository(
+        new SupabaseFinancialTransactionRepository(
+          createSupabaseServerClient(),
+        ),
+        new MemoryFinancialTransactionRepository(
+          createDemoFinancialTransactions(),
+        ),
+      )
 
   app.use(cors({ origin: true }))
   app.use(express.json())
 
   app.get('/api/health', (_request, response) => {
-    response.json({ status: 'ok', service: 'PostFlow API' })
+    const storage =
+      financialRepository instanceof ResilientFinancialTransactionRepository
+        ? financialRepository.getMode()
+        : 'test'
+    response.json({
+      data: { status: 'ok', service: 'PostFlow API', storage },
+    })
   })
 
   app.use(

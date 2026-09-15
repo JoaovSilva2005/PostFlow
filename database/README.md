@@ -33,6 +33,8 @@ API_PORT=3001
 
 O `.env` é ignorado pelo Git para evitar o versionamento de configurações locais. A chave utilizada no navegador deve ser apenas a **publishable/anon key**; nunca utilize a `service_role` no frontend.
 
+Quando o projeto remoto não responde, somente o módulo financeiro usa uma massa temporária em memória para permitir a apresentação. A interface sinaliza **API demonstração**; esse modo não substitui a aplicação da migração no Supabase.
+
 ## Como validar no CMD
 
 ```cmd

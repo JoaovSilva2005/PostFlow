@@ -6,6 +6,7 @@ import { authenticateDemo, renderApp } from '../../test/testUtils'
 
 vi.mock('../../services/financialApi', () => ({
   financialApi: {
+    health: vi.fn(),
     list: vi.fn(),
     summary: vi.fn(),
     create: vi.fn(),
@@ -40,6 +41,11 @@ const summary = {
 
 describe('FinancePage', () => {
   beforeEach(() => {
+    vi.mocked(financialApi.health).mockResolvedValue({
+      status: 'ok',
+      service: 'PostFlow API',
+      storage: 'supabase',
+    })
     vi.mocked(financialApi.list).mockResolvedValue([transaction])
     vi.mocked(financialApi.summary).mockResolvedValue(summary)
     vi.mocked(financialApi.create).mockResolvedValue(transaction)

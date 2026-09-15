@@ -68,6 +68,9 @@ export function FinancePage() {
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [storageMode, setStorageMode] = useState<'supabase' | 'demo'>(
+    'supabase',
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -80,6 +83,8 @@ export function FinancePage() {
       ])
       setTransactions(loadedTransactions)
       setSummary(loadedSummary)
+      const health = await financialApi.health()
+      setStorageMode(health.storage === 'demo' ? 'demo' : 'supabase')
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -188,8 +193,15 @@ export function FinancePage() {
           <h1>Controle financeiro</h1>
           <p>Acompanhe entradas, saídas, saldo atual e valores pendentes.</p>
         </div>
-        <div className={`${styles.apiBadge} ${error ? styles.apiError : ''}`}>
-          <span /> {error ? 'API sem conexão' : 'API + Supabase'}
+        <div
+          className={`${styles.apiBadge} ${error ? styles.apiError : ''} ${storageMode === 'demo' ? styles.apiDemo : ''}`}
+        >
+          <span />{' '}
+          {error
+            ? 'API sem conexão'
+            : storageMode === 'demo'
+              ? 'API demonstração'
+              : 'API + Supabase'}
         </div>
       </header>
 

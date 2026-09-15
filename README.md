@@ -34,6 +34,8 @@ Antes de executar, copie `.env.example` para `.env` e informe `VITE_SUPABASE_URL
 
 Regra do saldo: `receitas pagas - despesas pagas`. Valores pendentes são exibidos separadamente e não alteram o saldo atual.
 
+Se o Supabase estiver temporariamente indisponível, a API ativa uma massa em memória para manter a demonstração funcional e a tela identifica esse estado como **API demonstração**. Os dados desse modo duram somente enquanto o servidor estiver aberto.
+
 ## Executar o banco de dados
 
 No **SQL Editor** do Supabase, execute nesta ordem:
