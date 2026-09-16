@@ -99,6 +99,32 @@ async function mockNetwork(page, name) {
       data = { status: 'ok', storage: 'supabase' }
     else if (path.endsWith('/finance/summary')) data = summary
     else if (path.endsWith('/finance/transactions')) data = transactions
+    else if (path.endsWith('/fiscal/report'))
+      data = {
+        period: '2026-09',
+        taxRate: 6,
+        sales: [
+          {
+            ...transactions[0],
+            brandId: 'qa',
+            gross: 3500,
+            tax: 210,
+            net: 3290,
+            taxRate: 6,
+            receiptReference: 'PF-QA-1',
+            createdAt: '2026-09-16',
+            updatedAt: '2026-09-16',
+            paidAt: '2026-09-16',
+          },
+        ],
+        totals: {
+          gross: 3500,
+          tax: 210,
+          net: 3290,
+          received: 3500,
+          pending: 0,
+        },
+      }
     else
       return route.fulfill({
         status: 503,
@@ -128,7 +154,7 @@ async function mockNetwork(page, name) {
       .split(',')
       .map(Number)) {
       for (const name of (
-        process.env.QA_PAGES || 'login,brand,chat,calendar,finance'
+        process.env.QA_PAGES || 'login,brand,chat,calendar,finance,fiscal'
       ).split(',')) {
         const page = await browser.newPage({
           viewport: { width, height: 900 },
@@ -150,14 +176,23 @@ async function mockNetwork(page, name) {
             .getByRole('button', { name: /Uma nova forma de criar/ })
             .waitFor()
         if (name === 'chat') {
+          await page.screenshot({
+            path: output + '/chat-empty-' + width + '.png',
+            fullPage: true,
+          })
           await page
             .getByLabel('Pedido para a IA')
             .fill('Apresente uma novidade da nossa marca')
           await page
             .getByRole('button', { name: 'Gerar post', exact: true })
             .click()
+          await page.getByRole('button', { name: /Revisar rascunho/ }).waitFor()
+          if (width <= 1100)
+            await page.getByRole('button', { name: /Revisar rascunho/ }).click()
           await page.getByText('Rascunho gerado', { exact: true }).waitFor()
         }
+        if (name === 'fiscal')
+          await page.getByRole('button', { name: /Ver comprovante/ }).waitFor()
         assert.deepEqual(errors, [], name + ' runtime errors')
         if (process.env.QA_DEBUG) {
           console.log(
@@ -188,6 +223,46 @@ async function mockNetwork(page, name) {
           path: output + '/' + name + '-' + width + '.png',
           fullPage: true,
         })
+        if (name === 'chat') {
+          await page.getByRole('button', { name: 'Editar conteúdo' }).click()
+          await page.getByLabel('Título do post').fill('Conteúdo revisado')
+          await page.screenshot({
+            path: output + '/chat-edit-' + width + '.png',
+            fullPage: true,
+          })
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth > innerWidth,
+            ),
+            false,
+          )
+        }
+        if (name === 'fiscal') {
+          await page.getByRole('button', { name: /Ver comprovante/ }).click()
+          await page
+            .getByRole('region', { name: 'Comprovante de venda de serviço' })
+            .waitFor()
+          await page.getByText('Entenda e simule o custo do plano').click()
+          await page.getByLabel('Gerações de imagem').fill('1000')
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth > innerWidth,
+            ),
+            false,
+          )
+          await page.screenshot({
+            path: output + '/fiscal-detail-' + width + '.png',
+            fullPage: true,
+          })
+          if (width === 1440) {
+            await page.emulateMedia({ media: 'print' })
+            await page.screenshot({
+              path: output + '/receipt-print.png',
+              fullPage: true,
+            })
+            await page.emulateMedia({ media: 'screen' })
+          }
+        }
         if (width === 390 && name === 'brand') {
           await page.getByRole('button', { name: 'Abrir menu' }).click()
           await page.getByLabel('Buscar seção').fill('Agenda')

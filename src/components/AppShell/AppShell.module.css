@@ -4,6 +4,8 @@
 .skipLink {
   position: fixed;
   top: -100px;
+  opacity: 0;
+  pointer-events: none;
   left: 16px;
   z-index: 100;
   padding: 12px;
@@ -13,6 +15,8 @@
 }
 .skipLink:focus {
   top: 12px;
+  opacity: 1;
+  pointer-events: auto;
 }
 .sidebar {
   position: fixed;

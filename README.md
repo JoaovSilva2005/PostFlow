@@ -30,6 +30,17 @@ O [plano e a crítica de design](docs/frontend-design-review.md) registram as de
 
 ## Instalação
 
+## Estúdio de conteúdo e fiscal — SCRUM-51 / SCRUM-52
+
+- `/chat`: conversa com histórico da sessão, refinamento do rascunho, prévia/edição, cancelamento, retry e revisão antes de salvar. [Contrato de geração e limites](docs/content-studio.md). A demonstração não gera imagens por IA; integração real de provedor ainda pendente.
+- `/fiscal`: receitas do financeiro com imposto didático fixo de 6%, bruto/líquido, filtro por vencimento, cadastro de venda e comprovante imprimível **sem validade fiscal**. O mesmo registro alimenta ambos os módulos; não há duplicação de receita nem baixa automática de tributo.
+- Plano proposto: **R$ 79,90/mês**, 100 gerações de texto e 30 de imagem. Simulador de custo/margem e fontes em [Fiscal e precificação](docs/fiscal-and-pricing.md). Assinatura, APIs pagas e quotas não estão ativas.
+- API: `GET /api/fiscal/report?period=AAAA-MM`, `GET /api/fiscal/receipts/:id`, `POST /api/fiscal/sales`. Leitura autenticada; escrita para owner/admin/editor. O fiscal não usa fallback em memória.
+
+As decisões de layout foram orientadas pela skill `frontend-design`, sem Figma. Testes unitários/integração e capturas isoladas não substituem a validação do banco real. Para usar o fiscal, a tabela `financial_transactions` da migração financeira precisa existir no Supabase configurado.
+
+### Instalação local
+
 Requisitos: Node.js 22.14 ou superior, npm e um projeto no Supabase.
 
 ```bash
@@ -154,7 +165,7 @@ Os nomes de arquivos, componentes e tipos estão em inglês. A interface e a doc
 
 ## O que é simulado
 
-- **Inteligência artificial:** `MockAiService` gera deterministicamente um rascunho após um pequeno carregamento.
+- **Inteligência artificial:** `demoGenerationService` monta um rascunho por template após um pequeno carregamento. `apiGenerationService` prepara o frontend para um endpoint de geração ainda não implementado.
 - **Persistência:** marcas, posts, hashtags e lançamentos financeiros são armazenados no Supabase/PostgreSQL.
 - **Publicação:** não existe integração real com redes sociais neste incremento.
 
@@ -162,20 +173,21 @@ O fluxo de conteúdo ainda utiliza a Data API do Supabase. A autenticação e o 
 
 ## Rastreabilidade
 
-| Figma                 | Rota             | Componente                       | Jira       | Teste automatizado                          |
-| --------------------- | ---------------- | -------------------------------- | ---------- | ------------------------------------------- |
-| Login                 | `/login`         | `LoginPage`                      | `SCRUM-9`  | valida campos e navegação                   |
-| Autenticação real     | `/api/auth`      | `authRoutes` + `AuthService`     | `SCRUM-46` | sessão, cookies e proteção de rotas         |
-| Configuração da marca | `/brand`         | `BrandPage`                      | `SCRUM-12` | salva e recupera a marca                    |
-| Entrada do chat       | `/chat`          | `ChatPage`                       | `SCRUM-15` | valida pedido e exibe carregamento          |
-| Geração e prévia      | `/chat`          | `PostPreview` + `MockAiService`  | `SCRUM-16` | gera a prévia e inclui o rascunho na agenda |
-| Agenda mensal         | `/calendar`      | `CalendarPage` + `calendarUtils` | `SCRUM-19` | apresenta cada rascunho na data correta     |
-| Edição e exclusão     | `/calendar`      | `EditDraftDialog`                | `SCRUM-20` | altera ou exclui somente o item selecionado |
-| Banco de dados        | fluxo todo       | `postFlowRepository.ts`          | `SCRUM-39` | conexão, CRUD, seed e integridade           |
-| Estrutura financeira  | `/finance`       | `financial_transactions`         | `SCRUM-40` | contrato SQL, PK, FK, RLS e seed            |
-| API financeira        | `/api/finance`   | `financialRoutes.ts`             | `SCRUM-41` | CRUD HTTP, validação e cálculo              |
-| Painel financeiro     | `/finance`       | `FinancePage`                    | `SCRUM-42` | indicadores, formulário e histórico         |
-| Documentação e testes | fluxo financeiro | README + testes                  | `SCRUM-43` | qualidade e rastreabilidade                 |
+| Figma                 | Rota             | Componente                          | Jira       | Teste automatizado                                  |
+| --------------------- | ---------------- | ----------------------------------- | ---------- | --------------------------------------------------- |
+| Login                 | `/login`         | `LoginPage`                         | `SCRUM-9`  | valida campos e navegação                           |
+| Autenticação real     | `/api/auth`      | `authRoutes` + `AuthService`        | `SCRUM-46` | sessão, cookies e proteção de rotas                 |
+| Configuração da marca | `/brand`         | `BrandPage`                         | `SCRUM-12` | salva e recupera a marca                            |
+| Entrada do chat       | `/chat`          | `ChatPage`                          | `SCRUM-15` | valida pedido e exibe carregamento                  |
+| Geração e prévia      | `/chat`          | `PostPreview` + `generationService` | `SCRUM-51` | contrato, timeout, cancelamento, revisão e agenda   |
+| Fiscal e plano        | `/fiscal`        | `FiscalPage` + `fiscalRoutes`       | `SCRUM-52` | imposto, comprovante, integração financeira e preço |
+| Agenda mensal         | `/calendar`      | `CalendarPage` + `calendarUtils`    | `SCRUM-19` | apresenta cada rascunho na data correta             |
+| Edição e exclusão     | `/calendar`      | `EditDraftDialog`                   | `SCRUM-20` | altera ou exclui somente o item selecionado         |
+| Banco de dados        | fluxo todo       | `postFlowRepository.ts`             | `SCRUM-39` | conexão, CRUD, seed e integridade                   |
+| Estrutura financeira  | `/finance`       | `financial_transactions`            | `SCRUM-40` | contrato SQL, PK, FK, RLS e seed                    |
+| API financeira        | `/api/finance`   | `financialRoutes.ts`                | `SCRUM-41` | CRUD HTTP, validação e cálculo                      |
+| Painel financeiro     | `/finance`       | `FinancePage`                       | `SCRUM-42` | indicadores, formulário e histórico                 |
+| Documentação e testes | fluxo financeiro | README + testes                     | `SCRUM-43` | qualidade e rastreabilidade                         |
 
 ### Ordem sugerida para apresentar o código
 
@@ -185,7 +197,7 @@ O fluxo de conteúdo ainda utiliza a Data API do Supabase. A autenticação e o 
 4. `backend/modules/auth/authMiddleware.ts`: proteção e níveis de acesso.
 5. `src/features/brand/BrandPage.tsx`: configuração da identidade da marca.
 6. `src/features/content/ChatPage.tsx`: pedido do usuário e chamada da IA simulada.
-7. `src/features/content/mockAiService.ts`: geração simulada do conteúdo.
+7. `src/features/content/generationService.ts`: geração simulada e contrato HTTP.
 8. `src/features/content/PostPreview.tsx`: prévia e inclusão na agenda.
 9. `src/features/calendar/CalendarPage.tsx`: calendário e rascunhos por data.
 10. `src/features/calendar/EditDraftDialog.tsx`: edição e exclusão do rascunho.

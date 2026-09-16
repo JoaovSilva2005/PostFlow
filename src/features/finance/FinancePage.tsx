@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
@@ -226,6 +227,11 @@ export function FinancePage() {
                 : 'Dados sincronizados'}
         </div>
       </PageHeader>
+      <p>
+        <Link to="/fiscal">
+          Ver impostos e comprovantes das receitas no módulo fiscal
+        </Link>
+      </p>
 
       {error ? (
         <div className={styles.error} role="alert">

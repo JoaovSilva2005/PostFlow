@@ -7,11 +7,6 @@ export interface BrandProfile {
   primaryColor: string
 }
 
-export interface GenerationRequest {
-  prompt: string
-  platform: string
-}
-
 export interface PostDraft {
   id: string
   title: string

@@ -9,6 +9,7 @@ import {
   Palette,
   Search,
   WalletCards,
+  ReceiptText,
   X,
 } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
@@ -29,6 +30,7 @@ const navigationGroups = [
     links: [
       { to: '/brand', label: 'Minha marca', icon: Palette },
       { to: '/finance', label: 'Financeiro', icon: WalletCards },
+      { to: '/fiscal', label: 'Fiscal e plano', icon: ReceiptText },
     ],
   },
 ]

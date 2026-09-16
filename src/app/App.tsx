@@ -4,6 +4,7 @@ import { BrandPage } from '../features/brand/BrandPage'
 import { CalendarPage } from '../features/calendar/CalendarPage'
 import { ChatPage } from '../features/content/ChatPage'
 import { FinancePage } from '../features/finance/FinancePage'
+import { FiscalPage } from '../features/fiscal/FiscalPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
 export function App() {
@@ -44,6 +45,14 @@ export function App() {
         }
       />
       <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route
+        path="/fiscal"
+        element={
+          <ProtectedRoute>
+            <FiscalPage />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   )
 }

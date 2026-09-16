@@ -21,6 +21,7 @@ import {
 } from './modules/finance/memoryFinancialRepository.js'
 import { ResilientFinancialTransactionRepository } from './modules/finance/resilientFinancialRepository.js'
 import { HttpError } from './shared/HttpError.js'
+import { createFiscalRouter } from './modules/fiscal/fiscalRoutes.js'
 
 interface AppOptions {
   authService?: AuthService
@@ -68,6 +69,17 @@ export function createApp(options: AppOptions = {}) {
   })
 
   app.use('/api/auth', createAuthRouter(authService))
+  app.use(
+    '/api/fiscal',
+    requireAuthentication(authService),
+    createFiscalRouter(
+      new FinancialService(
+        options.financialRepository ??
+          new SupabaseFinancialTransactionRepository(supabase),
+      ),
+      requireRoles(authService, 'owner', 'admin', 'editor'),
+    ),
+  )
   app.use('/api/finance', requireAuthentication(authService))
   app.use(
     '/api/finance',

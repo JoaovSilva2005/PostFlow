@@ -1,4 +1,5 @@
-import { CalendarPlus, Image } from 'lucide-react'
+import { useState } from 'react'
+import { CalendarPlus, Image, MoreHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/FormField'
 import type { PostDraft } from '../../domain/models'
@@ -9,15 +10,7 @@ interface PostPreviewProps {
   brandName?: string
   draft: PostDraft | null
   isAdding: boolean
-  onAdd: () => Promise<void>
-  onChange: (draft: PostDraft) => void
-}
-
-interface GeneratedPostProps {
-  error?: string
-  brandName?: string
-  draft: PostDraft
-  isAdding: boolean
+  isGenerating: boolean
   onAdd: () => Promise<void>
   onChange: (draft: PostDraft) => void
 }
@@ -27,145 +20,177 @@ export function PostPreview({
   brandName,
   draft,
   isAdding,
+  isGenerating,
   onAdd,
   onChange,
 }: PostPreviewProps) {
+  const [view, setView] = useState('preview')
+  const disabled = isAdding || isGenerating
   return (
     <aside
       id="post-preview"
-      className={styles.previewCard}
+      tabIndex={-1}
+      className={styles.preview}
       aria-label="Prévia do post gerado"
     >
-      <div className={styles.previewHeader}>
-        <div>
-          <h2>{draft ? 'Rascunho gerado' : 'Aguardando conteúdo'}</h2>
-        </div>
-        {draft ? <span>Não publicado</span> : null}
-      </div>
-
+      <header className={styles.panelHeader}>
+        <h2>{draft ? 'Rascunho gerado' : 'Seu rascunho'}</h2>
+        <span className={styles.unpublished}>Não publicado</span>
+      </header>
       {draft ? (
-        <GeneratedPost
-          error={error}
-          brandName={brandName}
-          draft={draft}
-          isAdding={isAdding}
-          onAdd={onAdd}
-          onChange={onChange}
-        />
+        <>
+          <div
+            className={styles.previewSwitch}
+            aria-label="Visualização do rascunho"
+          >
+            <button
+              type="button"
+              aria-pressed={view === 'preview'}
+              onClick={() => setView('preview')}
+            >
+              Prévia
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === 'edit'}
+              onClick={() => setView('edit')}
+            >
+              Editar conteúdo
+            </button>
+          </div>
+          <div className={styles.reviewBody}>
+            {view === 'preview' ? (
+              <div className={styles.socialPost}>
+                <div className={styles.socialHeader}>
+                  <span
+                    className={styles.brandMark}
+                    style={{ borderColor: draft.color }}
+                  >
+                    {brandName?.slice(0, 1) || 'P'}
+                  </span>
+                  <div>
+                    <strong>{brandName || 'Sua marca'}</strong>
+                    <small>{draft.platform}</small>
+                  </div>
+                  <MoreHorizontal size={18} aria-hidden="true" />
+                </div>
+                <div
+                  className={styles.artwork}
+                  style={{ backgroundColor: draft.color }}
+                >
+                  <div className={styles.artworkShade} />
+                  <span>{brandName || 'Sua marca'}</span>
+                  <strong>{draft.visualText}</strong>
+                  <small>Composição ilustrativa</small>
+                </div>
+                <div className={styles.postCopy}>
+                  <h3>{draft.title}</h3>
+                  <p>{draft.caption}</p>
+                  <span>{draft.hashtags.join(' ')}</span>
+                </div>
+                <p className={styles.previewHint}>
+                  Prévia ilustrativa. O resultado na rede social pode variar.
+                </p>
+              </div>
+            ) : (
+              <div className={styles.reviewForm}>
+                <TextField
+                  label="Título do post"
+                  value={draft.title}
+                  required
+                  maxLength={160}
+                  disabled={disabled}
+                  onChange={(e) =>
+                    onChange({ ...draft, title: e.target.value })
+                  }
+                />
+                <label>
+                  Legenda do post
+                  <textarea
+                    aria-label="Legenda do post"
+                    value={draft.caption}
+                    maxLength={5000}
+                    rows={6}
+                    disabled={disabled}
+                    onChange={(e) =>
+                      onChange({ ...draft, caption: e.target.value })
+                    }
+                  />
+                  <small>{draft.caption.length}/5000 caracteres</small>
+                </label>
+                <TextField
+                  label="Texto da arte"
+                  value={draft.visualText}
+                  maxLength={160}
+                  disabled={disabled}
+                  onChange={(e) =>
+                    onChange({ ...draft, visualText: e.target.value })
+                  }
+                />
+                <TextField
+                  label="Hashtags"
+                  value={draft.hashtags.join(' ')}
+                  disabled={disabled}
+                  placeholder="#SuaMarca #Novidades"
+                  onChange={(e) =>
+                    onChange({ ...draft, hashtags: e.target.value.split(' ') })
+                  }
+                  onBlur={() =>
+                    onChange({
+                      ...draft,
+                      hashtags: draft.hashtags.filter(Boolean),
+                    })
+                  }
+                />
+                <p className={styles.previewHint}>
+                  Separe as hashtags por espaço. O título identifica o post na
+                  agenda.
+                </p>
+              </div>
+            )}
+          </div>
+          <footer className={styles.reviewFooter}>
+            <TextField
+              label="Data do post"
+              type="date"
+              value={draft.date}
+              required
+              disabled={disabled}
+              onChange={(e) => onChange({ ...draft, date: e.target.value })}
+            />
+            {error && (
+              <p className={styles.error} role="alert">
+                {error}{' '}
+                <button
+                  type="button"
+                  className={styles.textButton}
+                  onClick={() => setView('edit')}
+                >
+                  Revisar campos
+                </button>
+              </p>
+            )}
+            <Button fullWidth disabled={disabled} onClick={() => void onAdd()}>
+              <CalendarPlus size={16} />
+              {isAdding ? 'Salvando...' : 'Adicionar à agenda'}
+            </Button>
+            <p>Salvo como rascunho. Nenhum post é publicado automaticamente.</p>
+          </footer>
+        </>
       ) : (
-        <EmptyPreview />
+        <div className={styles.emptyPreview}>
+          <div className={styles.paper}>
+            <Image size={26} strokeWidth={1.2} />
+            <span />
+            <span />
+          </div>
+          <h3>Da conversa para o conteúdo.</h3>
+          <p>
+            Gere seu primeiro post para ver a composição, ajustar a legenda e
+            escolher a data.
+          </p>
+        </div>
       )}
     </aside>
-  )
-}
-
-function GeneratedPost({
-  error,
-  brandName,
-  draft,
-  isAdding,
-  onAdd,
-  onChange,
-}: GeneratedPostProps) {
-  return (
-    <>
-      <div className={styles.socialPost}>
-        <div className={styles.socialHeader}>
-          <div
-            className={styles.brandAvatar}
-            style={{ background: draft.color }}
-          >
-            {brandName?.slice(0, 1).toUpperCase() || 'P'}
-          </div>
-          <div>
-            <strong>{brandName || 'Sua marca'}</strong>
-            <span>{draft.platform}</span>
-          </div>
-        </div>
-
-        <div
-          className={styles.generatedImage}
-          style={{ background: draft.color }}
-        >
-          <span>
-            <Image size={21} />
-          </span>
-          <strong>
-            {draft.visualText.split('\n').map((line) => (
-              <span key={line}>{line}</span>
-            ))}
-          </strong>
-          <small>Prévia demonstrativa</small>
-        </div>
-
-        <h3>{draft.title}</h3>
-        <p>{draft.caption}</p>
-        <div className={styles.hashtags}>{draft.hashtags.join(' ')}</div>
-      </div>
-
-      <form
-        className={styles.reviewForm}
-        onSubmit={(event) => {
-          event.preventDefault()
-          void onAdd()
-        }}
-      >
-        <h3>Revise antes de salvar</h3>
-        <TextField
-          label="Título do post"
-          value={draft.title}
-          required
-          maxLength={160}
-          disabled={isAdding}
-          onChange={(event) =>
-            onChange({ ...draft, title: event.target.value })
-          }
-        />
-        <label className={styles.reviewCaption}>
-          <span>Legenda do post</span>
-          <textarea
-            value={draft.caption}
-            required
-            rows={4}
-            disabled={isAdding}
-            onChange={(event) =>
-              onChange({ ...draft, caption: event.target.value })
-            }
-          />
-        </label>
-        <TextField
-          label="Data do post"
-          type="date"
-          value={draft.date}
-          required
-          disabled={isAdding}
-          onChange={(event) => onChange({ ...draft, date: event.target.value })}
-        />
-        {error ? (
-          <p className={styles.error} role="alert">
-            {error}
-          </p>
-        ) : null}
-        <Button fullWidth type="submit" disabled={isAdding}>
-          <CalendarPlus size={17} />
-          {isAdding ? 'Salvando...' : 'Adicionar à agenda'}
-        </Button>
-        <p className={styles.reviewHint}>
-          Salvo como rascunho. Você ainda poderá editar na agenda.
-        </p>
-      </form>
-    </>
-  )
-}
-
-function EmptyPreview() {
-  return (
-    <div className={styles.emptyPreview}>
-      <span>
-        <Image size={25} />
-      </span>
-      <h3>Sua prévia aparecerá aqui</h3>
-      <p>Envie um pedido no chat para gerar texto e imagem do post.</p>
-    </div>
   )
 }

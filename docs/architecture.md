@@ -9,6 +9,7 @@ PostFlow/
 │   ├── config/                # ambiente e cliente Supabase do servidor
 │   ├── modules/auth/          # autenticação, cookies e autorização
 │   ├── modules/finance/       # módulo financeiro completo
+│   ├── modules/fiscal/        # projeção fiscal e vendas integradas ao financeiro
 │   ├── shared/                # recursos compartilhados pelo backend
 │   └── test/                  # apoios reutilizáveis para testes
 ├── database/                  # schema, migrations, seed e documentação
@@ -46,13 +47,16 @@ Essa separação permite trocar a interface ou a persistência sem reescrever as
 
 Cada pasta em `src/features` reúne a tela, o estilo, o teste e os auxiliares específicos daquela funcionalidade:
 
-| Funcionalidade | Frontend                | Backend                   | Banco                           |
-| -------------- | ----------------------- | ------------------------- | ------------------------------- |
-| Login          | `src/features/auth`     | `backend/modules/auth`    | Supabase Auth                   |
-| Marca          | `src/features/brand`    | Data API do Supabase      | `brands`                        |
-| Geração        | `src/features/content`  | IA simulada               | `post_drafts` e `post_hashtags` |
-| Agenda         | `src/features/calendar` | Data API do Supabase      | `post_drafts`                   |
-| Financeiro     | `src/features/finance`  | `backend/modules/finance` | `financial_transactions`        |
+| Funcionalidade | Frontend                | Backend                   | Banco                                                 |
+| -------------- | ----------------------- | ------------------------- | ----------------------------------------------------- |
+| Login          | `src/features/auth`     | `backend/modules/auth`    | Supabase Auth                                         |
+| Marca          | `src/features/brand`    | Data API do Supabase      | `brands`                                              |
+| Geração        | `src/features/content`  | IA simulada               | `post_drafts` e `post_hashtags`                       |
+| Agenda         | `src/features/calendar` | Data API do Supabase      | `post_drafts`                                         |
+| Financeiro     | `src/features/finance`  | `backend/modules/finance` | `financial_transactions`                              |
+| Fiscal         | `src/features/fiscal`   | `backend/modules/fiscal`  | mesma `financial_transactions`, sem duplicar receitas |
+
+Regras puras em `src/domain/fiscal.ts` são compartilhadas entre API e simulação da tela; o servidor sempre recalcula impostos, sem confiar em valores enviados pelo cliente. O comprovante representa o registro atual e não tem validade fiscal. Consulte `docs/fiscal-and-pricing.md` para hipóteses, fontes e limites. O fluxo de IA está documentado em `docs/content-studio.md`.
 
 ## Decisões simples para apresentação
 
