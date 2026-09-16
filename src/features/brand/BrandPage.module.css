@@ -1,300 +1,238 @@
 .pageHeader {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: 32px;
+  composes: header from '../../styles/page.module.css';
 }
-
-.pageHeader p,
-.previewLabel {
-  margin-bottom: 8px;
-  color: var(--color-primary);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 1.3px;
-}
-
-.pageHeader h1 {
-  margin-bottom: 8px;
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: -1px;
-}
-
-.pageHeader span {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
 .step {
-  display: grid;
-  gap: 3px;
-  color: #aaaab2;
-  font-size: 11px;
-  letter-spacing: 0.8px;
-  text-align: right;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 10px;
+  color: var(--color-muted);
+  white-space: nowrap;
 }
-
 .step strong {
-  color: #383840;
-  font-size: 12px;
-  letter-spacing: 0;
+  color: var(--color-primary);
+  font-weight: 500;
 }
-
 .columns {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 24px;
-}
-
-.formCard,
-.previewCard {
-  border: 1px solid #ececf0;
-  border-radius: var(--radius-md);
-  background: #fff;
-  box-shadow: var(--shadow-card);
-}
-
-.formCard {
-  min-height: 0;
-  padding: clamp(20px, 3vw, 36px);
-}
-
-.cardTitle {
-  display: flex;
-  gap: 14px;
-  margin-bottom: 37px;
-}
-
-.cardTitle > span {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  color: var(--color-primary);
-  border-radius: 9px;
-  background: #f4f4f5;
-}
-
-.cardTitle h2 {
-  margin-bottom: 5px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.cardTitle p {
-  margin: 0;
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-.formGrid {
-  display: grid;
-  gap: 23px;
-}
-
-.colorField {
-  padding: 0;
-  border: 0;
-}
-
-.colorField legend {
-  margin-bottom: 11px;
-  color: #28282f;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.colors {
-  display: flex;
-  gap: 12px;
-}
-
-.colors button {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  color: #fff;
-  border: 3px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px #dddde2;
-}
-
-.colors button.selectedColor {
-  box-shadow: 0 0 0 2px var(--color-primary);
-}
-
-.formFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 42px;
-  padding-top: 27px;
-  border-top: 1px solid #eeeef1;
-}
-
-.formFooter p {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  color: #8a8a94;
-  font-size: 11px;
-}
-
-.saveError {
-  margin: 14px 0 0;
-  color: var(--color-danger);
-  font-size: 12px;
-  text-align: right;
-}
-
-.previewCard {
-  align-self: start;
-  min-height: 420px;
-  padding: 36px 34px;
-  text-align: center;
-}
-
-.previewLabel {
-  margin-bottom: 25px;
-  color: #92929b;
-}
-
-.brandMark {
-  display: grid;
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 16px;
-  place-items: center;
-  color: #fff;
-  border-radius: 17px;
-  font-size: 24px;
-  font-weight: 600;
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.2);
-}
-
-.previewCard > h2 {
-  margin-bottom: 4px;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.previewCard > p:not(.previewLabel, .previewHint) {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-.previewLine {
-  height: 1px;
-  margin: 22px 0;
-  background: #eeeef1;
-}
-
-.examplePost {
-  padding: 16px;
-  border: 1px solid #eeeef1;
-  border-radius: 10px;
-  text-align: left;
-}
-
-.exampleHeader {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.exampleHeader > span {
-  width: 25px;
-  height: 25px;
-  border-radius: 7px;
-}
-
-.exampleHeader div {
-  display: grid;
-}
-
-.exampleHeader strong {
-  font-size: 11px;
-}
-
-.exampleHeader small {
-  color: #a2a2aa;
-  font-size: 11px;
-}
-
-.examplePost > p {
-  margin: 13px 0 9px;
-  color: #606069;
-  font-size: 11px;
-  line-height: 1.6;
-}
-
-.postTag {
-  color: var(--color-primary);
-  font-size: 11px;
-}
-
-.previewHint {
-  margin: 18px 0 0;
-  color: #aaaab2;
-  font-size: 11px;
-}
-
-@media (max-width: 1180px) {
-  .columns {
-    grid-template-columns: 1fr;
-  }
-
-  .previewCard {
-    width: min(500px, 100%);
-  }
-}
-
-@media (max-width: 700px) {
-  .pageHeader {
-    align-items: flex-start;
-  }
-
-  .step {
-    display: none;
-  }
-
-  .columns {
-    display: block;
-  }
-
-  .formCard {
-    min-height: 0;
-    padding: 30px 24px;
-  }
-
-  .formFooter {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .previewCard {
-    margin-top: 24px;
-  }
-}
-
-.colors {
-  flex-wrap: wrap;
-}
-.colors button {
-  width: 40px;
-  height: 40px;
-}
-.previewCard {
-  width: 100%;
+  align-items: start;
 }
 .formCard,
 .previewCard {
   min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+.formCard {
+  padding: 28px;
+}
+.cardTitle {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-border);
 }
 .cardTitle > span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
+  color: var(--color-primary);
+  background: #223329;
+  border: 1px solid #35473b;
+  border-radius: 8px;
+}
+.cardTitle h2 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.cardTitle p {
+  color: var(--color-muted);
+  font-size: 12px;
+  margin: 0;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 16px;
+}
+.formGrid > :first-child,
+.colorField {
+  grid-column: 1/-1;
+}
+.colorField {
+  min-width: 0;
+  margin: 0;
+  padding: 24px 0 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+.colorField legend {
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 0;
+  font-size: 13px;
+  color: #d7dadd;
+  font-weight: 500;
+}
+.colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.colors button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: white;
+  border: 3px solid var(--color-surface);
+  border-radius: 9px;
+  box-shadow: 0 0 0 1px #454a4e;
+}
+.colors button.selectedColor {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+.colorValue {
+  margin: 12px 0 0;
+  font-family: monospace;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+.formFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: stretch;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+}
+.formFooter p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+.formFooter p svg {
+  flex-shrink: 0;
+}
+.saveError {
+  font-size: 12px;
+  color: var(--color-danger);
+  margin: 14px 0 0;
+}
+.previewCard {
+  padding: 24px;
+  position: sticky;
+  top: 24px;
+  background: linear-gradient(160deg, #202826 0%, #171819 45%);
+}
+.previewLabel {
+  font-size: 10px;
+  color: var(--color-muted);
+  letter-spacing: 1.4px;
+  padding-bottom: 18px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--color-border);
+}
+.brandMark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  margin: 0 0 20px;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 600;
+  border: 1px solid #ffffff20;
+}
+.previewCard > h2 {
+  font-size: 24px;
+  letter-spacing: -0.7px;
+  margin-bottom: 8px;
+}
+.previewCard > p:not(.previewLabel, .previewHint) {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.previewLine {
+  height: 1px;
+  background: var(--color-border);
+  margin: 24px 0;
+}
+.examplePost {
+  background: #1e2122;
+  border: 1px solid #363c3c;
+  padding: 20px;
+  border-radius: 8px;
+}
+.exampleHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.exampleHeader > span {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.exampleHeader > div {
+  display: grid;
+  min-width: 0;
+}
+.exampleHeader strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.exampleHeader small {
+  color: var(--color-muted);
+  font-size: 10px;
+}
+.examplePost > p {
+  color: #c4c9cc;
+  font-size: 13px;
+  margin: 20px 0 12px;
+}
+.postTag {
+  font-size: 12px;
+  color: var(--color-primary);
+}
+.previewHint {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin: 20px 0 0;
+}
+@media (max-width: 1100px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+  .previewCard {
+    position: static;
+  }
+}
+@media (max-width: 560px) {
+  .formCard,
+  .previewCard {
+    padding: 20px;
+  }
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .step {
+    display: none;
+  }
 }

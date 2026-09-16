@@ -27,6 +27,14 @@ export function CalendarPage() {
   const { drafts, updateDraft, removeDraft } = useApp()
   const [visibleMonth, setVisibleMonth] = useState(INITIAL_VISIBLE_MONTH)
   const [selectedDraft, setSelectedDraft] = useState<PostDraft | null>(null)
+  const [view, setView] = useState<'month' | 'list'>(() =>
+    window.matchMedia?.('(max-width: 560px)').matches ? 'list' : 'month',
+  )
+  const monthDrafts = drafts
+    .filter((draft) =>
+      draft.date.startsWith(toDateKey(visibleMonth).slice(0, 7)),
+    )
+    .sort((left, right) => left.date.localeCompare(right.date))
   const calendarCells = useMemo(
     () => buildCalendar(visibleMonth.getFullYear(), visibleMonth.getMonth()),
     [visibleMonth],
@@ -101,54 +109,105 @@ export function CalendarPage() {
           <div className={styles.legend}>
             <span /> Rascunho{' '}
             <strong>
-              {drafts.length} {drafts.length === 1 ? 'post' : 'posts'}
+              {monthDrafts.length}{' '}
+              {monthDrafts.length === 1 ? 'post no mês' : 'posts no mês'}
             </strong>
+          </div>
+          <div
+            className={styles.viewControls}
+            aria-label="Visualização da agenda"
+          >
+            <button
+              type="button"
+              aria-pressed={view === 'month'}
+              onClick={() => setView('month')}
+            >
+              Mês
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === 'list'}
+              onClick={() => setView('list')}
+            >
+              Lista
+            </button>
           </div>
         </div>
 
-        <div className={styles.weekHeader}>
-          {WEEK_DAYS.map((day) => (
-            <div key={day} aria-label={day} title={day}>
-              {day.slice(0, 3)}
-            </div>
-          ))}
-        </div>
-        <div className={styles.grid}>
-          {calendarCells.map(({ date, inCurrentMonth }) => {
-            const dateKey = toDateKey(date)
-            const dateDrafts = draftsByDate.get(dateKey) ?? []
-            const isToday = dateKey === DEMO_TODAY
-
-            return (
-              <div
-                key={dateKey}
-                className={`${styles.day} ${!inCurrentMonth ? styles.outside : ''}`}
-              >
-                <span className={isToday ? styles.today : ''}>
-                  {date.getDate()}
-                </span>
-                <div className={styles.dayDrafts}>
-                  {dateDrafts.map((draft) => (
-                    <button
-                      key={draft.id}
-                      type="button"
-                      className={styles.draft}
-                      onClick={() => setSelectedDraft(draft)}
-                    >
-                      <span style={{ background: draft.color }} />
-                      <div>
-                        <strong>{draft.title}</strong>
-                        <small>
-                          {draft.platform} · {STATUS_LABELS[draft.status]}
-                        </small>
-                      </div>
-                    </button>
-                  ))}
+        {view === 'month' ? (
+          <>
+            <div className={styles.weekHeader}>
+              {WEEK_DAYS.map((day) => (
+                <div key={day} aria-label={day} title={day}>
+                  {day.slice(0, 3)}
                 </div>
+              ))}
+            </div>
+            <div className={styles.grid}>
+              {calendarCells.map(({ date, inCurrentMonth }) => {
+                const dateKey = toDateKey(date)
+                const dateDrafts = draftsByDate.get(dateKey) ?? []
+                const isToday = dateKey === DEMO_TODAY
+
+                return (
+                  <div
+                    key={dateKey}
+                    className={`${styles.day} ${!inCurrentMonth ? styles.outside : ''}`}
+                  >
+                    <span className={isToday ? styles.today : ''}>
+                      {date.getDate()}
+                    </span>
+                    <div className={styles.dayDrafts}>
+                      {dateDrafts.map((draft) => (
+                        <button
+                          key={draft.id}
+                          type="button"
+                          className={styles.draft}
+                          onClick={() => setSelectedDraft(draft)}
+                        >
+                          <span style={{ background: draft.color }} />
+                          <div>
+                            <strong>{draft.title}</strong>
+                            <small>
+                              {draft.platform} · {STATUS_LABELS[draft.status]}
+                            </small>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        ) : (
+          <div className={styles.agendaList}>
+            {monthDrafts.length ? (
+              monthDrafts.map((draft) => (
+                <button
+                  key={draft.id}
+                  type="button"
+                  className={styles.agendaEntry}
+                  onClick={() => setSelectedDraft(draft)}
+                >
+                  <time dateTime={draft.date}>{draft.date.slice(-2)}</time>
+                  <div>
+                    <strong>{draft.title}</strong>
+                    <small>
+                      {draft.platform} · {STATUS_LABELS[draft.status]}
+                    </small>
+                  </div>
+                  <span>Editar →</span>
+                </button>
+              ))
+            ) : (
+              <div className={styles.empty}>
+                <strong>Seu mês começa com uma ideia.</strong>Crie um post no
+                chat ou navegue para outro mês.
               </div>
-            )
-          })}
-        </div>
+            )}
+          </div>
+        )}
       </section>
 
       {selectedDraft ? (

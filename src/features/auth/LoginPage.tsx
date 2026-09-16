@@ -220,7 +220,9 @@ export function LoginPage() {
                 label="Senha"
                 name="password"
                 type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
+                autoComplete={
+                  mode === 'login' ? 'current-password' : 'new-password'
+                }
                 placeholder="••••••••"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}

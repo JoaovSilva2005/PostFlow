@@ -24,7 +24,11 @@ export function PostPreview({
   onAdd,
 }: PostPreviewProps) {
   return (
-    <aside className={styles.previewCard} aria-label="Prévia do post gerado">
+    <aside
+      id="post-preview"
+      className={styles.previewCard}
+      aria-label="Prévia do post gerado"
+    >
       <div className={styles.previewHeader}>
         <div>
           <p>PRÉVIA DO POST</p>
@@ -93,13 +97,18 @@ function GeneratedPost({
         <CalendarPlus size={16} />
         <div>
           <span>DATA SUGERIDA</span>
-          <strong>14 de agosto de 2026</strong>
+          <strong>
+            {new Intl.DateTimeFormat('pt-BR', {
+              dateStyle: 'long',
+              timeZone: 'UTC',
+            }).format(new Date(`${draft.date}T12:00:00Z`))}
+          </strong>
         </div>
       </div>
 
       <Button fullWidth type="button" onClick={onAdd} disabled={isAdding}>
         <CalendarPlus size={17} />
-        {isAdding ? 'Salvando no Supabase...' : 'Adicionar à agenda'}
+        {isAdding ? 'Salvando...' : 'Adicionar à agenda'}
       </Button>
     </>
   )

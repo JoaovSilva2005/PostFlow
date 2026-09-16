@@ -1,33 +1,65 @@
 import {
   CalendarDays,
+  ChevronRight,
+  Command,
   Database,
   LogOut,
+  Menu,
   MessageSquareText,
   Palette,
-  Sparkles,
+  Search,
   WalletCards,
+  X,
 } from 'lucide-react'
-import { NavLink, useNavigate } from 'react-router'
-import type { ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import styles from './AppShell.module.css'
 
-const links = [
-  { to: '/brand', label: 'Minha marca', icon: Palette },
-  { to: '/chat', label: 'Criar com IA', icon: MessageSquareText },
-  { to: '/calendar', label: 'Agenda', icon: CalendarDays },
-  { to: '/finance', label: 'Financeiro', icon: WalletCards },
+const navigationGroups = [
+  {
+    label: 'Criar e planejar',
+    links: [
+      { to: '/chat', label: 'Criar com IA', icon: MessageSquareText },
+      { to: '/calendar', label: 'Agenda', icon: CalendarDays },
+    ],
+  },
+  {
+    label: 'Gerenciar',
+    links: [
+      { to: '/brand', label: 'Minha marca', icon: Palette },
+      { to: '/finance', label: 'Financeiro', icon: WalletCards },
+    ],
+  },
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
-  const { authUser, brand, databaseError, databaseStatus, logout } = useApp()
+  const { pathname } = useLocation()
+  const { authUser, brand, databaseStatus, logout } = useApp()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const menuButton = useRef<HTMLButtonElement>(null)
+  const currentPage = navigationGroups
+    .flatMap((group) => group.links)
+    .find((link) => link.to === pathname)?.label
+  const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR')
+  const groups = navigationGroups.map((group) => ({
+    ...group,
+    links: group.links.filter((link) =>
+      link.label.toLocaleLowerCase('pt-BR').includes(normalizedSearch),
+    ),
+  }))
 
-  const databaseLabel = {
-    connecting: 'Conectando ao Supabase',
-    connected: 'Supabase conectado',
-    error: 'Banco não conectado',
-  }[databaseStatus]
+  function closeMenu() {
+    setMenuOpen(false)
+    setSearch('')
+  }
+
+  function handleEscape() {
+    closeMenu()
+    menuButton.current?.focus()
+  }
 
   async function handleLogout() {
     await logout()
@@ -36,62 +68,125 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className={styles.layout}>
-      <aside className={styles.sidebar}>
-        <div>
-          <NavLink
-            className={styles.logo}
-            to="/brand"
-            aria-label="Início do PostFlow"
-          >
-            PostFlow<span>.</span>
-          </NavLink>
-          <p className={styles.sectionLabel}>ESPAÇO DE TRABALHO</p>
-          <nav className={styles.navigation} aria-label="Menu principal">
-            {links.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.active : ''}`
-                }
-              >
-                <Icon size={18} strokeWidth={1.8} />
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-          <div
-            className={`${styles.databaseStatus} ${styles[databaseStatus]}`}
-            title={databaseError ?? databaseLabel}
-          >
-            <Database size={14} />
-            <span>{databaseLabel}</span>
+      <a className={styles.skipLink} href="#main-content">
+        Pular para o conteúdo
+      </a>
+      <header className={styles.mobileBar}>
+        <span className={styles.wordmark}>
+          <Command size={20} /> PostFlow
+        </span>
+        <button
+          ref={menuButton}
+          type="button"
+          aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+          aria-expanded={menuOpen}
+          aria-controls="workspace-navigation"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {menuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </header>
+      <aside
+        id="workspace-navigation"
+        className={`${styles.sidebar} ${menuOpen ? styles.open : ''}`}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') handleEscape()
+        }}
+      >
+        <NavLink
+          className={styles.logo}
+          to="/brand"
+          aria-label="Início do PostFlow"
+          onClick={closeMenu}
+        >
+          <Command size={22} /> PostFlow<span>workspace</span>
+        </NavLink>
+        <div className={styles.workspaceIdentity}>
+          <span className={styles.avatar}>
+            {brand?.name?.slice(0, 1).toUpperCase() || 'P'}
+          </span>
+          <div>
+            <strong>{brand?.name || 'Seu workspace'}</strong>
+            <small>Projeto pessoal</small>
           </div>
         </div>
-
-        <div className={styles.profile}>
-          <div className={styles.avatar}>
-            {brand?.name?.slice(0, 1).toUpperCase() || 'P'}
+        <label className={styles.search}>
+          <Search size={16} />
+          <input
+            aria-label="Buscar seção"
+            placeholder="Buscar seção..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
+        <nav className={styles.navigation} aria-label="Menu principal">
+          {groups.map(
+            (group) =>
+              group.links.length > 0 && (
+                <div className={styles.navGroup} key={group.label}>
+                  <p>{group.label}</p>
+                  {group.links.map(({ to, label, icon: Icon }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      onClick={closeMenu}
+                      className={({ isActive }) =>
+                        `${styles.navItem} ${isActive ? styles.active : ''}`
+                      }
+                    >
+                      <Icon size={18} strokeWidth={1.6} />
+                      <span>{label}</span>
+                      <ChevronRight size={14} className={styles.navArrow} />
+                    </NavLink>
+                  ))}
+                </div>
+              ),
+          )}
+          {!groups.some((group) => group.links.length) && (
+            <p className={styles.noResults}>Nenhuma seção encontrada.</p>
+          )}
+        </nav>
+        <div className={styles.sidebarFooter}>
+          <div className={`${styles.databaseStatus} ${styles[databaseStatus]}`}>
+            <Database size={14} />
+            <span>
+              {databaseStatus === 'connected'
+                ? 'Banco conectado'
+                : databaseStatus === 'connecting'
+                  ? 'Conectando ao banco'
+                  : 'Banco indisponível'}
+            </span>
+            <i />
           </div>
-          <div className={styles.profileCopy}>
-            <strong>{brand?.name || 'Sua marca'}</strong>
-            <span>{authUser?.displayName || 'Plano acadêmico'}</span>
+          <div className={styles.profile}>
+            <span className={styles.profileAvatar}>
+              {authUser?.displayName?.slice(0, 1).toUpperCase() || 'U'}
+            </span>
+            <div>
+              <strong>{authUser?.displayName || 'Minha conta'}</strong>
+              <small>Ambiente acadêmico</small>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              aria-label="Sair"
+            >
+              <LogOut size={17} />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => void handleLogout()}
-            aria-label="Sair"
-          >
-            <LogOut size={17} />
-          </button>
         </div>
       </aside>
-      <main className={styles.main}>
-        <div className={styles.mobileBrand}>
-          <Sparkles size={18} /> PostFlow
+      <div className={styles.body}>
+        <div className={styles.topbar}>
+          <span>Workspace</span>
+          <ChevronRight size={14} />
+          <strong>{currentPage}</strong>
+          <span className={styles.environment}>PostFlow / v0.1</span>
         </div>
-        {children}
-      </main>
+        <main id="main-content" tabIndex={-1} className={styles.main}>
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

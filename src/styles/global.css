@@ -1,49 +1,74 @@
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-700.css';
+
 * {
   box-sizing: border-box;
 }
-
 html {
   min-width: 320px;
   background: var(--color-background);
 }
-
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
   color: var(--color-text);
   background: var(--color-background);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font:
+    14px/1.6 'Inter',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-
 button,
 input,
 select,
 textarea {
   font: inherit;
 }
-
 button,
 a {
   -webkit-tap-highlight-color: transparent;
 }
-
 button {
   cursor: pointer;
 }
-
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 a {
   color: inherit;
 }
-
 h1,
 h2,
 h3,
 p {
   margin-top: 0;
 }
-
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+}
+p,
+h1,
+h2,
+h3 {
+  overflow-wrap: anywhere;
+}
+input,
+select,
+textarea {
+  min-width: 0;
+}
+::selection {
+  background: #79e2ae40;
+}
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -55,34 +80,11 @@ p {
   white-space: nowrap;
   border: 0;
 }
-
-body {
-  font-size: 14px;
-  line-height: 1.5;
-}
-:focus-visible {
-  outline: 2px solid #18181b;
-  outline-offset: 3px;
-}
-input,
-select,
-textarea {
-  min-width: 0;
-}
-button:disabled {
-  cursor: not-allowed;
-}
-p,
-h1,
-h2,
-h3 {
-  overflow-wrap: anywhere;
-}
 @media (max-width: 760px) {
   input,
   select,
   textarea {
-    font-size: 16px !important;
+    font-size: 16px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -91,5 +93,6 @@ h3 {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -17,13 +17,14 @@
     "typecheck": "tsc -b",
     "test": "vitest run && node scripts/database/testSchema.mjs",
     "test:watch": "vitest",
+    "test:responsive": "node scripts/responsive-check.cjs",
     "db:verify": "node scripts/database/verifyConnection.mjs",
     "db:test-crud": "node scripts/database/testCrud.mjs",
     "format:check": "prettier --check .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource/poppins": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
     "@supabase/supabase-js": "^2.112.4",
     "concurrently": "^10.0.5",
     "cors": "^2.8.6",
@@ -48,6 +49,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "jsdom": "^29.1.1",
     "oxlint": "^1.75.0",
+    "playwright": "^1.63.0",
     "prettier": "^3.9.6",
     "supertest": "^7.2.2",
     "tsx": "^4.23.13",

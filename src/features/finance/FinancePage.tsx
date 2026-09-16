@@ -73,8 +73,21 @@ export function FinancePage() {
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const filteredTransactions = transactions.filter((transaction) => {
+    const text =
+      `${transaction.description} ${transaction.category}`.toLocaleLowerCase(
+        'pt-BR',
+      )
+    return (
+      text.includes(search.trim().toLocaleLowerCase('pt-BR')) &&
+      (statusFilter === 'all' || transaction.status === statusFilter)
+    )
+  })
 
   async function loadFinance() {
+    setLoading(true)
     try {
       setError(null)
       const [loadedTransactions, loadedSummary] = await Promise.all([
@@ -146,6 +159,12 @@ export function FinancePage() {
       dueDate: transaction.dueDate,
       status: transaction.status,
     })
+    document
+      .getElementById('transaction-form')
+      ?.scrollIntoView({ block: 'start' })
+    document
+      .querySelector<HTMLInputElement>('#transaction-form input')
+      ?.focus({ preventScroll: true })
   }
 
   async function toggleStatus(transaction: FinancialTransaction) {
@@ -189,7 +208,7 @@ export function FinancePage() {
     <AppShell>
       <header className={styles.header}>
         <div>
-          <span className={styles.eyebrow}>ÉPICO 3 · FINANCEIRO</span>
+          <span className={styles.eyebrow}>GESTÃO DO WORKSPACE</span>
           <h1>Controle financeiro</h1>
           <p>Acompanhe entradas, saídas, saldo atual e valores pendentes.</p>
         </div>
@@ -197,15 +216,24 @@ export function FinancePage() {
           className={`${styles.apiBadge} ${error ? styles.apiError : ''} ${storageMode === 'demo' ? styles.apiDemo : ''}`}
         >
           <span />{' '}
-          {error
-            ? 'API sem conexão'
-            : storageMode === 'demo'
-              ? 'API demonstração'
-              : 'API + Supabase'}
+          {loading
+            ? 'Sincronizando...'
+            : error
+              ? 'API sem conexão'
+              : storageMode === 'demo'
+                ? 'API demonstração'
+                : 'Dados sincronizados'}
         </div>
       </header>
 
-      {error ? <div className={styles.error}>{error}</div> : null}
+      {error ? (
+        <div className={styles.error} role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => void loadFinance()}>
+            Tentar novamente
+          </button>
+        </div>
+      ) : null}
 
       <section className={styles.summaryGrid} aria-label="Resumo financeiro">
         <article className={styles.summaryCard}>
@@ -243,7 +271,118 @@ export function FinancePage() {
       </section>
 
       <div className={styles.contentGrid}>
-        <section className={styles.formCard}>
+        <section className={styles.tableCard}>
+          <div className={styles.sectionTitle}>
+            <div>
+              <span>HISTÓRICO</span>
+              <h2>Entradas e saídas</h2>
+            </div>
+            <small>{transactions.length} lançamentos</small>
+          </div>
+
+          <div className={styles.filters}>
+            <input
+              type="search"
+              aria-label="Buscar lançamentos"
+              placeholder="Buscar descrição ou categoria..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <select
+              aria-label="Filtrar por status"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
+              <option value="all">Todos os status</option>
+              <option value="paid">Pagos</option>
+              <option value="pending">Pendentes</option>
+            </select>
+          </div>
+
+          {loading ? (
+            <div className={styles.empty}>Carregando dados da API...</div>
+          ) : filteredTransactions.length === 0 ? (
+            <div className={styles.empty}>
+              {error
+                ? 'Os dados não puderam ser atualizados.'
+                : transactions.length === 0
+                  ? 'Nenhum lançamento cadastrado. Comece registrando uma receita ou despesa.'
+                  : 'Nenhum lançamento corresponde aos filtros.'}
+            </div>
+          ) : (
+            <div className={styles.tableWrapper}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Descrição</th>
+                    <th>Vencimento</th>
+                    <th>Status</th>
+                    <th>Valor</th>
+                    <th>
+                      <span className="sr-only">Ações</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTransactions.map((transaction) => (
+                    <tr key={transaction.id}>
+                      <td>
+                        <strong>{transaction.description}</strong>
+                        <span>{transaction.category}</span>
+                      </td>
+                      <td>{formatDate(transaction.dueDate)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className={`${styles.status} ${styles[transaction.status]}`}
+                          onClick={() => void toggleStatus(transaction)}
+                          aria-label={`Alterar status de ${transaction.description}`}
+                        >
+                          {transaction.status === 'paid' ? (
+                            <CheckCircle2 size={13} />
+                          ) : (
+                            <Clock3 size={13} />
+                          )}
+                          {transaction.status === 'paid' ? 'Pago' : 'Pendente'}
+                        </button>
+                      </td>
+                      <td
+                        className={
+                          transaction.type === 'income'
+                            ? styles.positive
+                            : styles.negative
+                        }
+                      >
+                        {transaction.type === 'income' ? '+' : '-'}
+                        {currency(transaction.amount)}
+                      </td>
+                      <td>
+                        <div className={styles.actions}>
+                          <button
+                            type="button"
+                            onClick={() => startEditing(transaction)}
+                            aria-label={`Editar ${transaction.description}`}
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void removeTransaction(transaction)}
+                            aria-label={`Excluir ${transaction.description}`}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section id="transaction-form" className={styles.formCard}>
           <div className={styles.sectionTitle}>
             <div>
               <span>{editingId ? 'EDITANDO' : 'NOVO LANÇAMENTO'}</span>
@@ -271,8 +410,8 @@ export function FinancePage() {
                 label="Tipo"
                 value={form.type}
                 options={[
-                  { label: 'Entrada (receita)', value: 'income' },
-                  { label: 'Saída (despesa)', value: 'expense' },
+                  { label: 'Receita', value: 'income' },
+                  { label: 'Despesa', value: 'expense' },
                 ]}
                 onChange={(event) =>
                   updateForm(
@@ -348,92 +487,6 @@ export function FinancePage() {
                   : 'Adicionar lançamento'}
             </Button>
           </form>
-        </section>
-
-        <section className={styles.tableCard}>
-          <div className={styles.sectionTitle}>
-            <div>
-              <span>HISTÓRICO</span>
-              <h2>Entradas e saídas</h2>
-            </div>
-            <small>{transactions.length} lançamentos</small>
-          </div>
-
-          {loading ? (
-            <div className={styles.empty}>Carregando dados da API...</div>
-          ) : transactions.length === 0 ? (
-            <div className={styles.empty}>Nenhum lançamento cadastrado.</div>
-          ) : (
-            <div className={styles.tableWrapper}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Descrição</th>
-                    <th>Vencimento</th>
-                    <th>Status</th>
-                    <th>Valor</th>
-                    <th>
-                      <span className="sr-only">Ações</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((transaction) => (
-                    <tr key={transaction.id}>
-                      <td>
-                        <strong>{transaction.description}</strong>
-                        <span>{transaction.category}</span>
-                      </td>
-                      <td>{formatDate(transaction.dueDate)}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className={`${styles.status} ${styles[transaction.status]}`}
-                          onClick={() => void toggleStatus(transaction)}
-                          aria-label={`Alterar status de ${transaction.description}`}
-                        >
-                          {transaction.status === 'paid' ? (
-                            <CheckCircle2 size={13} />
-                          ) : (
-                            <Clock3 size={13} />
-                          )}
-                          {transaction.status === 'paid' ? 'Pago' : 'Pendente'}
-                        </button>
-                      </td>
-                      <td
-                        className={
-                          transaction.type === 'income'
-                            ? styles.positive
-                            : styles.negative
-                        }
-                      >
-                        {transaction.type === 'income' ? '+' : '-'}
-                        {currency(transaction.amount)}
-                      </td>
-                      <td>
-                        <div className={styles.actions}>
-                          <button
-                            type="button"
-                            onClick={() => startEditing(transaction)}
-                            aria-label={`Editar ${transaction.description}`}
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void removeTransaction(transaction)}
-                            aria-label={`Excluir ${transaction.description}`}
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </section>
       </div>
     </AppShell>

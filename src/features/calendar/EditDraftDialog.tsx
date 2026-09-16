@@ -1,4 +1,11 @@
-import { useState, type FormEvent, type MouseEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type MouseEvent,
+  type KeyboardEvent,
+} from 'react'
 import { Edit3, Trash2, X } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { SelectField, TextField } from '../../components/ui/FormField'
@@ -27,6 +34,36 @@ export function EditDraftDialog({
   const [form, setForm] = useState(draft)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const dialogRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    dialogRef.current?.querySelector<HTMLInputElement>('input')?.focus()
+    return () => {
+      document.body.style.overflow = previousOverflow
+      previousFocus?.focus()
+    }
+  }, [])
+
+  function handleDialogKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === 'Escape' && !isSaving) onClose()
+    if (event.key !== 'Tab') return
+    const controls = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), input, select, textarea, a[href]',
+    )
+    if (!controls?.length) return
+    const first = controls[0]
+    const last = controls[controls.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
 
   function updateFormField<Key extends keyof PostDraft>(
     field: Key,
@@ -73,6 +110,8 @@ export function EditDraftDialog({
       onMouseDown={handleOverlayMouseDown}
     >
       <section
+        ref={dialogRef}
+        onKeyDown={handleDialogKeyDown}
         className={styles.dialog}
         role="dialog"
         aria-modal="true"

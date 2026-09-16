@@ -6,11 +6,21 @@ Nesta versão, o usuário configura a identidade da marca, descreve um post no c
 
 ## Interface responsiva — SCRUM-49
 
-Login, marca, chat, agenda e financeiro usam superfícies neutras, bordas discretas, tipografia do sistema e botões de alto contraste. A navegação lateral se transforma em navegação superior compacta até 760px. Formulários e prévias passam a uma coluna, o calendário permanece mensal e tabelas extensas têm rolagem própria.
+Login, marca, chat, agenda e financeiro foram reformulados como um workspace escuro, inspirado nas referências de navegação enviadas pelo usuário. Tokens em `src/styles/tokens.css` centralizam cores, superfícies e bordas. Inter é empacotada localmente, com subconjunto latino. Cabeçalhos compartilham `src/styles/page.module.css`; componentes continuam organizados por funcionalidade.
 
-Capturas em `docs/screenshots/responsive` cobrem 320, 390, 768 e 1440px. Foram produzidas com respostas de rede isoladas (sem gravar dados reais); o financeiro mostra o estado de indisponibilidade da API. Não representam uma validação de conexão em produção. A revisão visual não altera o protótipo antigo do Figma.
+Melhorias de uso:
 
-Para repetir a checagem de overflow: disponibilize Playwright no ambiente, instale seu Chromium (`npx playwright install chromium`), inicie o Vite na porta 5173 e execute `node scripts/responsive-check.cjs`. A suíte de funcionalidades continua disponível em `npm test`.
+- Sidebar com grupos, busca de seções, rota ativa, status do banco e conta. Até 760px, um botão abre e fecha a navegação em fluxo, sem cobrir o conteúdo.
+- Configuração da marca com prévia ao vivo e recuperação dos dados carregados, sem sobrescrever campos já editados.
+- Chat com pedido enviado persistente na conversa, prévia separada e link para revisão. A IA continua simulada.
+- Agenda com mês e lista; a lista é inicial em telas até 560px. Edição com foco contido no diálogo, Escape e restauração do foco.
+- Financeiro com busca por descrição/categoria, filtro de status, histórico prioritário e registros em formato de cards no celular. Filtrar não altera os totais gerais.
+
+Capturas em `docs/screenshots/responsive` cobrem 320, 390, 768, 1024 e 1440px com dados preenchidos. Foram produzidas com respostas de rede isoladas (sem gravar dados reais). Não representam validação de conexão em produção. O protótipo antigo do Figma não foi alterado.
+
+![Workspace financeiro](docs/screenshots/responsive/finance-1440.png)
+
+Para repetir: execute `npx playwright install chromium`, inicie o Vite na porta 5173 e rode `npm run test:responsive`. Alternativamente, configure `PLAYWRIGHT_CHANNEL=msedge` para usar o Edge instalado. A checagem cobre 25 combinações, erros de execução, overflow, navegação mobile, busca financeira e fechamento do diálogo por Escape. Use `npm test` para os 25 testes de unidade/integração e o contrato SQL. Os testes visuais usam uma marca e registros fictícios, não contas reais.
 
 ## Instalação
 

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Check, Palette, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
@@ -38,11 +38,17 @@ export function BrandPage() {
   const [error, setError] = useState('')
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
+
+  useEffect(() => {
+    if (brand && !hasChanges) setForm(brand)
+  }, [brand, hasChanges])
 
   function updateFormField<Key extends keyof BrandProfile>(
     field: Key,
     value: BrandProfile[Key],
   ) {
+    setHasChanges(true)
     setForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
@@ -143,6 +149,9 @@ export function BrandPage() {
                   </button>
                 ))}
               </div>
+              <p className={styles.colorValue}>
+                {form.primaryColor} · Cor aplicada à prévia
+              </p>
             </fieldset>
           </div>
 
@@ -152,7 +161,7 @@ export function BrandPage() {
               quando quiser.
             </p>
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? 'Salvando no banco...' : 'Salvar e continuar'}
+              {isSaving ? 'Salvando...' : 'Salvar e continuar'}
             </Button>
           </div>
           {saveError ? (

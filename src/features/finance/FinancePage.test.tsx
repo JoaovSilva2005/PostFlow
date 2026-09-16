@@ -87,4 +87,28 @@ describe('FinancePage', () => {
       )
     })
   })
+
+  it('filtra por descrição e status sem alterar os totais financeiros', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    renderApp('/finance')
+    await screen.findByText('Plano mensal')
+    await user.type(screen.getByLabelText('Buscar lançamentos'), 'inexistente')
+    expect(screen.queryByText('Plano mensal')).not.toBeInTheDocument()
+    expect(
+      screen.getByText('Nenhum lançamento corresponde aos filtros.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('R$ 2.700,00')).toBeInTheDocument()
+    await user.clear(screen.getByLabelText('Buscar lançamentos'))
+    await user.selectOptions(
+      screen.getByLabelText('Filtrar por status'),
+      'pending',
+    )
+    expect(screen.queryByText('Plano mensal')).not.toBeInTheDocument()
+    await user.selectOptions(
+      screen.getByLabelText('Filtrar por status'),
+      'paid',
+    )
+    expect(screen.getByText('Plano mensal')).toBeInTheDocument()
+  })
 })

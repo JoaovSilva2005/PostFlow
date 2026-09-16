@@ -30,6 +30,22 @@ const drafts: PostDraft[] = [
 ]
 
 describe('CalendarPage', () => {
+  it('permite alternar para lista e mantém o rascunho editável por teclado', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    renderApp('/calendar', createTestRepository({ drafts }))
+    await user.click(await screen.findByRole('button', { name: 'Lista' }))
+    expect(screen.getByRole('button', { name: 'Lista' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await user.click(screen.getByRole('button', { name: /Café especial/ }))
+    expect(screen.getByLabelText('Título')).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Café especial/ })).toHaveFocus()
+  })
+
   beforeEach(() => {
     authenticateDemo()
   })

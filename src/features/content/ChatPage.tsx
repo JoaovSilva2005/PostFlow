@@ -25,6 +25,7 @@ export function ChatPage() {
   const navigate = useNavigate()
   const { brand, addDraft } = useApp()
   const [prompt, setPrompt] = useState('')
+  const [submittedPrompt, setSubmittedPrompt] = useState('')
   const [platform, setPlatform] = useState('Instagram')
   const [isGenerating, setIsGenerating] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
@@ -41,6 +42,7 @@ export function ChatPage() {
     }
 
     setError('')
+    setSubmittedPrompt(normalizedPrompt)
     setIsGenerating(true)
 
     try {
@@ -126,8 +128,8 @@ export function ChatPage() {
                 </button>
               ))}
             </div>
-            {prompt && isGenerating ? (
-              <div className={styles.userMessage}>{prompt}</div>
+            {submittedPrompt ? (
+              <div className={styles.userMessage}>{submittedPrompt}</div>
             ) : null}
             {isGenerating ? (
               <div className={styles.loadingMessage}>
@@ -141,7 +143,9 @@ export function ChatPage() {
                 </span>
                 <p>
                   Pronto! Criei um rascunho para{' '}
-                  <strong>{draft.platform}</strong>. Revise a prévia ao lado.
+                  <strong>{draft.platform}</strong>.{' '}
+                  <a href="#post-preview">Revisar prévia</a> antes de adicionar
+                  à agenda.
                 </p>
               </div>
             ) : null}
