@@ -4,7 +4,15 @@ Aplicação demonstrável para planejar conteúdo de redes sociais com apoio de 
 
 Nesta versão, o usuário configura a identidade da marca, descreve um post no chat, revisa o conteúdo gerado e adiciona o rascunho a uma agenda mensal. O Épico 3 acrescenta uma API REST e o módulo financeiro para cadastrar receitas e despesas, controlar pagamentos e calcular o saldo atual.
 
-## Executar o projeto
+## Interface responsiva — SCRUM-49
+
+Login, marca, chat, agenda e financeiro usam superfícies neutras, bordas discretas, tipografia do sistema e botões de alto contraste. A navegação lateral se transforma em navegação superior compacta até 760px. Formulários e prévias passam a uma coluna, o calendário permanece mensal e tabelas extensas têm rolagem própria.
+
+Capturas em `docs/screenshots/responsive` cobrem 320, 390, 768 e 1440px. Foram produzidas com respostas de rede isoladas (sem gravar dados reais); o financeiro mostra o estado de indisponibilidade da API. Não representam uma validação de conexão em produção. A revisão visual não altera o protótipo antigo do Figma.
+
+Para repetir a checagem de overflow: disponibilize Playwright no ambiente, instale seu Chromium (`npx playwright install chromium`), inicie o Vite na porta 5173 e execute `node scripts/responsive-check.cjs`. A suíte de funcionalidades continua disponível em `npm test`.
+
+## Instalação
 
 Requisitos: Node.js 22.14 ou superior, npm e um projeto no Supabase.
 

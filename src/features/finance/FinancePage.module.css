@@ -11,7 +11,7 @@
   display: block;
   margin-bottom: 7px;
   color: var(--color-primary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 1.15px;
 }
@@ -36,7 +36,7 @@
   border: 1px solid #bbf7d0;
   border-radius: 999px;
   background: #f0fdf4;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -102,7 +102,7 @@
 .summaryCard > span {
   margin: 13px 0 3px;
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .summaryCard strong {
@@ -113,18 +113,18 @@
 .summaryCard small {
   margin-top: 3px;
   color: var(--color-muted);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .balanceCard {
   color: #fff;
   border-color: var(--color-primary);
-  background: linear-gradient(135deg, #4f46e5, #6d5dfc);
-  box-shadow: 0 15px 32px rgba(79, 70, 229, 0.2);
+  background: #18181b;
+  box-shadow: var(--shadow-card);
 }
 
 .balanceCard > span {
-  color: #d9d6ff;
+  color: #d4d4d8;
 }
 
 .icon {
@@ -139,7 +139,7 @@
 
 .summaryCard:not(.balanceCard) .icon {
   color: var(--color-primary);
-  background: #efeeff;
+  background: #f4f4f5;
 }
 
 .summaryCard .income {
@@ -159,7 +159,7 @@
 
 .contentGrid {
   display: grid;
-  grid-template-columns: minmax(290px, 0.7fr) minmax(560px, 1.55fr);
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.5fr);
   align-items: start;
   gap: 22px;
 }
@@ -170,7 +170,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
-  box-shadow: 0 10px 30px rgba(20, 20, 30, 0.035);
+  box-shadow: var(--shadow-card);
 }
 
 .sectionTitle {
@@ -189,7 +189,7 @@
 
 .sectionTitle small {
   color: var(--color-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .form {
@@ -234,7 +234,7 @@
 
 .tableCard th {
   color: #9898a1;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.6px;
   text-transform: uppercase;
@@ -242,7 +242,7 @@
 
 .tableCard td {
   color: #555560;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .tableCard td:first-child {
@@ -257,13 +257,13 @@
 .tableCard td strong {
   margin-bottom: 3px;
   color: var(--color-text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .tableCard td span {
   color: #9999a3;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .tableCard tr:last-child td {
@@ -277,7 +277,7 @@
   padding: 6px 9px;
   border: 0;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -353,5 +353,34 @@
   .formCard,
   .tableCard {
     padding: 18px;
+  }
+}
+
+.contentGrid > *,
+.summaryCard {
+  min-width: 0;
+}
+.tableWrapper {
+  max-width: 100%;
+}
+.summaryCard strong {
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(20px, 2vw, 28px);
+}
+.actions button,
+.iconButton {
+  width: 44px;
+  height: 44px;
+}
+@media (max-width: 620px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .summaryCard {
+    padding: 16px;
+  }
+  .summaryCard strong {
+    font-size: 20px;
   }
 }

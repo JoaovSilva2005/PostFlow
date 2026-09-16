@@ -1,8 +1,7 @@
 .layout {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-background);
 }
-
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -11,192 +10,173 @@
   width: var(--sidebar-width);
   flex-direction: column;
   justify-content: space-between;
-  padding: 42px 20px 24px;
-  color: #fff;
-  background: var(--color-sidebar);
+  padding: 28px 16px 20px;
+  border-right: 1px solid var(--color-border);
+  background: #fff;
 }
-
 .logo {
   display: inline-block;
-  margin: 0 20px 58px;
-  color: #fff;
-  font-size: 25px;
-  font-weight: 700;
-  letter-spacing: -1.2px;
+  margin: 0 12px 48px;
+  font-size: 23px;
+  font-weight: 650;
+  letter-spacing: -1px;
   text-decoration: none;
 }
-
 .logo span {
-  color: #7c73ff;
+  color: #16a36b;
 }
-
 .sectionLabel {
-  margin: 0 16px 14px;
-  color: #696976;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1.2px;
+  margin: 0 12px 12px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
 }
-
 .navigation {
   display: grid;
-  gap: 7px;
+  gap: 4px;
 }
-
 .navItem {
   display: flex;
-  height: 46px;
+  min-height: 44px;
   align-items: center;
-  gap: 13px;
-  padding: 0 16px;
-  color: #8f8f9c;
-  border-radius: 9px;
-  font-size: 13px;
-  font-weight: 500;
+  gap: 10px;
+  padding: 0 12px;
+  color: var(--color-muted);
+  border-radius: 6px;
+  font-size: 14px;
   text-decoration: none;
-  transition:
-    color 150ms ease,
-    background 150ms ease;
+  transition: background 150ms;
 }
-
 .navItem:hover {
-  color: #fff;
-  background: #22222d;
+  background: #fafafa;
+  color: #18181b;
 }
-
 .navItem.active {
-  color: #fff;
-  background: var(--color-primary);
+  color: #18181b;
+  background: #f0f0f1;
+  font-weight: 600;
 }
-
 .databaseStatus {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 26px 14px 0;
-  padding: 10px 11px;
-  color: #8f8f9c;
-  border: 1px solid #30303a;
-  border-radius: 8px;
-  font-size: 9px;
+  margin: 24px 12px;
+  font-size: 11px;
+  color: var(--color-muted);
 }
-
-.databaseStatus.connected {
-  color: #86efac;
-  border-color: rgba(34, 197, 94, 0.35);
-  background: rgba(34, 197, 94, 0.08);
+.connected {
+  color: #15803d;
 }
-
-.databaseStatus.error {
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.08);
+.error {
+  color: #b91c1c;
 }
-
 .profile {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 18px 10px 0;
-  border-top: 1px solid #292932;
+  gap: 10px;
+  padding: 16px 4px 0;
+  border-top: 1px solid var(--color-border);
 }
-
 .avatar {
   display: grid;
-  width: 35px;
-  height: 35px;
+  width: 34px;
+  height: 34px;
   place-items: center;
-  flex: 0 0 auto;
-  color: #fff;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
   border-radius: 50%;
-  background: var(--color-primary);
+  background: #f4f4f5;
   font-size: 13px;
-  font-weight: 600;
 }
-
 .profileCopy {
   display: grid;
   min-width: 0;
   flex: 1;
+  gap: 3px;
 }
-
 .profileCopy strong,
 .profileCopy span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
 }
-
-.profileCopy strong {
-  font-size: 11px;
-  font-weight: 500;
-}
-
 .profileCopy span {
-  color: #71717c;
-  font-size: 9px;
+  color: var(--color-muted);
 }
-
 .profile button {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   place-items: center;
-  color: #777783;
+  color: var(--color-muted);
   border: 0;
+  border-radius: 6px;
   background: transparent;
 }
-
 .profile button:hover {
-  color: #fff;
+  background: #f4f4f5;
+  color: #18181b;
 }
-
 .main {
-  min-height: 100vh;
+  min-width: 0;
+  min-height: 100dvh;
   margin-left: var(--sidebar-width);
-  padding: 42px 60px 60px;
+  padding: clamp(24px, 4vw, 56px);
 }
-
+.main > :not(.mobileBrand) {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
 .mobileBrand {
   display: none;
 }
-
-@media (max-width: 900px) {
+@media (max-width: 760px) {
   .sidebar {
-    position: static;
+    position: sticky;
+    top: 0;
     width: 100%;
-    padding: 14px 18px;
+    padding: 12px 16px 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
   }
-
-  .sidebar > div:first-child {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
   .logo {
-    margin: 0 10px 0 0;
+    margin: 0 0 12px;
     font-size: 20px;
   }
-
   .sectionLabel,
-  .databaseStatus,
-  .profile {
+  .databaseStatus {
     display: none;
   }
-
   .navigation {
-    display: flex;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
   }
-
   .navItem {
-    height: 40px;
+    min-width: 0;
+    padding: 8px 2px;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 11px;
     white-space: nowrap;
   }
-
+  .profile {
+    position: absolute;
+    top: 4px;
+    right: 12px;
+    border: 0;
+    padding: 0;
+  }
+  .profileCopy,
+  .avatar {
+    display: none;
+  }
   .main {
     margin-left: 0;
-    padding: 28px 20px;
+    padding: 24px 16px 40px;
   }
 }

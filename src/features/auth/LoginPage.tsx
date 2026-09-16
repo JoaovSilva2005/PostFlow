@@ -262,8 +262,7 @@ export function LoginPage() {
             </p>
           )}
           <p className={styles.securityNotice}>
-            Sessão protegida por cookie HttpOnly. A senha não é armazenada pelo
-            PostFlow.
+            Um espaço para planejar os próximos passos da sua marca.
           </p>
           <p className={styles.signup}>
             {mode === 'login'

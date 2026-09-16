@@ -1,20 +1,20 @@
 .page {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: 510px 1fr;
-  background: #f8f8fb;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  background: #fff;
 }
 
 .hero {
   position: relative;
   display: flex;
-  min-height: 900px;
+  min-height: 100dvh;
   flex-direction: column;
   justify-content: space-between;
   padding: 52px 62px 44px;
   overflow: hidden;
   color: #fff;
-  background: var(--color-primary);
+  background: #18181b;
 }
 
 .hero::before,
@@ -48,7 +48,7 @@
 }
 
 .logo span {
-  color: #c7c3ff;
+  color: #34d399;
 }
 
 .heroContent {
@@ -67,7 +67,7 @@
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 1px;
 }
@@ -83,7 +83,7 @@
 .heroContent > p {
   max-width: 345px;
   margin-bottom: 56px;
-  color: #d7d4ff;
+  color: #a1a1aa;
   font-size: 13px;
   line-height: 1.75;
 }
@@ -95,13 +95,13 @@
   align-items: center;
   gap: 9px;
   margin-top: 21px;
-  color: #e9e8ff;
-  font-size: 11px;
+  color: #e4e4e7;
+  font-size: 12px;
 }
 
 .flowLine > span:first-child {
-  color: #b9b5ff;
-  font-size: 9px;
+  color: #a1a1aa;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -117,8 +117,8 @@
   align-items: center;
   gap: 9px;
   margin: 0;
-  color: #b9b5ef;
-  font-size: 9px;
+  color: #a1a1aa;
+  font-size: 12px;
 }
 
 .loginArea {
@@ -130,13 +130,13 @@
 }
 
 .card {
-  width: min(520px, 100%);
-  min-height: 620px;
-  padding: 62px 68px 46px;
-  border: 1px solid #eeeef2;
+  width: min(380px, 100%);
+  min-height: 0;
+  padding: 32px 0;
+  border: 0;
   border-radius: 20px;
   background: #fff;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 .cardHeader {
@@ -166,7 +166,7 @@
 .cardHeader p {
   margin: 0;
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .fields {
@@ -197,7 +197,7 @@
   justify-content: space-between;
   margin: 19px 0 25px;
   color: #72727c;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .formMeta label {
@@ -225,7 +225,7 @@
   margin: 18px 0 0;
   padding: 9px 12px;
   border-radius: 7px;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.55;
   text-align: center;
 }
@@ -248,7 +248,7 @@
 .signup {
   margin: 21px 0 0;
   color: #85858e;
-  font-size: 10px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -257,7 +257,7 @@
   bottom: 31px;
   margin: 0;
   color: #aaaab2;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 @media (max-width: 1000px) {
@@ -295,5 +295,52 @@
   .card {
     min-height: 0;
     padding: 40px 28px;
+  }
+}
+
+.hero::before,
+.hero::after {
+  display: none;
+}
+.hero {
+  background-image:
+    linear-gradient(#ffffff07 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff07 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+.hero h1 {
+  font-size: clamp(40px, 4.5vw, 68px);
+  letter-spacing: -0.055em;
+}
+.heroContent > p {
+  font-size: 16px;
+}
+.cardHeader h2 {
+  font-size: 28px;
+}
+.fields {
+  gap: 20px;
+}
+.securityNotice {
+  background: transparent;
+  color: var(--color-muted);
+}
+@media (max-width: 1000px) {
+  .hero {
+    min-height: 0;
+    padding: 24px;
+  }
+  .heroContent,
+  .heroFooter {
+    display: none;
+  }
+  .loginArea {
+    min-height: calc(100dvh - 83px);
+    padding: 32px 24px 72px;
+  }
+}
+@media (max-width: 540px) {
+  .card {
+    padding: 16px 0;
   }
 }

@@ -108,7 +108,9 @@ export function CalendarPage() {
 
         <div className={styles.weekHeader}>
           {WEEK_DAYS.map((day) => (
-            <div key={day}>{day}</div>
+            <div key={day} aria-label={day} title={day}>
+              {day.slice(0, 3)}
+            </div>
           ))}
         </div>
         <div className={styles.grid}>

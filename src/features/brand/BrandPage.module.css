@@ -2,14 +2,14 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 53px;
+  margin-bottom: 32px;
 }
 
 .pageHeader p,
 .previewLabel {
   margin-bottom: 8px;
   color: var(--color-primary);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 1.3px;
 }
@@ -23,28 +23,28 @@
 
 .pageHeader span {
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .step {
   display: grid;
   gap: 3px;
   color: #aaaab2;
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.8px;
   text-align: right;
 }
 
 .step strong {
   color: #383840;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0;
 }
 
 .columns {
   display: grid;
-  grid-template-columns: minmax(550px, 650px) minmax(320px, 370px);
-  gap: 40px;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 24px;
 }
 
 .formCard,
@@ -52,12 +52,12 @@
   border: 1px solid #ececf0;
   border-radius: var(--radius-md);
   background: #fff;
-  box-shadow: 0 12px 35px rgba(22, 22, 29, 0.035);
+  box-shadow: var(--shadow-card);
 }
 
 .formCard {
-  min-height: 660px;
-  padding: 41px 45px 32px;
+  min-height: 0;
+  padding: clamp(20px, 3vw, 36px);
 }
 
 .cardTitle {
@@ -73,7 +73,7 @@
   place-items: center;
   color: var(--color-primary);
   border-radius: 9px;
-  background: #efefff;
+  background: #f4f4f5;
 }
 
 .cardTitle h2 {
@@ -85,7 +85,7 @@
 .cardTitle p {
   margin: 0;
   color: var(--color-muted);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .formGrid {
@@ -141,13 +141,13 @@
   gap: 7px;
   margin: 0;
   color: #8a8a94;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .saveError {
   margin: 14px 0 0;
   color: var(--color-danger);
-  font-size: 10px;
+  font-size: 12px;
   text-align: right;
 }
 
@@ -184,7 +184,7 @@
 
 .previewCard > p:not(.previewLabel, .previewHint) {
   color: var(--color-muted);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .previewLine {
@@ -217,30 +217,30 @@
 }
 
 .exampleHeader strong {
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .exampleHeader small {
   color: #a2a2aa;
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .examplePost > p {
   margin: 13px 0 9px;
   color: #606069;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.6;
 }
 
 .postTag {
   color: var(--color-primary);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .previewHint {
   margin: 18px 0 0;
   color: #aaaab2;
-  font-size: 7px;
+  font-size: 11px;
 }
 
 @media (max-width: 1180px) {
@@ -279,4 +279,22 @@
   .previewCard {
     margin-top: 24px;
   }
+}
+
+.colors {
+  flex-wrap: wrap;
+}
+.colors button {
+  width: 40px;
+  height: 40px;
+}
+.previewCard {
+  width: 100%;
+}
+.formCard,
+.previewCard {
+  min-width: 0;
+}
+.cardTitle > span {
+  flex-shrink: 0;
 }

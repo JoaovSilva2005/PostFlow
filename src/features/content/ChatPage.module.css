@@ -2,14 +2,14 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 53px;
+  margin-bottom: 32px;
 }
 
 .pageHeader p,
 .previewHeader p {
   margin-bottom: 8px;
   color: var(--color-primary);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 1.3px;
 }
@@ -23,7 +23,7 @@
 
 .pageHeader > div:first-child > span {
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .aiStatus {
@@ -31,7 +31,7 @@
   align-items: center;
   gap: 8px;
   color: #6a6a74;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .aiStatus > span {
@@ -44,8 +44,8 @@
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(540px, 620px) minmax(350px, 400px);
-  gap: 40px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 24px;
 }
 
 .chatCard,
@@ -54,7 +54,7 @@
   border: 1px solid #ececf0;
   border-radius: var(--radius-md);
   background: #fff;
-  box-shadow: 0 12px 35px rgba(22, 22, 29, 0.035);
+  box-shadow: var(--shadow-card);
 }
 
 .chatCard {
@@ -91,7 +91,7 @@
 
 .chatHeader span {
   color: #91919a;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .messages {
@@ -120,7 +120,7 @@
   flex: 0 0 auto;
   color: var(--color-primary);
   border-radius: 8px;
-  background: #eeeeff;
+  background: #f4f4f5;
 }
 
 .assistantMessage p,
@@ -131,7 +131,7 @@
   border: 1px solid #ececf1;
   border-radius: 4px 12px 12px 12px;
   background: #fff;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.65;
 }
 
@@ -148,10 +148,10 @@
 .suggestions button {
   padding: 7px 10px;
   color: var(--color-primary);
-  border: 1px solid #dedefe;
+  border: 1px solid #f4f4f5;
   border-radius: 999px;
-  background: #f8f8ff;
-  font-size: 8px;
+  background: #f4f4f5;
+  font-size: 11px;
 }
 
 .userMessage {
@@ -161,7 +161,7 @@
   color: #fff;
   border-radius: 12px 4px 12px 12px;
   background: var(--color-primary);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -202,7 +202,7 @@
   align-items: center;
   gap: 6px;
   color: #6f6f79;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -213,7 +213,7 @@
   border-radius: 6px;
   outline: none;
   background: #fff;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .textareaWrap {
@@ -241,7 +241,7 @@
   border: 0;
   outline: none;
   color: #34343c;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
@@ -264,7 +264,7 @@
 .error,
 .disclaimer {
   margin: 6px 0 0;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .error {
@@ -297,8 +297,8 @@
   padding: 5px 8px;
   color: #8b5cf6;
   border-radius: 5px;
-  background: #f3e8ff;
-  font-size: 7px;
+  background: #f4f4f5;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -322,7 +322,7 @@
   place-items: center;
   color: #fff;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -330,11 +330,11 @@
   display: grid;
 }
 .socialHeader strong {
-  font-size: 9px;
+  font-size: 12px;
 }
 .socialHeader span {
   color: #9b9ba4;
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .generatedImage {
@@ -380,25 +380,25 @@
   left: 27px;
   bottom: 20px;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 6px;
+  font-size: 11px;
   letter-spacing: 1px;
 }
 
 .socialPost h3 {
   margin: 15px 0 6px;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .socialPost > p {
   margin-bottom: 8px;
   color: #5f5f68;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.6;
 }
 
 .hashtags {
   color: var(--color-primary);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .scheduleInfo {
@@ -409,7 +409,7 @@
   padding: 11px 13px;
   color: var(--color-primary);
   border-radius: 8px;
-  background: #f5f4ff;
+  background: #f4f4f5;
 }
 
 .scheduleInfo div {
@@ -417,12 +417,12 @@
 }
 .scheduleInfo span {
   color: #92919d;
-  font-size: 6px;
+  font-size: 11px;
   letter-spacing: 0.7px;
 }
 .scheduleInfo strong {
   color: #474750;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .emptyPreview {
@@ -451,7 +451,7 @@
 }
 .emptyPreview p {
   max-width: 220px;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -473,5 +473,55 @@
   }
   .suggestions {
     flex-wrap: wrap;
+  }
+}
+
+.chatCard,
+.previewCard {
+  min-width: 0;
+}
+.previewCard {
+  width: 100%;
+  height: auto;
+  min-height: 560px;
+}
+.suggestions {
+  flex-wrap: wrap;
+}
+.assistantMessage p,
+.userMessage {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.textareaWrap textarea {
+  min-width: 0;
+  font-size: 14px;
+}
+.platformRow select,
+.textareaWrap button {
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .chatCard {
+    height: min(640px, 80dvh);
+    min-height: 450px;
+  }
+  .chatHeader,
+  .messages,
+  .composer,
+  .previewCard {
+    padding: 20px;
+  }
+  .pageHeader {
+    gap: 16px;
+  }
+  .emptyPreview {
+    min-height: 260px;
+  }
+  .previewCard {
+    min-height: 0;
+  }
+  .suggestions {
+    margin-left: 0;
   }
 }
