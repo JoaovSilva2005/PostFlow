@@ -42,19 +42,6 @@
   z-index: 1;
   max-width: 520px;
 }
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #afe1c3;
-  border: 1px solid #3f5a4a;
-  border-radius: 5px;
-  padding: 6px 10px;
-  font-size: 10px;
-  letter-spacing: 1.1px;
-  margin-bottom: 32px;
-  background: #18302355;
-}
 .hero h1 {
   font-size: clamp(40px, 4.4vw, 68px);
   letter-spacing: -3px;
@@ -68,25 +55,6 @@
   line-height: 1.8;
   color: #a6b7ad;
   margin-bottom: 40px;
-}
-.flowLine {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 15px 0;
-  border-top: 1px solid #2c3b32;
-  color: #c6d2cb;
-  font-size: 12px;
-}
-.flowLine > span:first-child {
-  font-family: monospace;
-  color: #79ab8d;
-  font-size: 11px;
-}
-.flowLine > div {
-  width: 20px;
-  height: 1px;
-  background: #4e6957;
 }
 .heroFooter {
   position: relative;
@@ -164,7 +132,7 @@
 .formMeta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   margin: 18px 0 24px;
   color: var(--color-muted);
@@ -181,12 +149,6 @@
 .formMeta button:hover,
 .signup button:hover {
   text-decoration: underline;
-}
-.securityNotice {
-  color: #929b9f;
-  font-size: 11px;
-  text-align: center;
-  margin: 20px 0 0;
 }
 .signup {
   margin: 28px 0 0;

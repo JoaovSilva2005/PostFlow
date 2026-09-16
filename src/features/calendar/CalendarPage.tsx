@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
+import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import type { PostDraft } from '../../domain/models'
 import {
   buildCalendar,
-  DEMO_TODAY,
   INITIAL_VISIBLE_MONTH,
   MONTH_NAMES,
   toDateKey,
@@ -24,8 +24,20 @@ const STATUS_LABELS: Record<PostDraft['status'], string> = {
 
 export function CalendarPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { drafts, updateDraft, removeDraft } = useApp()
-  const [visibleMonth, setVisibleMonth] = useState(INITIAL_VISIBLE_MONTH)
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const draftDate = location.state?.draftDate
+    if (
+      typeof draftDate === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(draftDate)
+    ) {
+      const date = new Date(`${draftDate}T12:00:00`)
+      if (!Number.isNaN(date.getTime()))
+        return new Date(date.getFullYear(), date.getMonth(), 1)
+    }
+    return INITIAL_VISIBLE_MONTH
+  })
   const [selectedDraft, setSelectedDraft] = useState<PostDraft | null>(null)
   const [view, setView] = useState<'month' | 'list'>(() =>
     window.matchMedia?.('(max-width: 560px)').matches ? 'list' : 'month',
@@ -73,17 +85,21 @@ export function CalendarPage() {
 
   return (
     <AppShell>
-      <header className={styles.pageHeader}>
-        <div>
-          <p>PLANEJAMENTO</p>
-          <h1>Agenda de conteúdo</h1>
-          <span>Organize, revise e acompanhe os rascunhos da sua marca.</span>
-        </div>
+      <PageHeader
+        title="Agenda de conteúdo"
+        description="Veja o que está planejado e ajuste cada post antes de publicar."
+      >
         <Button type="button" onClick={() => navigate('/chat')}>
           <Plus size={17} /> Novo post
         </Button>
-      </header>
+      </PageHeader>
 
+      {location.state?.createdDraft ? (
+        <p className={styles.savedNotice} role="status">
+          Rascunho adicionado à agenda. Selecione o post para fazer novos
+          ajustes.
+        </p>
+      ) : null}
       <section className={styles.calendarCard} aria-label="Calendário mensal">
         <div className={styles.calendarToolbar}>
           <div>
@@ -147,7 +163,7 @@ export function CalendarPage() {
               {calendarCells.map(({ date, inCurrentMonth }) => {
                 const dateKey = toDateKey(date)
                 const dateDrafts = draftsByDate.get(dateKey) ?? []
-                const isToday = dateKey === DEMO_TODAY
+                const isToday = dateKey === toDateKey(new Date())
 
                 return (
                   <div
@@ -197,13 +213,20 @@ export function CalendarPage() {
                       {draft.platform} · {STATUS_LABELS[draft.status]}
                     </small>
                   </div>
-                  <span>Editar →</span>
+                  <span>Editar</span>
                 </button>
               ))
             ) : (
               <div className={styles.empty}>
-                <strong>Seu mês começa com uma ideia.</strong>Crie um post no
-                chat ou navegue para outro mês.
+                <strong>Nenhum post planejado neste mês.</strong>
+                <p>Crie um rascunho ou navegue para outro mês.</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => navigate('/chat')}
+                >
+                  Criar um post
+                </Button>
               </div>
             )}
           </div>

@@ -1,0 +1,35 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.copy {
+  min-width: 0;
+}
+.copy h1 {
+  margin: 0 0 12px;
+  font-size: clamp(26px, 2.2vw, 32px);
+  font-weight: 600;
+  letter-spacing: -1px;
+}
+.copy p {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+@media (max-width: 1000px) {
+  .header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+}

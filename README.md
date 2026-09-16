@@ -6,7 +6,7 @@ Nesta versão, o usuário configura a identidade da marca, descreve um post no c
 
 ## Interface responsiva — SCRUM-49
 
-Login, marca, chat, agenda e financeiro foram reformulados como um workspace escuro, inspirado nas referências de navegação enviadas pelo usuário. Tokens em `src/styles/tokens.css` centralizam cores, superfícies e bordas. Inter é empacotada localmente, com subconjunto latino. Cabeçalhos compartilham `src/styles/page.module.css`; componentes continuam organizados por funcionalidade.
+Login, marca, chat, agenda e financeiro foram reformulados como um workspace escuro, inspirado nas referências de navegação enviadas pelo usuário. Tokens em `src/styles/tokens.css` centralizam cores, superfícies e bordas. Inter é empacotada localmente, com subconjunto latino. Cabeçalhos usam o componente `src/components/ui/PageHeader.tsx`; componentes continuam organizados por funcionalidade.
 
 Melhorias de uso:
 
@@ -20,7 +20,13 @@ Capturas em `docs/screenshots/responsive` cobrem 320, 390, 768, 1024 e 1440px co
 
 ![Workspace financeiro](docs/screenshots/responsive/finance-1440.png)
 
-Para repetir: execute `npx playwright install chromium`, inicie o Vite na porta 5173 e rode `npm run test:responsive`. Alternativamente, configure `PLAYWRIGHT_CHANNEL=msedge` para usar o Edge instalado. A checagem cobre 25 combinações, erros de execução, overflow, navegação mobile, busca financeira e fechamento do diálogo por Escape. Use `npm test` para os 25 testes de unidade/integração e o contrato SQL. Os testes visuais usam uma marca e registros fictícios, não contas reais.
+Para repetir: execute `npx playwright install chromium`, inicie o Vite na porta 5173 e rode `npm run test:responsive`. Alternativamente, configure `PLAYWRIGHT_CHANNEL=msedge` para usar o Edge instalado. A checagem cobre 25 combinações, erros de execução, overflow, navegação mobile, busca financeira e fechamento do diálogo por Escape. Use `npm test` para os 27 testes de unidade/integração e o contrato SQL. Os testes visuais usam uma marca e registros fictícios, não contas reais.
+
+### Refinamento com frontend-design — SCRUM-50
+
+A skill orientou a redução de rótulos decorativos, a apresentação do planejamento editorial no login e a revisão do conteúdo no próprio chat. Após gerar, edite título, legenda e data em “Revise antes de salvar”. A agenda abre no mês escolhido e confirma a inclusão do rascunho; salvar não publica em redes sociais. No financeiro, dados ainda não recebidos não aparecem como saldo zero confirmado.
+
+O [plano e a crítica de design](docs/frontend-design-review.md) registram as decisões antes da implementação. Mantidos o estilo escuro solicitado, os serviços existentes e a IA demonstrativa; nenhuma ferramenta do Figma foi utilizada nesta revisão.
 
 ## Instalação
 

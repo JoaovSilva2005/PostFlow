@@ -99,7 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           aria-label="Início do PostFlow"
           onClick={closeMenu}
         >
-          <Command size={22} /> PostFlow<span>workspace</span>
+          <Command size={22} /> PostFlow
         </NavLink>
         <div className={styles.workspaceIdentity}>
           <span className={styles.avatar}>
@@ -181,7 +181,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span>Workspace</span>
           <ChevronRight size={14} />
           <strong>{currentPage}</strong>
-          <span className={styles.environment}>PostFlow / v0.1</span>
         </div>
         <main id="main-content" tabIndex={-1} className={styles.main}>
           {children}

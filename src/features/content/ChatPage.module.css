@@ -1,6 +1,3 @@
-.pageHeader {
-  composes: header from '../../styles/page.module.css';
-}
 .aiStatus {
   display: flex;
   align-items: center;
@@ -30,6 +27,40 @@
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-surface);
+}
+.reviewForm {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+}
+.reviewForm h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+.reviewCaption {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: #d7dadd;
+}
+.reviewCaption textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #35393c;
+  border-radius: 6px;
+  background: #111314;
+  color: var(--color-text);
+  line-height: 1.7;
+}
+.reviewHint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 .chatCard {
   display: flex;
@@ -296,11 +327,13 @@
   font-size: 10px;
 }
 .generatedImage {
+  width: 100%;
+  min-width: 0;
   position: relative;
   display: flex;
   align-items: center;
-  aspect-ratio: 1/1;
-  min-height: 220px;
+  aspect-ratio: 16/9;
+  min-height: 180px;
   padding: 28px;
   border-radius: 6px;
   color: white;
@@ -324,8 +357,8 @@
   position: absolute;
   left: 28px;
   bottom: 18px;
-  font-size: 9px;
-  letter-spacing: 2px;
+  font-size: 11px;
+  letter-spacing: 0;
 }
 .socialPost h3 {
   font-size: 13px;
@@ -340,26 +373,6 @@
   color: var(--color-primary);
   font-size: 11px;
   overflow-wrap: anywhere;
-}
-.scheduleInfo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 0;
-  color: var(--color-muted);
-}
-.scheduleInfo > div {
-  display: grid;
-  gap: 4px;
-}
-.scheduleInfo span {
-  font-size: 9px;
-  letter-spacing: 1px;
-}
-.scheduleInfo strong {
-  color: var(--color-text);
-  font-size: 12px;
-  font-weight: 500;
 }
 .emptyPreview {
   display: grid;

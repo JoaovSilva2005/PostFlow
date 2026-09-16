@@ -40,15 +40,6 @@
 .logo > svg {
   color: var(--color-primary);
 }
-.logo > span {
-  margin-left: auto;
-  font-size: 9px;
-  letter-spacing: 0.03em;
-  color: var(--color-muted);
-  border: 1px solid var(--color-border);
-  padding: 2px 4px;
-  border-radius: 4px;
-}
 .workspaceIdentity {
   display: flex;
   align-items: center;
@@ -245,11 +236,6 @@
   font-weight: 400;
   color: var(--color-text);
 }
-.environment {
-  margin-left: auto;
-  font-family: monospace;
-  font-size: 11px;
-}
 .main {
   max-width: 1512px;
   margin: auto;
@@ -318,9 +304,6 @@
   .topbar {
     height: 44px;
     padding: 0 20px;
-  }
-  .environment {
-    display: none;
   }
   .main {
     padding: 28px 20px 48px;

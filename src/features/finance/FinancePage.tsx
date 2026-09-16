@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
+import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import { SelectField, TextField } from '../../components/ui/FormField'
@@ -65,6 +66,7 @@ function formatDate(value: string) {
 export function FinancePage() {
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([])
   const [summary, setSummary] = useState(emptySummary)
+  const [hasLoadedSummary, setHasLoadedSummary] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -96,6 +98,7 @@ export function FinancePage() {
       ])
       setTransactions(loadedTransactions)
       setSummary(loadedSummary)
+      setHasLoadedSummary(true)
       const health = await financialApi.health()
       setStorageMode(health.storage === 'demo' ? 'demo' : 'supabase')
     } catch (loadError) {
@@ -206,12 +209,10 @@ export function FinancePage() {
 
   return (
     <AppShell>
-      <header className={styles.header}>
-        <div>
-          <span className={styles.eyebrow}>GESTÃO DO WORKSPACE</span>
-          <h1>Controle financeiro</h1>
-          <p>Acompanhe entradas, saídas, saldo atual e valores pendentes.</p>
-        </div>
+      <PageHeader
+        title="Controle financeiro"
+        description="Acompanhe receitas, despesas e o que ainda está pendente."
+      >
         <div
           className={`${styles.apiBadge} ${error ? styles.apiError : ''} ${storageMode === 'demo' ? styles.apiDemo : ''}`}
         >
@@ -219,12 +220,12 @@ export function FinancePage() {
           {loading
             ? 'Sincronizando...'
             : error
-              ? 'API sem conexão'
+              ? 'Requer atenção'
               : storageMode === 'demo'
-                ? 'API demonstração'
+                ? 'Dados demonstrativos'
                 : 'Dados sincronizados'}
         </div>
-      </header>
+      </PageHeader>
 
       {error ? (
         <div className={styles.error} role="alert">
@@ -241,32 +242,52 @@ export function FinancePage() {
             <ArrowUpRight size={20} />
           </div>
           <span>Receitas pagas</span>
-          <strong>{currency(summary.paidIncome)}</strong>
+          <strong>
+            {loading
+              ? '…'
+              : hasLoadedSummary
+                ? currency(summary.paidIncome)
+                : '—'}
+          </strong>
         </article>
         <article className={styles.summaryCard}>
           <div className={`${styles.icon} ${styles.expense}`}>
             <ArrowDownRight size={20} />
           </div>
           <span>Despesas pagas</span>
-          <strong>{currency(summary.paidExpenses)}</strong>
+          <strong>
+            {loading
+              ? '…'
+              : hasLoadedSummary
+                ? currency(summary.paidExpenses)
+                : '—'}
+          </strong>
         </article>
         <article className={`${styles.summaryCard} ${styles.balanceCard}`}>
           <div className={styles.icon}>
             <WalletCards size={20} />
           </div>
           <span>Saldo atual</span>
-          <strong>{currency(summary.balance)}</strong>
+          <strong>
+            {loading ? '…' : hasLoadedSummary ? currency(summary.balance) : '—'}
+          </strong>
         </article>
         <article className={styles.summaryCard}>
           <div className={`${styles.icon} ${styles.pending}`}>
             <Clock3 size={20} />
           </div>
           <span>Pendências</span>
-          <strong>{summary.pendingCount}</strong>
-          <small>
-            +{currency(summary.pendingIncome)} / -
-            {currency(summary.pendingExpenses)}
-          </small>
+          <strong>
+            {loading ? '…' : hasLoadedSummary ? summary.pendingCount : '—'}
+          </strong>
+          {hasLoadedSummary && !loading ? (
+            <small>
+              +{currency(summary.pendingIncome)} / -
+              {currency(summary.pendingExpenses)}
+            </small>
+          ) : (
+            <small>Aguardando dados</small>
+          )}
         </article>
       </section>
 
@@ -274,10 +295,15 @@ export function FinancePage() {
         <section className={styles.tableCard}>
           <div className={styles.sectionTitle}>
             <div>
-              <span>HISTÓRICO</span>
               <h2>Entradas e saídas</h2>
             </div>
-            <small>{transactions.length} lançamentos</small>
+            <small>
+              {loading
+                ? 'Carregando'
+                : hasLoadedSummary
+                  ? `${transactions.length} lançamentos`
+                  : 'Sem dados'}
+            </small>
           </div>
 
           <div className={styles.filters}>
@@ -300,7 +326,9 @@ export function FinancePage() {
           </div>
 
           {loading ? (
-            <div className={styles.empty}>Carregando dados da API...</div>
+            <div className={styles.empty} role="status">
+              Carregando lançamentos...
+            </div>
           ) : filteredTransactions.length === 0 ? (
             <div className={styles.empty}>
               {error
@@ -385,7 +413,6 @@ export function FinancePage() {
         <section id="transaction-form" className={styles.formCard}>
           <div className={styles.sectionTitle}>
             <div>
-              <span>{editingId ? 'EDITANDO' : 'NOVO LANÇAMENTO'}</span>
               <h2>
                 {editingId
                   ? 'Atualizar registro'

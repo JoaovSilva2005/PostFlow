@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Check, Palette, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
+import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import { SelectField, TextField } from '../../components/ui/FormField'
@@ -76,16 +77,10 @@ export function BrandPage() {
 
   return (
     <AppShell>
-      <header className={styles.pageHeader}>
-        <div>
-          <p>CONFIGURAÇÕES</p>
-          <h1>Configuração da marca</h1>
-          <span>Defina a identidade que orientará os conteúdos gerados.</span>
-        </div>
-        <div className={styles.step}>
-          PASSO 1 DE 3 <strong>Marca</strong>
-        </div>
-      </header>
+      <PageHeader
+        title="Configuração da marca"
+        description="Defina como sua marca aparece e conversa com o público."
+      />
 
       <div className={styles.columns}>
         <form className={styles.formCard} onSubmit={handleSubmit}>
@@ -175,7 +170,7 @@ export function BrandPage() {
           className={styles.previewCard}
           aria-label="Prévia da identidade da marca"
         >
-          <p className={styles.previewLabel}>PRÉVIA DA MARCA</p>
+          <p className={styles.previewLabel}>Sua identidade, em contexto</p>
           <div
             className={styles.brandMark}
             style={{ background: form.primaryColor }}

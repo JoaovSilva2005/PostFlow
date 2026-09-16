@@ -88,6 +88,19 @@ describe('FinancePage', () => {
     })
   })
 
+  it('não apresenta saldo zero como confirmado quando o carregamento falha', async () => {
+    vi.mocked(financialApi.list).mockRejectedValue(
+      new Error('Conexão indisponível'),
+    )
+    authenticateDemo()
+    renderApp('/finance')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Conexão indisponível',
+    )
+    expect(screen.queryByText('R$ 0,00')).not.toBeInTheDocument()
+    expect(screen.getAllByText('—')).toHaveLength(4)
+  })
+
   it('filtra por descrição e status sem alterar os totais financeiros', async () => {
     authenticateDemo()
     const user = userEvent.setup()

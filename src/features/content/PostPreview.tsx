@@ -1,27 +1,34 @@
 import { CalendarPlus, Image } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
+import { TextField } from '../../components/ui/FormField'
 import type { PostDraft } from '../../domain/models'
 import styles from './ChatPage.module.css'
 
 interface PostPreviewProps {
+  error?: string
   brandName?: string
   draft: PostDraft | null
   isAdding: boolean
   onAdd: () => Promise<void>
+  onChange: (draft: PostDraft) => void
 }
 
 interface GeneratedPostProps {
+  error?: string
   brandName?: string
   draft: PostDraft
   isAdding: boolean
   onAdd: () => Promise<void>
+  onChange: (draft: PostDraft) => void
 }
 
 export function PostPreview({
+  error,
   brandName,
   draft,
   isAdding,
   onAdd,
+  onChange,
 }: PostPreviewProps) {
   return (
     <aside
@@ -31,18 +38,19 @@ export function PostPreview({
     >
       <div className={styles.previewHeader}>
         <div>
-          <p>PRÉVIA DO POST</p>
           <h2>{draft ? 'Rascunho gerado' : 'Aguardando conteúdo'}</h2>
         </div>
-        {draft ? <span>RASCUNHO</span> : null}
+        {draft ? <span>Não publicado</span> : null}
       </div>
 
       {draft ? (
         <GeneratedPost
+          error={error}
           brandName={brandName}
           draft={draft}
           isAdding={isAdding}
           onAdd={onAdd}
+          onChange={onChange}
         />
       ) : (
         <EmptyPreview />
@@ -52,10 +60,12 @@ export function PostPreview({
 }
 
 function GeneratedPost({
+  error,
   brandName,
   draft,
   isAdding,
   onAdd,
+  onChange,
 }: GeneratedPostProps) {
   return (
     <>
@@ -85,7 +95,7 @@ function GeneratedPost({
               <span key={line}>{line}</span>
             ))}
           </strong>
-          <small>POSTFLOW CREATIVE</small>
+          <small>Prévia demonstrativa</small>
         </div>
 
         <h3>{draft.title}</h3>
@@ -93,23 +103,57 @@ function GeneratedPost({
         <div className={styles.hashtags}>{draft.hashtags.join(' ')}</div>
       </div>
 
-      <div className={styles.scheduleInfo}>
-        <CalendarPlus size={16} />
-        <div>
-          <span>DATA SUGERIDA</span>
-          <strong>
-            {new Intl.DateTimeFormat('pt-BR', {
-              dateStyle: 'long',
-              timeZone: 'UTC',
-            }).format(new Date(`${draft.date}T12:00:00Z`))}
-          </strong>
-        </div>
-      </div>
-
-      <Button fullWidth type="button" onClick={onAdd} disabled={isAdding}>
-        <CalendarPlus size={17} />
-        {isAdding ? 'Salvando...' : 'Adicionar à agenda'}
-      </Button>
+      <form
+        className={styles.reviewForm}
+        onSubmit={(event) => {
+          event.preventDefault()
+          void onAdd()
+        }}
+      >
+        <h3>Revise antes de salvar</h3>
+        <TextField
+          label="Título do post"
+          value={draft.title}
+          required
+          maxLength={160}
+          disabled={isAdding}
+          onChange={(event) =>
+            onChange({ ...draft, title: event.target.value })
+          }
+        />
+        <label className={styles.reviewCaption}>
+          <span>Legenda do post</span>
+          <textarea
+            value={draft.caption}
+            required
+            rows={4}
+            disabled={isAdding}
+            onChange={(event) =>
+              onChange({ ...draft, caption: event.target.value })
+            }
+          />
+        </label>
+        <TextField
+          label="Data do post"
+          type="date"
+          value={draft.date}
+          required
+          disabled={isAdding}
+          onChange={(event) => onChange({ ...draft, date: event.target.value })}
+        />
+        {error ? (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        ) : null}
+        <Button fullWidth type="submit" disabled={isAdding}>
+          <CalendarPlus size={17} />
+          {isAdding ? 'Salvando...' : 'Adicionar à agenda'}
+        </Button>
+        <p className={styles.reviewHint}>
+          Salvo como rascunho. Você ainda poderá editar na agenda.
+        </p>
+      </form>
     </>
   )
 }

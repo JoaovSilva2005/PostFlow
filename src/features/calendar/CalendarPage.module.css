@@ -1,11 +1,16 @@
-.pageHeader {
-  composes: header from '../../styles/page.module.css';
-}
 .calendarCard {
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-surface);
+}
+.savedNotice {
+  border-left: 2px solid var(--color-primary);
+  padding: 12px 16px;
+  margin: 0 0 24px;
+  background: #1b2b22;
+  color: #b6e3c8;
+  font-size: 13px;
 }
 .calendarToolbar {
   display: flex;

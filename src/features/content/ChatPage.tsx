@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AtSign, Check, LoaderCircle, Send, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
+import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import type { PostDraft } from '../../domain/models'
 import { MockAiService } from './mockAiService'
@@ -31,6 +32,13 @@ export function ChatPage() {
   const [isAdding, setIsAdding] = useState(false)
   const [draft, setDraft] = useState<PostDraft | null>(null)
   const [error, setError] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const messagesRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const messages = messagesRef.current
+    if (messages) messages.scrollTop = messages.scrollHeight
+  }, [draft?.id, isGenerating])
 
   async function handleGenerate(event: FormEvent) {
     event.preventDefault()
@@ -43,6 +51,8 @@ export function ChatPage() {
 
     setError('')
     setSubmittedPrompt(normalizedPrompt)
+    setSaveError('')
+    setDraft(null)
     setIsGenerating(true)
 
     try {
@@ -64,14 +74,26 @@ export function ChatPage() {
       return
     }
 
-    setError('')
+    if (!draft.title.trim() || !draft.caption.trim() || !draft.date) {
+      setSaveError('Preencha o título, a legenda e a data antes de salvar.')
+      return
+    }
+    setSaveError('')
     setIsAdding(true)
 
     try {
-      await addDraft(draft)
-      navigate('/calendar')
+      await addDraft({
+        ...draft,
+        title: draft.title.trim(),
+        caption: draft.caption.trim(),
+      })
+      navigate('/calendar', {
+        state: { draftDate: draft.date, createdDraft: true },
+      })
     } catch {
-      setError('Não foi possível salvar o post no Supabase.')
+      setSaveError(
+        'O rascunho não foi salvo. Confira sua conexão e tente novamente; seus ajustes continuam aqui.',
+      )
     } finally {
       setIsAdding(false)
     }
@@ -79,18 +101,14 @@ export function ChatPage() {
 
   return (
     <AppShell>
-      <header className={styles.pageHeader}>
-        <div>
-          <p>ASSISTENTE CRIATIVO</p>
-          <h1>Chat e geração de posts</h1>
-          <span>
-            Conte o que precisa. O PostFlow prepara um rascunho para sua agenda.
-          </span>
-        </div>
+      <PageHeader
+        title="Chat e geração de posts"
+        description="Descreva sua ideia, revise o conteúdo e escolha quando usá-lo."
+      >
         <div className={styles.aiStatus}>
-          <span /> IA simulada disponível
+          <span /> Geração demonstrativa
         </div>
-      </header>
+      </PageHeader>
 
       <div className={styles.workspace}>
         <section
@@ -107,7 +125,7 @@ export function ChatPage() {
             </div>
           </div>
 
-          <div className={styles.messages} aria-live="polite">
+          <div ref={messagesRef} className={styles.messages} aria-live="polite">
             <div className={styles.assistantMessage}>
               <span>
                 <Sparkles size={13} />
@@ -180,7 +198,7 @@ export function ChatPage() {
               />
               <button
                 type="submit"
-                disabled={isGenerating}
+                disabled={isGenerating || isAdding}
                 aria-label="Gerar post"
               >
                 {isGenerating ? (
@@ -202,10 +220,15 @@ export function ChatPage() {
         </section>
 
         <PostPreview
+          error={saveError}
           brandName={brand?.name}
           draft={draft}
           isAdding={isAdding}
           onAdd={handleAddToCalendar}
+          onChange={(nextDraft) => {
+            setDraft(nextDraft)
+            setSaveError('')
+          }}
         />
       </div>
     </AppShell>

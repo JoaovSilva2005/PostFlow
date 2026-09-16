@@ -1,17 +1,3 @@
-.pageHeader {
-  composes: header from '../../styles/page.module.css';
-}
-.step {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 10px;
-  color: var(--color-muted);
-  white-space: nowrap;
-}
 .step strong {
   color: var(--color-primary);
   font-weight: 500;
@@ -140,9 +126,9 @@
   background: linear-gradient(160deg, #202826 0%, #171819 45%);
 }
 .previewLabel {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--color-muted);
-  letter-spacing: 1.4px;
+  letter-spacing: 0;
   padding-bottom: 18px;
   margin-bottom: 32px;
   border-bottom: 1px solid var(--color-border);
@@ -231,8 +217,5 @@
   }
   .formGrid {
     grid-template-columns: 1fr;
-  }
-  .step {
-    display: none;
   }
 }

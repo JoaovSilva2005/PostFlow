@@ -1,8 +1,38 @@
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
 
 describe('ChatPage', () => {
+  it('salva os ajustes da revisão e abre a agenda no mês escolhido', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const { repository } = renderApp('/chat')
+    await user.type(
+      await screen.findByLabelText('Pedido para a IA'),
+      'Novidade da marca',
+    )
+    await user.click(screen.getByRole('button', { name: 'Gerar post' }))
+    const title = await screen.findByLabelText('Título do post')
+    await user.clear(title)
+    await user.type(title, 'Lançamento de outubro')
+    const caption = screen.getByLabelText('Legenda do post')
+    await user.clear(caption)
+    await user.type(caption, 'Conheça nossa novidade.')
+    fireEvent.change(screen.getByLabelText('Data do post'), {
+      target: { value: '2026-10-10' },
+    })
+    await user.click(screen.getByRole('button', { name: 'Adicionar à agenda' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Outubro 2026' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Rascunho adicionado')
+    expect(repository.snapshot().drafts[0]).toMatchObject({
+      title: 'Lançamento de outubro',
+      caption: 'Conheça nossa novidade.',
+      date: '2026-10-10',
+    })
+  })
+
   it('exibe o carregamento, gera uma prévia e adiciona o rascunho à agenda', async () => {
     authenticateDemo()
     const user = userEvent.setup()

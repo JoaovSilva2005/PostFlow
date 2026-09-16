@@ -5,6 +5,7 @@ import { useApp } from '../../app/AppContext'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/FormField'
 import styles from './LoginPage.module.css'
+import { EditorialSample } from './EditorialSample'
 
 interface FormErrors {
   displayName?: string
@@ -13,12 +14,6 @@ interface FormErrors {
 }
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
-
-const LOGIN_FLOW_STEPS = [
-  'Configure sua marca',
-  'Crie com inteligência artificial',
-  'Organize tudo na agenda',
-]
 
 function validateCredentials(
   email: string,
@@ -152,32 +147,23 @@ export function LoginPage() {
           PostFlow<span>.</span>
         </div>
         <div className={styles.heroContent}>
-          <div className={styles.badge}>
-            <Sparkles size={15} /> IA + CALENDÁRIO
-          </div>
           <h1>
             Seu conteúdo,
             <br />
             no ritmo certo.
           </h1>
           <p>
-            Planeje, crie e organize os conteúdos da sua marca em um único fluxo
-            inteligente.
+            Transforme ideias em posts e organize a semana da sua marca, com
+            espaço para revisar cada detalhe.
           </p>
-          {LOGIN_FLOW_STEPS.map((step, index) => (
-            <div className={styles.flowLine} key={step}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <div />
-              <span>{step}</span>
-            </div>
-          ))}
+          <EditorialSample />
         </div>
         <p className={styles.heroFooter}>
           <CalendarDays size={16} /> Projeto acadêmico · Multidisciplinar VI
         </p>
       </section>
 
-      <section className={styles.loginArea}>
+      <main className={styles.loginArea}>
         <form className={styles.card} onSubmit={handleSubmit} noValidate>
           <div className={styles.cardHeader}>
             <span className={styles.mark}>
@@ -241,7 +227,6 @@ export function LoginPage() {
 
           {mode === 'login' && (
             <div className={styles.formMeta}>
-              <span>Sessão segura</span>
               <button
                 type="button"
                 onClick={() => void handlePasswordRecovery()}
@@ -263,9 +248,6 @@ export function LoginPage() {
               {feedback.message}
             </p>
           )}
-          <p className={styles.securityNotice}>
-            Um espaço para planejar os próximos passos da sua marca.
-          </p>
           <p className={styles.signup}>
             {mode === 'login'
               ? 'Ainda não tem uma conta?'
@@ -278,7 +260,7 @@ export function LoginPage() {
         <p className={styles.areaFooter}>
           © 2026 PostFlow · Ambiente de demonstração
         </p>
-      </section>
+      </main>
     </div>
   )
 }
