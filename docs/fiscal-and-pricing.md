@@ -26,7 +26,7 @@ As receitas de `financial_transactions` são os pedidos/faturamentos de serviço
 
 Alíquota didática fixa de 6%, não informada pela professora e não representativa de um enquadramento legal. Imposto calculado por lançamento, em centavos, incluído no preço bruto. Valor após imposto = bruto − imposto; não é lucro. Imposto calculado não significa imposto recolhido: não criamos despesa paga automaticamente e não alteramos o saldo de caixa. O comprovante é uma visualização do registro atual, não um documento fiscal imutável nem prova de quitação quando o status está pendente.
 
-API fiscal autenticada; escrita segue papéis do financeiro. O módulo exige Supabase disponível e não retorna sucesso com persistência em memória. O workspace compartilhado acadêmico existente foi preservado; isolamento multitenant e emissão NFS-e real permanecem fora do escopo.
+API fiscal autenticada; escrita segue papéis do financeiro. Financeiro e fiscal compartilham o mesmo serviço e a mesma fonte ativa para impedir resultados divergentes. No modo demonstrativo, os dados são temporários e a interface informa esse estado. O workspace acadêmico existente foi preservado; isolamento multitenant, comprovante fiscal imutável e emissão NFS-e real permanecem próximos incrementos obrigatórios antes de uso comercial.
 
 ## Proposta comercial (pesquisa em 16/09/2026)
 

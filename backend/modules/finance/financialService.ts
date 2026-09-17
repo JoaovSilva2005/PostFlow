@@ -11,13 +11,14 @@ import type {
 export function calculateFinancialSummary(
   transactions: FinancialTransaction[],
 ): FinancialSummary {
-  return transactions.reduce<FinancialSummary>(
+  const cents = transactions.reduce(
     (summary, transaction) => {
+      const amount = Math.round(transaction.amount * 100)
       if (transaction.status === 'paid') {
         if (transaction.type === 'income') {
-          summary.paidIncome += transaction.amount
+          summary.paidIncome += amount
         } else {
-          summary.paidExpenses += transaction.amount
+          summary.paidExpenses += amount
         }
 
         summary.balance = summary.paidIncome - summary.paidExpenses
@@ -25,9 +26,9 @@ export function calculateFinancialSummary(
       }
 
       if (transaction.type === 'income') {
-        summary.pendingIncome += transaction.amount
+        summary.pendingIncome += amount
       } else {
-        summary.pendingExpenses += transaction.amount
+        summary.pendingExpenses += amount
       }
       summary.pendingCount += 1
 
@@ -42,6 +43,14 @@ export function calculateFinancialSummary(
       pendingCount: 0,
     },
   )
+  return {
+    paidIncome: cents.paidIncome / 100,
+    paidExpenses: cents.paidExpenses / 100,
+    balance: cents.balance / 100,
+    pendingIncome: cents.pendingIncome / 100,
+    pendingExpenses: cents.pendingExpenses / 100,
+    pendingCount: cents.pendingCount,
+  }
 }
 
 export class FinancialService {
@@ -67,8 +76,8 @@ export class FinancialService {
   }
 
   async update(id: string, input: UpdateFinancialTransactionInput) {
-    await this.requireTransaction(id)
-    const paidAt = this.paidAtFor(input.status)
+    const current = await this.requireTransaction(id)
+    const paidAt = this.paidAtFor(current, input.status)
     const updated = await this.repository.update(id, {
       ...input,
       ...(paidAt !== undefined && { paidAt }),
@@ -94,7 +103,11 @@ export class FinancialService {
     return transaction
   }
 
-  private paidAtFor(status?: FinancialTransactionStatus) {
+  private paidAtFor(
+    current: FinancialTransaction,
+    status?: FinancialTransactionStatus,
+  ) {
+    if (status === undefined || status === current.status) return undefined
     if (status === 'paid') return new Date().toISOString()
     if (status === 'pending') return null
     return undefined

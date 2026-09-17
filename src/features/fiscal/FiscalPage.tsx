@@ -59,8 +59,8 @@ export function FiscalPage() {
         <Link to="/finance">Abrir financeiro</Link>
       </PageHeader>
       <p className={styles.warning}>
-        Ambiente acadêmico: alíquota fixa de 6% para demonstração. Não emite
-        nota fiscal nem calcula tributos legais.
+        <strong>Simulação acadêmica.</strong> Alíquota fixa de 6% para
+        demonstração. Não emite nota fiscal nem calcula tributos legais.
       </p>
       <div className={styles.toolbar}>
         <label>
@@ -79,7 +79,7 @@ export function FiscalPage() {
           onClick={() => setRevision((value) => value + 1)}
           disabled={loading}
         >
-          <RefreshCw size={15} /> Atualizar
+          <RefreshCw size={15} /> Sincronizar
         </Button>
       </div>
       {notice && (
@@ -93,11 +93,17 @@ export function FiscalPage() {
           novamente.
         </p>
       )}
-      <section className={styles.summary} aria-label="Resumo fiscal">
+      <section
+        className={styles.summary}
+        aria-label="Resumo fiscal"
+        aria-busy={loading}
+      >
         {[
-          ['Receitas do período', report?.totals.gross],
-          ['Imposto calculado · 6%', report?.totals.tax],
-          ['Valor após imposto', report?.totals.net],
+          ['Vendas lançadas', report?.totals.gross],
+          ['Recebido', report?.totals.received],
+          ['A receber', report?.totals.pending],
+          ['Imposto estimado · 6%', report?.totals.tax],
+          ['Após imposto', report?.totals.net],
         ].map(([label, value]) => (
           <div key={String(label)}>
             <span>{label}</span>
@@ -120,7 +126,11 @@ export function FiscalPage() {
         <section className={styles.panel}>
           <div className={styles.sectionHeader}>
             <h2>Vendas e serviços</h2>
-            <span>{report ? `${report.sales.length} registros` : '—'}</span>
+            <span>
+              {report
+                ? `${report.sales.length} ${report.sales.length === 1 ? 'registro' : 'registros'}`
+                : '—'}
+            </span>
           </div>
           {loading ? (
             <p role="status">Carregando receitas...</p>
@@ -252,7 +262,10 @@ export function FiscalPage() {
           </button>
         </section>
       )}
-      <PlanEconomics />
+      <div className={styles.internalSection}>
+        <span>Simulação interna</span>
+        <PlanEconomics />
+      </div>
     </AppShell>
   )
 }

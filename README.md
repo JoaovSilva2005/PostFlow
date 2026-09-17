@@ -20,7 +20,7 @@ Capturas em `docs/screenshots/responsive` cobrem 320, 390, 768, 1024 e 1440px co
 
 ![Workspace financeiro](docs/screenshots/responsive/finance-1440.png)
 
-Para repetir: execute `npx playwright install chromium`, inicie o Vite na porta 5173 e rode `npm run test:responsive`. Alternativamente, configure `PLAYWRIGHT_CHANNEL=msedge` para usar o Edge instalado. A checagem cobre 25 combinações, erros de execução, overflow, navegação mobile, busca financeira e fechamento do diálogo por Escape. Use `npm test` para os 27 testes de unidade/integração e o contrato SQL. Os testes visuais usam uma marca e registros fictícios, não contas reais.
+Para repetir: execute `npx playwright install chromium`, inicie o Vite na porta 5173 e rode `npm run test:responsive`. Alternativamente, configure `PLAYWRIGHT_CHANNEL=chrome` ou `PLAYWRIGHT_CHANNEL=msedge` para usar um navegador instalado. A checagem cobre 30 combinações, erros de execução, overflow, navegação mobile, busca financeira e fechamento do diálogo por Escape. Use `npm test` para os 46 testes de unidade/integração e o contrato SQL. Os testes visuais usam uma marca e registros fictícios, não contas reais.
 
 ### Refinamento com frontend-design — SCRUM-50
 
@@ -35,7 +35,7 @@ O [plano e a crítica de design](docs/frontend-design-review.md) registram as de
 - `/chat`: conversa com histórico da sessão, refinamento do rascunho, prévia/edição, cancelamento, retry e revisão antes de salvar. [Contrato de geração e limites](docs/content-studio.md). A demonstração não gera imagens por IA; integração real de provedor ainda pendente.
 - `/fiscal`: receitas do financeiro com imposto didático fixo de 6%, bruto/líquido, filtro por vencimento, cadastro de venda e comprovante imprimível **sem validade fiscal**. O mesmo registro alimenta ambos os módulos; não há duplicação de receita nem baixa automática de tributo.
 - Plano proposto: **R$ 79,90/mês**, 100 gerações de texto e 30 de imagem. Simulador de custo/margem e fontes em [Fiscal e precificação](docs/fiscal-and-pricing.md). Assinatura, APIs pagas e quotas não estão ativas.
-- API: `GET /api/fiscal/report?period=AAAA-MM`, `GET /api/fiscal/receipts/:id`, `POST /api/fiscal/sales`. Leitura autenticada; escrita para owner/admin/editor. O fiscal não usa fallback em memória.
+- API: `GET /api/fiscal/report?period=AAAA-MM`, `GET /api/fiscal/receipts/:id`, `POST /api/fiscal/sales`. Leitura autenticada; escrita para owner/admin/editor. Financeiro e fiscal compartilham a mesma instância de serviço e o mesmo modo de armazenamento, evitando dados divergentes durante uma demonstração.
 
 As decisões de layout foram orientadas pela skill `frontend-design`, sem Figma. Testes unitários/integração e capturas isoladas não substituem a validação do banco real. Para usar o fiscal, a tabela `financial_transactions` da migração financeira precisa existir no Supabase configurado.
 

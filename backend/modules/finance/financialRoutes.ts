@@ -3,14 +3,25 @@ import { z } from 'zod'
 import { HttpError } from '../../shared/HttpError.js'
 import type { FinancialService } from './financialService.js'
 
-const transactionSchema = z.object({
-  type: z.enum(['income', 'expense']),
-  category: z.string().trim().min(2, 'Informe uma categoria válida.'),
-  description: z.string().trim().min(3, 'Informe uma descrição válida.'),
-  amount: z.number().positive('O valor deve ser maior que zero.'),
-  dueDate: z.iso.date('Informe uma data válida no formato AAAA-MM-DD.'),
-  status: z.enum(['pending', 'paid']).default('pending'),
-})
+const moneySchema = z
+  .number()
+  .positive('O valor deve ser maior que zero.')
+  .max(999999999.99, 'O valor excede o limite permitido.')
+  .refine(
+    (value) => Math.abs(value * 100 - Math.round(value * 100)) < 0.00001,
+    'Use no máximo duas casas decimais.',
+  )
+
+const transactionSchema = z
+  .object({
+    type: z.enum(['income', 'expense']),
+    category: z.string().trim().min(2, 'Informe uma categoria válida.'),
+    description: z.string().trim().min(3, 'Informe uma descrição válida.'),
+    amount: moneySchema,
+    dueDate: z.iso.date('Informe uma data válida no formato AAAA-MM-DD.'),
+    status: z.enum(['pending', 'paid']).default('pending'),
+  })
+  .strict()
 
 const updateTransactionSchema = transactionSchema
   .partial()

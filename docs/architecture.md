@@ -33,6 +33,7 @@ PostFlow/
 Login React → authApi → AuthRoutes → Supabase Auth → cookie HttpOnly
 Tela financeira → financialApi → middleware de autenticação
                 → FinancialService → Repository → Supabase/PostgreSQL
+Tela fiscal     → fiscalApi ────────┘
 ```
 
 - A **tela** coleta os dados e apresenta o resultado.
@@ -55,6 +56,8 @@ Cada pasta em `src/features` reúne a tela, o estilo, o teste e os auxiliares es
 | Agenda         | `src/features/calendar` | Data API do Supabase      | `post_drafts`                                         |
 | Financeiro     | `src/features/finance`  | `backend/modules/finance` | `financial_transactions`                              |
 | Fiscal         | `src/features/fiscal`   | `backend/modules/fiscal`  | mesma `financial_transactions`, sem duplicar receitas |
+
+Financeiro e Fiscal recebem a mesma instância de `FinancialService`. Assim, leitura, escrita e eventual modo demonstrativo permanecem coerentes entre as duas telas. Os totais financeiros são calculados em centavos e a data de pagamento só muda quando ocorre uma transição real entre pendente e pago.
 
 Regras puras em `src/domain/fiscal.ts` são compartilhadas entre API e simulação da tela; o servidor sempre recalcula impostos, sem confiar em valores enviados pelo cliente. O comprovante representa o registro atual e não tem validade fiscal. Consulte `docs/fiscal-and-pricing.md` para hipóteses, fontes e limites. O fluxo de IA está documentado em `docs/content-studio.md`.
 

@@ -67,4 +67,28 @@ describe('FinancialService', () => {
     expect(updated.status).toBe('paid')
     expect(updated.paidAt).not.toBeNull()
   })
+
+  it('preserva a data de pagamento ao editar um lançamento já pago', async () => {
+    const repository = new InMemoryFinancialRepository([paidIncome])
+    const service = new FinancialService(repository)
+
+    const updated = await service.update(paidIncome.id, {
+      description: 'Receita mensal atualizada',
+      status: 'paid',
+    })
+
+    expect(updated.paidAt).toBe(paidIncome.paidAt)
+  })
+
+  it('calcula os totais em centavos sem artefatos de ponto flutuante', async () => {
+    const repository = new InMemoryFinancialRepository([
+      transaction({ id: 'cent-1', amount: 0.1 }),
+      transaction({ id: 'cent-2', amount: 0.2 }),
+    ])
+
+    const summary = await new FinancialService(repository).summary()
+
+    expect(summary.paidIncome).toBe(0.3)
+    expect(summary.balance).toBe(0.3)
+  })
 })

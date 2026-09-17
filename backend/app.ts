@@ -42,6 +42,7 @@ export function createApp(options: AppOptions = {}) {
           createDemoFinancialTransactions(),
         ),
       )
+  const financialService = new FinancialService(financialRepository)
 
   app.use(
     cors({
@@ -73,10 +74,7 @@ export function createApp(options: AppOptions = {}) {
     '/api/fiscal',
     requireAuthentication(authService),
     createFiscalRouter(
-      new FinancialService(
-        options.financialRepository ??
-          new SupabaseFinancialTransactionRepository(supabase),
-      ),
+      financialService,
       requireRoles(authService, 'owner', 'admin', 'editor'),
     ),
   )
@@ -84,7 +82,7 @@ export function createApp(options: AppOptions = {}) {
   app.use(
     '/api/finance',
     createFinancialRouter(
-      new FinancialService(financialRepository),
+      financialService,
       requireRoles(authService, 'owner', 'admin', 'editor'),
     ),
   )

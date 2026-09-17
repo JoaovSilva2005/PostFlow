@@ -82,7 +82,7 @@ describe('FiscalPage', () => {
       'Banco indisponível',
     )
     const summary = screen.getByRole('region', { name: 'Resumo fiscal' })
-    expect(within(summary).getAllByText('—')).toHaveLength(3)
+    expect(within(summary).getAllByText('—')).toHaveLength(5)
   })
   it('recalcula a proposta sem alterar a mensalidade da venda', async () => {
     const user = userEvent.setup()

@@ -76,6 +76,8 @@ export function FinancePage() {
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const filteredTransactions = transactions.filter((transaction) => {
@@ -137,8 +139,10 @@ export function FinancePage() {
     try {
       if (editingId) {
         await financialApi.update(editingId, form)
+        setNotice('Lançamento atualizado.')
       } else {
         await financialApi.create(form)
+        setNotice('Lançamento adicionado ao financeiro.')
       }
       resetForm()
       await loadFinance()
@@ -173,10 +177,14 @@ export function FinancePage() {
 
   async function toggleStatus(transaction: FinancialTransaction) {
     setError(null)
+    setUpdatingId(transaction.id)
     try {
-      await financialApi.updateStatus(
-        transaction.id,
-        transaction.status === 'paid' ? 'pending' : 'paid',
+      const nextStatus = transaction.status === 'paid' ? 'pending' : 'paid'
+      await financialApi.updateStatus(transaction.id, nextStatus)
+      setNotice(
+        nextStatus === 'paid'
+          ? 'Lançamento marcado como pago.'
+          : 'Lançamento marcado como pendente.',
       )
       await loadFinance()
     } catch (statusError) {
@@ -185,6 +193,8 @@ export function FinancePage() {
           ? statusError.message
           : 'Não foi possível alterar o status.',
       )
+    } finally {
+      setUpdatingId(null)
     }
   }
 
@@ -197,6 +207,7 @@ export function FinancePage() {
     setError(null)
     try {
       await financialApi.delete(transaction.id)
+      setNotice('Lançamento excluído.')
       if (editingId === transaction.id) resetForm()
       await loadFinance()
     } catch (deleteError) {
@@ -214,24 +225,30 @@ export function FinancePage() {
         title="Controle financeiro"
         description="Acompanhe receitas, despesas e o que ainda está pendente."
       >
-        <div
-          className={`${styles.apiBadge} ${error ? styles.apiError : ''} ${storageMode === 'demo' ? styles.apiDemo : ''}`}
-        >
-          <span />{' '}
-          {loading
-            ? 'Sincronizando...'
-            : error
-              ? 'Requer atenção'
-              : storageMode === 'demo'
-                ? 'Dados demonstrativos'
-                : 'Dados sincronizados'}
+        <div className={styles.headerActions}>
+          <Link className={styles.moduleLink} to="/fiscal">
+            Abrir fiscal
+          </Link>
+          <div
+            className={`${styles.apiBadge} ${error ? styles.apiError : ''} ${storageMode === 'demo' ? styles.apiDemo : ''}`}
+          >
+            <span />{' '}
+            {loading
+              ? 'Sincronizando...'
+              : error
+                ? 'Requer atenção'
+                : storageMode === 'demo'
+                  ? 'Dados demonstrativos'
+                  : 'Dados sincronizados'}
+          </div>
         </div>
       </PageHeader>
-      <p>
-        <Link to="/fiscal">
-          Ver impostos e comprovantes das receitas no módulo fiscal
-        </Link>
-      </p>
+
+      {notice ? (
+        <p className={styles.notice} role="status">
+          {notice}
+        </p>
+      ) : null}
 
       {error ? (
         <div className={styles.error} role="alert">
@@ -288,7 +305,7 @@ export function FinancePage() {
           </strong>
           {hasLoadedSummary && !loading ? (
             <small>
-              +{currency(summary.pendingIncome)} / -
+              A receber {currency(summary.pendingIncome)} · A pagar{' '}
               {currency(summary.pendingExpenses)}
             </small>
           ) : (
@@ -364,23 +381,31 @@ export function FinancePage() {
                         <strong>{transaction.description}</strong>
                         <span>{transaction.category}</span>
                       </td>
-                      <td>{formatDate(transaction.dueDate)}</td>
-                      <td>
+                      <td data-label="Vencimento">
+                        {formatDate(transaction.dueDate)}
+                      </td>
+                      <td data-label="Status">
                         <button
                           type="button"
                           className={`${styles.status} ${styles[transaction.status]}`}
                           onClick={() => void toggleStatus(transaction)}
-                          aria-label={`Alterar status de ${transaction.description}`}
+                          disabled={updatingId === transaction.id}
+                          aria-label={`Marcar ${transaction.description} como ${transaction.status === 'paid' ? 'pendente' : 'pago'}`}
                         >
                           {transaction.status === 'paid' ? (
                             <CheckCircle2 size={13} />
                           ) : (
                             <Clock3 size={13} />
                           )}
-                          {transaction.status === 'paid' ? 'Pago' : 'Pendente'}
+                          {updatingId === transaction.id
+                            ? 'Atualizando'
+                            : transaction.status === 'paid'
+                              ? 'Pago'
+                              : 'Pendente'}
                         </button>
                       </td>
                       <td
+                        data-label="Valor"
                         className={
                           transaction.type === 'income'
                             ? styles.positive

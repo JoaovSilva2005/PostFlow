@@ -83,4 +83,20 @@ describe('API financeira', () => {
     expect(response.status).toBe(400)
     expect(response.body.error).toContain('maior que zero')
   })
+
+  it('rejeita valores com mais de duas casas decimais', async () => {
+    const response = await authenticate(
+      request(testApp()).post('/api/finance/transactions'),
+    ).send({
+      type: 'income',
+      category: 'Assinaturas',
+      description: 'Plano mensal',
+      amount: 10.123,
+      dueDate: '2026-09-15',
+      status: 'pending',
+    })
+
+    expect(response.status).toBe(400)
+    expect(response.body.error).toContain('duas casas decimais')
+  })
 })

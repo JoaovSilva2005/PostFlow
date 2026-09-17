@@ -10,6 +10,34 @@
   color: #a1d8b7;
   font-size: 11px;
 }
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.moduleLink {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 11px;
+  text-decoration: none;
+}
+.moduleLink:hover {
+  border-color: #698976;
+  color: var(--color-primary);
+}
+.notice {
+  margin: 0 0 20px;
+  padding: 11px 14px;
+  border-left: 3px solid var(--color-primary);
+  background: #19271f;
+  color: #afe2c0;
+  font-size: 12px;
+}
 .apiBadge span {
   width: 6px;
   height: 6px;
@@ -169,8 +197,8 @@
 .actions button {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   background: #222729;
   border: 1px solid #384044;
   border-radius: 6px;
@@ -391,6 +419,13 @@
   .tableCard td:last-child {
     grid-column: 1/-1;
   }
+  .tableCard td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 5px;
+    color: var(--color-muted);
+    font-size: 10px;
+  }
   .tableCard td strong {
     overflow-wrap: anywhere;
   }
@@ -404,5 +439,14 @@
   .error {
     flex-direction: column;
     align-items: stretch;
+  }
+  .headerActions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .moduleLink,
+  .apiBadge {
+    justify-content: center;
   }
 }
