@@ -67,12 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       ]
     : []
   const navigationGroups = [
-    ...workspaceNavigation.map((group) => ({
-      ...group,
-      links: group.links.filter(
-        (link) => link.to !== '/billing' || currentWorkspace,
-      ),
-    })),
+    ...(currentWorkspace ? workspaceNavigation : []),
     ...adminNavigation,
   ]
   const currentPage = navigationGroups

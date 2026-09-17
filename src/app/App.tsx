@@ -17,7 +17,9 @@ export function App() {
       <Route
         path="/brand"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute
+            workspaceRoles={['owner', 'admin', 'editor', 'viewer']}
+          >
             <BrandPage />
           </ProtectedRoute>
         }
@@ -25,7 +27,9 @@ export function App() {
       <Route
         path="/chat"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute
+            workspaceRoles={['owner', 'admin', 'editor', 'viewer']}
+          >
             <ChatPage />
           </ProtectedRoute>
         }
@@ -33,7 +37,9 @@ export function App() {
       <Route
         path="/calendar"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute
+            workspaceRoles={['owner', 'admin', 'editor', 'viewer']}
+          >
             <CalendarPage />
           </ProtectedRoute>
         }
@@ -41,7 +47,9 @@ export function App() {
       <Route
         path="/billing"
         element={
-          <ProtectedRoute workspaceRoles={['owner', 'admin', 'editor', 'viewer']}>
+          <ProtectedRoute
+            workspaceRoles={['owner', 'admin', 'editor', 'viewer']}
+          >
             <BillingPage />
           </ProtectedRoute>
         }
@@ -49,7 +57,9 @@ export function App() {
       <Route
         path="/admin/finance"
         element={
-          <ProtectedRoute platformRoles={['platform_owner', 'finance_admin', 'support']}>
+          <ProtectedRoute
+            platformRoles={['platform_owner', 'finance_admin', 'support']}
+          >
             <FinancePage />
           </ProtectedRoute>
         }
@@ -57,7 +67,9 @@ export function App() {
       <Route
         path="/admin/fiscal"
         element={
-          <ProtectedRoute platformRoles={['platform_owner', 'finance_admin', 'support']}>
+          <ProtectedRoute
+            platformRoles={['platform_owner', 'finance_admin', 'support']}
+          >
             <FiscalPage />
           </ProtectedRoute>
         }
@@ -65,12 +77,17 @@ export function App() {
       <Route
         path="/admin/plans"
         element={
-          <ProtectedRoute platformRoles={['platform_owner', 'finance_admin', 'support']}>
+          <ProtectedRoute
+            platformRoles={['platform_owner', 'finance_admin', 'support']}
+          >
             <AdminPlansPage />
           </ProtectedRoute>
         }
       />
-      <Route path="/finance" element={<Navigate to="/admin/finance" replace />} />
+      <Route
+        path="/finance"
+        element={<Navigate to="/admin/finance" replace />}
+      />
       <Route path="/fiscal" element={<Navigate to="/admin/fiscal" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

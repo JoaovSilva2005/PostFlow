@@ -27,10 +27,13 @@ export const financialApi = {
       body: JSON.stringify(input),
     }),
   updateStatus: (id: string, status: FinancialTransactionStatus) =>
-    apiRequest<FinancialTransaction>(`/admin/finance/transactions/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    }),
+    apiRequest<FinancialTransaction>(
+      `/admin/finance/transactions/${id}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      },
+    ),
   delete: (id: string) =>
     apiRequest<void>(`/admin/finance/transactions/${id}`, { method: 'DELETE' }),
 }

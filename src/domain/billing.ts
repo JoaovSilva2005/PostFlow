@@ -48,7 +48,7 @@ export interface BillingInvoice {
 export interface BillingOverview {
   workspaceId: string
   demoMode: boolean
-  plan: BillingPlan
+  plan: BillingPlan | null
   subscription: SubscriptionSummary | null
   usage: UsageSummary
 }

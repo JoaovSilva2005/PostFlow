@@ -187,15 +187,17 @@ export function FiscalPage() {
             </p>
           )}
         </section>
-        {canWrite ? <SaleForm
-          onCreated={(sale) => {
-            setPeriod(sale.dueDate.slice(0, 7))
-            setRevision((value) => value + 1)
-            setNotice(
-              'Venda registrada no financeiro. O cálculo fiscal usa a mesma receita.',
-            )
-          }}
-        /> : (
+        {canWrite ? (
+          <SaleForm
+            onCreated={(sale) => {
+              setPeriod(sale.dueDate.slice(0, 7))
+              setRevision((value) => value + 1)
+              setNotice(
+                'Venda registrada no financeiro. O cálculo fiscal usa a mesma receita.',
+              )
+            }}
+          />
+        ) : (
           <section className={styles.panel} aria-label="Permissão de acesso">
             <h2>Acesso somente leitura</h2>
             <p className={styles.note}>

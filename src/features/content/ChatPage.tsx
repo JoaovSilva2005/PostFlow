@@ -52,7 +52,7 @@ export function ChatPage({
   service?: GenerationService
 }) {
   const navigate = useNavigate()
-  const { brand, addDraft } = useApp()
+  const { brand, currentWorkspace, addDraft } = useApp()
   const studio = useContentStudio(service)
   const [prompt, setPrompt] = useState('')
   const [platform, setPlatform] = useState<Platform>('Instagram')
@@ -88,6 +88,7 @@ export function ChatPage({
     setPromptError('')
     setSaveError('')
     void studio.generate({
+      workspaceId: currentWorkspace?.id,
       prompt: prompt.trim(),
       platform,
       date,

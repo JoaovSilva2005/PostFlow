@@ -3,7 +3,8 @@ export type FinancialTransactionStatus = 'pending' | 'paid'
 
 export interface FinancialTransaction {
   id: string
-  brandId: string
+  brandId: string | null
+  sourceType?: 'manual' | 'sale_service' | 'subscription_revenue'
   type: FinancialTransactionType
   category: string
   description: string

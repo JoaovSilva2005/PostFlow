@@ -12,6 +12,7 @@ export interface ConversationMessage {
   content: string
 }
 export interface ContentRequest {
+  workspaceId?: string
   prompt: string
   platform: Platform
   date: string
@@ -113,9 +114,11 @@ export const demoGenerationService: GenerationService = {
 export const apiGenerationService: GenerationService = {
   mode: 'api',
   async generate(request, signal) {
+    const { workspaceId, ...contentRequest } = request
     const result = await apiRequest<unknown>('/content/generate', {
       method: 'POST',
-      body: JSON.stringify(request),
+      body: JSON.stringify(contentRequest),
+      headers: workspaceId ? { 'X-Workspace-Id': workspaceId } : undefined,
       signal,
     })
     return draftSchema.parse(result)

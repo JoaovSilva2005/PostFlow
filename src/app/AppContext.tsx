@@ -186,7 +186,17 @@ export function AppProvider({
   useEffect(() => {
     let isActive = true
 
-    if (state.authStatus !== 'authenticated' || !state.currentWorkspace) {
+    if (state.authStatus !== 'authenticated') {
+      return () => {
+        isActive = false
+      }
+    }
+
+    if (!state.currentWorkspace) {
+      dispatch({
+        type: 'DATABASE_CONNECTED',
+        payload: { brand: null, drafts: [] },
+      })
       return () => {
         isActive = false
       }

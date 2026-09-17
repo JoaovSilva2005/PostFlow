@@ -3,11 +3,11 @@
 Aplicação demonstrável para planejar conteúdo de redes sociais com apoio de inteligência artificial. O projeto foi desenvolvido para o **Projeto Multidisciplinar VI** e possui frontend React, autenticação Supabase Auth, API Express e banco PostgreSQL hospedado no Supabase.
 
 > A integração de geração real está preparada em `POST /api/content/generate`.
-> Antes de receber dados reais de clientes, conclua o roteiro da
-> [auditoria de produção](docs/production-readiness-audit.md); o schema ativo
-> ainda contém políticas acadêmicas de demonstração.
+> Antes de receber dados reais de clientes, aplique as migrations em homologação,
+> execute o roteiro da [auditoria de produção](docs/production-readiness-audit.md)
+> e configure os membros internos da plataforma no servidor.
 
-Nesta versão, o usuário configura a identidade da marca, descreve um post no chat, revisa o conteúdo gerado e adiciona o rascunho a uma agenda mensal. O Épico 3 acrescenta uma API REST e o módulo financeiro para cadastrar receitas e despesas, controlar pagamentos e calcular o saldo atual.
+Nesta versão, o cliente configura a marca, gera e agenda conteúdo e acompanha a própria assinatura. Financeiro, Fiscal e economia dos planos formam um backoffice separado, protegido por papéis internos da plataforma.
 
 ## Interface responsiva — SCRUM-49
 
@@ -38,9 +38,11 @@ O [plano e a crítica de design](docs/frontend-design-review.md) registram as de
 ## Estúdio de conteúdo e fiscal — SCRUM-51 / SCRUM-52
 
 - `/chat`: conversa com histórico da sessão, refinamento do rascunho, prévia/edição, cancelamento, retry e revisão antes de salvar. [Contrato de geração e limites](docs/content-studio.md). A demonstração não gera imagens por IA; integração real de provedor ainda pendente.
-- `/fiscal`: receitas do financeiro com imposto didático fixo de 6%, bruto/líquido, filtro por vencimento, cadastro de venda e comprovante imprimível **sem validade fiscal**. O mesmo registro alimenta ambos os módulos; não há duplicação de receita nem baixa automática de tributo.
-- Plano proposto: **R$ 79,90/mês**, 100 gerações de texto e 30 de imagem. Simulador de custo/margem e fontes em [Fiscal e precificação](docs/fiscal-and-pricing.md). Assinatura, APIs pagas e quotas não estão ativas.
-- API: `GET /api/fiscal/report?period=AAAA-MM`, `GET /api/fiscal/receipts/:id`, `POST /api/fiscal/sales`. Leitura autenticada; escrita para owner/admin/editor. Financeiro e fiscal compartilham a mesma instância de serviço e o mesmo modo de armazenamento, evitando dados divergentes durante uma demonstração.
+- `/billing`: plano, consumo, faturas e comprovantes do workspace atual.
+- `/admin/fiscal`: receitas faturadas com imposto didático de 6%, bruto/líquido e comprovante **sem validade fiscal**.
+- `/admin/finance`: receitas, despesas, saldo, pendências e pagamentos internos do PostFlow.
+- `/admin/plans`: proposta de **R$ 79,90/mês**, franquias e simulador de economia. Fontes em [Fiscal e precificação](docs/fiscal-and-pricing.md).
+- O fluxo demonstrativo usa `PaymentProvider` e `FiscalProvider`; não cobra nem emite NFS-e real sem adapters e credenciais próprios.
 
 As decisões de layout foram orientadas pela skill `frontend-design`, sem Figma. Testes unitários/integração e capturas isoladas não substituem a validação do banco real. Para usar o fiscal, a tabela `financial_transactions` da migração financeira precisa existir no Supabase configurado.
 
@@ -72,6 +74,9 @@ O frontend Vite e a API Express são publicados juntos no mesmo projeto. O arqui
 ```env
 VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=SUA_CHAVE_PUBLICAVEL
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_PUBLISHABLE_KEY=SUA_CHAVE_PUBLICAVEL
+SUPABASE_SERVICE_ROLE_KEY=SUA_CHAVE_SECRETA_DO_SERVIDOR
 APP_URL=https://SEU-DOMINIO.vercel.app
 ```
 
@@ -82,7 +87,8 @@ No Supabase, inclua `${APP_URL}/login` em **Authentication > URL Configuration >
 Antes de publicar, execute `database/schema.sql` e `database/seed.sql` no SQL Editor do Supabase. Depois do deploy, valide:
 
 - `/login`: aplicação carregada e navegação funcionando;
-- `/finance`: indicadores e lançamentos consultados pelo Supabase;
+- `/billing`: plano, consumo e faturas somente do workspace autenticado;
+- `/admin/finance`: backoffice disponível somente para membro interno;
 - `/api/health`: resposta JSON com `status: "ok"` e `storage: "supabase"`.
 
 O `.env` e a pasta local `.vercel` são ignorados pelo Git. A chave publicável pode ser usada no frontend para autenticação, mas o acesso do backend aos dados utiliza exclusivamente `SUPABASE_SERVICE_ROLE_KEY` (ou `SUPABASE_SECRET_KEY`) em variável server-side. Nunca cadastre uma chave `service_role` em variável iniciada com `VITE_`, nem a exponha no navegador. A API nunca substitui a chave privilegiada pela chave pública.
@@ -100,27 +106,28 @@ O login é processado pelo backend com Supabase Auth. Os tokens não são enviad
 | `POST` | `/api/auth/recover`  | Enviar a recuperação de senha          |
 | `POST` | `/api/auth/logout`   | Encerrar a sessão e remover cookies    |
 
-Os papéis preparados são `owner`, `admin`, `editor` e `viewer`. O papel vem de `app_metadata.role`, que deve ser alterado apenas em ambiente administrativo confiável. Na API financeira, todos os usuários autenticados podem consultar; `viewer` não pode criar, editar ou excluir.
+Há dois contextos independentes. `WorkspaceRole` (`owner`, `admin`, `editor`, `viewer`) vem de `brand_members` e vale somente para uma marca. `PlatformRole` (`platform_owner`, `finance_admin`, `support`) vem de `platform_members` e protege o backoffice. O frontend não escolhe nem envia sua própria role. Consulte a [tabela de permissões](docs/architecture.md#autorização-em-dois-contextos).
 
-## API financeira
+## APIs de cobrança e administração
 
-| Método   | Endpoint                               | Responsabilidade                   |
-| -------- | -------------------------------------- | ---------------------------------- |
-| `GET`    | `/api/health`                          | Verificar se a API está disponível |
-| `GET`    | `/api/finance/transactions`            | Listar entradas e saídas           |
-| `GET`    | `/api/finance/summary`                 | Calcular saldo e pendências        |
-| `POST`   | `/api/finance/transactions`            | Criar um lançamento                |
-| `PATCH`  | `/api/finance/transactions/:id`        | Editar um lançamento               |
-| `PATCH`  | `/api/finance/transactions/:id/status` | Alterar Pago/Pendente              |
-| `DELETE` | `/api/finance/transactions/:id`        | Excluir um lançamento              |
+| Método | Endpoint                                      | Responsabilidade                   |
+| ------ | --------------------------------------------- | ---------------------------------- |
+| `GET`  | `/api/health`                                 | Verificar se a API está disponível |
+| `GET`  | `/api/workspaces/:id/billing`                 | Plano, assinatura e consumo        |
+| `GET`  | `/api/workspaces/:id/invoices`                | Faturas da própria marca           |
+| `POST` | `/api/workspaces/:id/invoices/:invoiceId/pay` | Confirmar pagamento demonstrativo  |
+| `GET`  | `/api/admin/finance/transactions`             | Listar entradas e saídas internas  |
+| `GET`  | `/api/admin/finance/summary`                  | Calcular saldo e pendências        |
+| `POST` | `/api/admin/finance/transactions`             | Criar lançamento interno           |
+| `GET`  | `/api/admin/fiscal/report`                    | Relatório fiscal acadêmico         |
 
 Regra do saldo: `receitas pagas - despesas pagas`. Valores pendentes são exibidos separadamente e não alteram o saldo atual.
 
-Se o Supabase estiver temporariamente indisponível, a API ativa uma massa em memória para manter a demonstração funcional e a tela identifica esse estado como **API demonstração**. Os dados desse modo duram somente enquanto o servidor estiver aberto.
+Produção falha de forma fechada quando o Supabase está indisponível. O fallback em memória só pode ser ativado explicitamente fora de produção para demonstrações locais.
 
 ## Executar o banco de dados
 
-No **SQL Editor** do Supabase, execute nesta ordem:
+No **SQL Editor** do Supabase, execute `database/schema.sql` em instalações novas. Em bancos existentes, aplique as migrations de `database/migrations` em ordem, sempre primeiro em homologação e sem apagar dados.
 
 1. [`database/schema.sql`](database/schema.sql);
 2. [`database/seed.sql`](database/seed.sql).
@@ -174,25 +181,25 @@ Os nomes de arquivos, componentes e tipos estão em inglês. A interface e a doc
 - **Persistência:** marcas, posts, hashtags e lançamentos financeiros são armazenados no Supabase/PostgreSQL.
 - **Publicação:** não existe integração real com redes sociais neste incremento.
 
-O fluxo de conteúdo ainda utiliza a Data API do Supabase. A autenticação e o módulo financeiro passam pelo backend Express, deixando credenciais, validações e cálculos fora da interface. A IA real e a publicação automática ficam para as próximas Sprints.
+Conteúdo, marca, cobrança, Financeiro e Fiscal passam pelo backend Express. A `service_role` permanece somente no servidor; toda consulta é escopada por membership ou papel de plataforma. A publicação automática fica para próximas Sprints.
 
 ## Rastreabilidade
 
-| Figma                 | Rota             | Componente                          | Jira       | Teste automatizado                                  |
-| --------------------- | ---------------- | ----------------------------------- | ---------- | --------------------------------------------------- |
-| Login                 | `/login`         | `LoginPage`                         | `SCRUM-9`  | valida campos e navegação                           |
-| Autenticação real     | `/api/auth`      | `authRoutes` + `AuthService`        | `SCRUM-46` | sessão, cookies e proteção de rotas                 |
-| Configuração da marca | `/brand`         | `BrandPage`                         | `SCRUM-12` | salva e recupera a marca                            |
-| Entrada do chat       | `/chat`          | `ChatPage`                          | `SCRUM-15` | valida pedido e exibe carregamento                  |
-| Geração e prévia      | `/chat`          | `PostPreview` + `generationService` | `SCRUM-51` | contrato, timeout, cancelamento, revisão e agenda   |
-| Fiscal e plano        | `/fiscal`        | `FiscalPage` + `fiscalRoutes`       | `SCRUM-52` | imposto, comprovante, integração financeira e preço |
-| Agenda mensal         | `/calendar`      | `CalendarPage` + `calendarUtils`    | `SCRUM-19` | apresenta cada rascunho na data correta             |
-| Edição e exclusão     | `/calendar`      | `EditDraftDialog`                   | `SCRUM-20` | altera ou exclui somente o item selecionado         |
-| Banco de dados        | fluxo todo       | `postFlowRepository.ts`             | `SCRUM-39` | conexão, CRUD, seed e integridade                   |
-| Estrutura financeira  | `/finance`       | `financial_transactions`            | `SCRUM-40` | contrato SQL, PK, FK, RLS e seed                    |
-| API financeira        | `/api/finance`   | `financialRoutes.ts`                | `SCRUM-41` | CRUD HTTP, validação e cálculo                      |
-| Painel financeiro     | `/finance`       | `FinancePage`                       | `SCRUM-42` | indicadores, formulário e histórico                 |
-| Documentação e testes | fluxo financeiro | README + testes                     | `SCRUM-43` | qualidade e rastreabilidade                         |
+| Figma                 | Rota                 | Componente                          | Jira       | Teste automatizado                                |
+| --------------------- | -------------------- | ----------------------------------- | ---------- | ------------------------------------------------- |
+| Login                 | `/login`             | `LoginPage`                         | `SCRUM-9`  | valida campos e navegação                         |
+| Autenticação real     | `/api/auth`          | `authRoutes` + `AuthService`        | `SCRUM-46` | sessão, cookies e proteção de rotas               |
+| Configuração da marca | `/brand`             | `BrandPage`                         | `SCRUM-12` | salva e recupera a marca                          |
+| Entrada do chat       | `/chat`              | `ChatPage`                          | `SCRUM-15` | valida pedido e exibe carregamento                |
+| Geração e prévia      | `/chat`              | `PostPreview` + `generationService` | `SCRUM-51` | contrato, timeout, cancelamento, revisão e agenda |
+| Fiscal                | `/admin/fiscal`      | `FiscalPage` + `fiscalRoutes`       | `SCRUM-52` | imposto e comprovante acadêmico                   |
+| Agenda mensal         | `/calendar`          | `CalendarPage` + `calendarUtils`    | `SCRUM-19` | apresenta cada rascunho na data correta           |
+| Edição e exclusão     | `/calendar`          | `EditDraftDialog`                   | `SCRUM-20` | altera ou exclui somente o item selecionado       |
+| Banco de dados        | fluxo todo           | `postFlowRepository.ts`             | `SCRUM-39` | conexão, CRUD, seed e integridade                 |
+| Estrutura financeira  | `/admin/finance`     | `financial_transactions`            | `SCRUM-40` | contrato SQL, PK, FK, RLS e seed                  |
+| API financeira        | `/api/admin/finance` | `financialRoutes.ts`                | `SCRUM-41` | CRUD HTTP, autorização e cálculo                  |
+| Painel financeiro     | `/admin/finance`     | `FinancePage`                       | `SCRUM-42` | indicadores, formulário e histórico               |
+| Documentação e testes | fluxo financeiro     | README + testes                     | `SCRUM-43` | qualidade e rastreabilidade                       |
 
 ### Ordem sugerida para apresentar o código
 
@@ -237,7 +244,7 @@ O fluxo de conteúdo ainda utiliza a Data API do Supabase. A autenticação e o 
 
 ### Módulo financeiro
 
-Acesse `/finance` depois do login para demonstrar os indicadores, o cadastro de uma entrada ou saída, a mudança de status e a atualização imediata do saldo.
+Acesse `/admin/finance` com um membro interno autorizado para demonstrar os indicadores, o cadastro de uma entrada ou saída, a mudança de status e a atualização imediata do saldo. Clientes comuns usam `/billing`.
 
 ## Links do projeto
 
@@ -248,4 +255,4 @@ Acesse `/finance` depois do login para demonstrar os indicadores, o cadastro de 
 
 ## Estado do incremento
 
-As telas principais, a autenticação e o módulo financeiro estão codificados. O fluxo **Login real → Rota protegida → Financeiro → Cadastrar lançamento → Recalcular saldo** passa pelo backend. O banco possui seis tabelas PostgreSQL, massa de testes, PKs, FKs, RLS e CRUD verificável pela aplicação e pelos testes automatizados.
+As telas principais, a autenticação, cobrança, Financeiro e Fiscal estão codificados. O fluxo **Assinatura → Fatura → Receita → Fiscal → Comprovante** passa pelo backend e preserva a separação entre cliente e backoffice. O schema possui memberships, planos, assinaturas, consumo, faturas, livro financeiro e snapshots fiscais com testes automatizados.

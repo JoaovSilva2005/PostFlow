@@ -420,22 +420,28 @@ export function FinancePage() {
                         {currency(transaction.amount)}
                       </td>
                       <td>
-                        {canWrite ? <div className={styles.actions}>
-                          <button
-                            type="button"
-                            onClick={() => startEditing(transaction)}
-                            aria-label={`Editar ${transaction.description}`}
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void removeTransaction(transaction)}
-                            aria-label={`Excluir ${transaction.description}`}
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div> : <span className="sr-only">Somente leitura</span>}
+                        {canWrite ? (
+                          <div className={styles.actions}>
+                            <button
+                              type="button"
+                              onClick={() => startEditing(transaction)}
+                              aria-label={`Editar ${transaction.description}`}
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void removeTransaction(transaction)
+                              }
+                              aria-label={`Excluir ${transaction.description}`}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="sr-only">Somente leitura</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -445,111 +451,115 @@ export function FinancePage() {
           )}
         </section>
 
-        {canWrite ? <section id="transaction-form" className={styles.formCard}>
-          <div className={styles.sectionTitle}>
-            <div>
-              <h2>
-                {editingId
-                  ? 'Atualizar registro'
-                  : 'Cadastrar entrada ou saída'}
-              </h2>
+        {canWrite ? (
+          <section id="transaction-form" className={styles.formCard}>
+            <div className={styles.sectionTitle}>
+              <div>
+                <h2>
+                  {editingId
+                    ? 'Atualizar registro'
+                    : 'Cadastrar entrada ou saída'}
+                </h2>
+              </div>
+              {editingId ? (
+                <button
+                  className={styles.iconButton}
+                  type="button"
+                  onClick={resetForm}
+                  aria-label="Cancelar edição"
+                >
+                  <X size={18} />
+                </button>
+              ) : null}
             </div>
-            {editingId ? (
-              <button
-                className={styles.iconButton}
-                type="button"
-                onClick={resetForm}
-                aria-label="Cancelar edição"
-              >
-                <X size={18} />
-              </button>
-            ) : null}
-          </div>
 
-          <form className={styles.form} onSubmit={handleSubmit}>
-            <div className={styles.twoColumns}>
-              <SelectField
-                label="Tipo"
-                value={form.type}
-                options={[
-                  { label: 'Receita', value: 'income' },
-                  { label: 'Despesa', value: 'expense' },
-                ]}
-                onChange={(event) =>
-                  updateForm(
-                    'type',
-                    event.target.value as FinancialTransactionInput['type'],
-                  )
-                }
-              />
-              <SelectField
-                label="Status"
-                value={form.status}
-                options={[
-                  { label: 'Pendente', value: 'pending' },
-                  { label: 'Pago', value: 'paid' },
-                ]}
-                onChange={(event) =>
-                  updateForm(
-                    'status',
-                    event.target.value as FinancialTransactionInput['status'],
-                  )
-                }
-              />
-            </div>
-            <TextField
-              label="Descrição"
-              value={form.description}
-              placeholder="Ex.: Assinatura do plano mensal"
-              minLength={3}
-              required
-              onChange={(event) =>
-                updateForm('description', event.target.value)
-              }
-            />
-            <TextField
-              label="Categoria"
-              value={form.category}
-              placeholder="Ex.: Assinaturas, Marketing"
-              minLength={2}
-              required
-              onChange={(event) => updateForm('category', event.target.value)}
-            />
-            <div className={styles.twoColumns}>
+            <form className={styles.form} onSubmit={handleSubmit}>
+              <div className={styles.twoColumns}>
+                <SelectField
+                  label="Tipo"
+                  value={form.type}
+                  options={[
+                    { label: 'Receita', value: 'income' },
+                    { label: 'Despesa', value: 'expense' },
+                  ]}
+                  onChange={(event) =>
+                    updateForm(
+                      'type',
+                      event.target.value as FinancialTransactionInput['type'],
+                    )
+                  }
+                />
+                <SelectField
+                  label="Status"
+                  value={form.status}
+                  options={[
+                    { label: 'Pendente', value: 'pending' },
+                    { label: 'Pago', value: 'paid' },
+                  ]}
+                  onChange={(event) =>
+                    updateForm(
+                      'status',
+                      event.target.value as FinancialTransactionInput['status'],
+                    )
+                  }
+                />
+              </div>
               <TextField
-                label="Valor (R$)"
-                type="number"
-                value={form.amount || ''}
-                min="0.01"
-                step="0.01"
+                label="Descrição"
+                value={form.description}
+                placeholder="Ex.: Assinatura do plano mensal"
+                minLength={3}
                 required
                 onChange={(event) =>
-                  updateForm('amount', Number(event.target.value))
+                  updateForm('description', event.target.value)
                 }
               />
               <TextField
-                label="Vencimento"
-                type="date"
-                value={form.dueDate}
+                label="Categoria"
+                value={form.category}
+                placeholder="Ex.: Assinaturas, Marketing"
+                minLength={2}
                 required
-                onChange={(event) => updateForm('dueDate', event.target.value)}
+                onChange={(event) => updateForm('category', event.target.value)}
               />
-            </div>
-            <Button
-              type="submit"
-              variant="secondary"
-              disabled={saving}
-              fullWidth
-            >
-              <Plus size={17} />
-              {saving
-                ? 'Salvando...'
-                : editingId
-                  ? 'Salvar alteração'
-                  : 'Adicionar lançamento'}
-            </Button>
-          </form>
-        </section> : (
+              <div className={styles.twoColumns}>
+                <TextField
+                  label="Valor (R$)"
+                  type="number"
+                  value={form.amount || ''}
+                  min="0.01"
+                  step="0.01"
+                  required
+                  onChange={(event) =>
+                    updateForm('amount', Number(event.target.value))
+                  }
+                />
+                <TextField
+                  label="Vencimento"
+                  type="date"
+                  value={form.dueDate}
+                  required
+                  onChange={(event) =>
+                    updateForm('dueDate', event.target.value)
+                  }
+                />
+              </div>
+              <Button
+                type="submit"
+                variant="secondary"
+                disabled={saving}
+                fullWidth
+              >
+                <Plus size={17} />
+                {saving
+                  ? 'Salvando...'
+                  : editingId
+                    ? 'Salvar alteração'
+                    : 'Adicionar lançamento'}
+              </Button>
+            </form>
+          </section>
+        ) : (
           <section className={styles.formCard} aria-label="Permissão de acesso">
             <h2>Acesso somente leitura</h2>
             <p>

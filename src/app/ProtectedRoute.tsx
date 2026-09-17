@@ -27,7 +27,10 @@ export function ProtectedRoute({
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
 
-  if (platformRoles && (!platformRole || !platformRoles.includes(platformRole))) {
+  if (
+    platformRoles &&
+    (!platformRole || !platformRoles.includes(platformRole))
+  ) {
     return <AccessDenied />
   }
 

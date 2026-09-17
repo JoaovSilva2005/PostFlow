@@ -53,11 +53,16 @@ describe('BillingPage', () => {
     renderApp('/billing')
 
     expect(await screen.findByText('PostFlow Essencial')).toBeInTheDocument()
-    expect(billingApi.overview).toHaveBeenCalledWith('brand-1', expect.any(AbortSignal))
+    expect(billingApi.overview).toHaveBeenCalledWith(
+      'brand-1',
+      expect.any(AbortSignal),
+    )
     expect(screen.getByText('18 de 100')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ver comprovante' }))
 
-    const receipt = screen.getByRole('region', { name: 'Comprovante acadêmico' })
+    const receipt = screen.getByRole('region', {
+      name: 'Comprovante acadêmico',
+    })
     expect(
       within(receipt).getByText(/Documento demonstrativo sem validade fiscal/),
     ).toBeInTheDocument()

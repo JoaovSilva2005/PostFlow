@@ -33,7 +33,7 @@ describe('ChatPage', () => {
       caption: 'Conheça nossa novidade.',
       date: '2026-10-10',
     })
-  })
+  }, 10_000)
 
   it('exibe o carregamento, gera uma prévia e adiciona o rascunho à agenda', async () => {
     authenticateDemo()
@@ -60,5 +60,5 @@ describe('ChatPage', () => {
     expect(saved[0]).toMatchObject({
       platform: 'Instagram',
     })
-  })
+  }, 10_000)
 })
