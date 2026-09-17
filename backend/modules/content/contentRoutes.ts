@@ -2,7 +2,10 @@ import { Router, type RequestHandler } from 'express'
 import { z } from 'zod'
 import { HttpError } from '../../shared/HttpError.js'
 import type { ContentService } from './contentService.js'
-import { CONTENT_PLATFORMS } from './contentTypes.js'
+import {
+  CONTENT_PLATFORMS,
+  type ContentGenerationInput,
+} from './contentTypes.js'
 
 const generatedDraftSchema = z.object({
   id: z.string().min(1),
@@ -58,7 +61,9 @@ export function createContentRouter(
       )
     }
 
-    response.json({ data: await service.generate(parsed.data) })
+    response.json({
+      data: await service.generate(parsed.data as ContentGenerationInput),
+    })
   })
 
   return router

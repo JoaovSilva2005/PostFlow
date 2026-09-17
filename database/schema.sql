@@ -172,6 +172,8 @@ revoke all on table public.social_platforms from anon, authenticated;
 revoke all on table public.post_drafts from anon, authenticated;
 revoke all on table public.post_hashtags from anon, authenticated;
 revoke all on table public.financial_transactions from anon, authenticated;
+grant select, insert, update, delete
+  on table public.financial_transactions to service_role;
 
 grant select on table public.users to anon, authenticated;
 grant select, insert, update on table public.brands to anon, authenticated;

@@ -31,6 +31,16 @@ describe('API financeira', () => {
     })
   })
 
+  it('confirma que o banco está acessível no readiness check', async () => {
+    const response = await request(testApp()).get('/api/health/ready')
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toEqual({
+      status: 'ready',
+      database: 'connected',
+    })
+  })
+
   it('cria, lista, atualiza e exclui um lançamento', async () => {
     const repository = new InMemoryFinancialRepository()
     const app = testApp(repository)

@@ -53,6 +53,8 @@ for each row execute function public.set_updated_at();
 
 alter table public.financial_transactions enable row level security;
 revoke all on table public.financial_transactions from anon, authenticated;
+grant select, insert, update, delete
+  on table public.financial_transactions to service_role;
 
 -- A API usa uma chave server-side. Não conceda acesso direto ao navegador.
 

@@ -46,8 +46,14 @@ export const environment = {
   /** Chave privilegiada usada exclusivamente por repositórios no backend. */
   supabaseServiceRoleKey: () => {
     const serviceRoleKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-      process.env.SUPABASE_SECRET_KEY?.trim()
+      process.env.SUPABASE_SECRET_KEY?.trim() ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+
+    if (serviceRoleKey?.startsWith('sb_publishable_')) {
+      throw new Error(
+        'A chave administrativa do Supabase não pode ser uma chave publicável.',
+      )
+    }
 
     return (
       serviceRoleKey ?? requiredEnvironmentVariable('SUPABASE_SERVICE_ROLE_KEY')

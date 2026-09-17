@@ -1,5 +1,6 @@
 import cors from 'cors'
 import express, { type ErrorRequestHandler } from 'express'
+import type {} from './types/express.js'
 import { environment } from './config/environment.js'
 import {
   createSupabaseAuthClient,
@@ -88,6 +89,16 @@ export function createApp(options: AppOptions = {}) {
           : 'supabase'
     response.json({
       data: { status: 'ok', service: 'PostFlow API', storage },
+    })
+  })
+
+  app.get('/api/health/ready', async (_request, response) => {
+    await financialRepository.list()
+    response.json({
+      data: {
+        status: 'ready',
+        database: 'connected',
+      },
     })
   })
 

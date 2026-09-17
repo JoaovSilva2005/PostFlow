@@ -28,4 +28,21 @@ describe('clientes Supabase do backend', () => {
     expect(envExample).not.toMatch(/^VITE_.*(SERVICE_ROLE|SECRET_KEY)/m)
     expect(envExample).toContain('SUPABASE_SERVICE_ROLE_KEY=')
   })
+
+  it('prioriza a chave secreta moderna sobre a chave legada', () => {
+    const environmentSource = readFileSync(
+      new URL('./environment.ts', import.meta.url),
+      'utf8',
+    )
+    const secretKeyPosition = environmentSource.indexOf(
+      'process.env.SUPABASE_SECRET_KEY',
+    )
+    const legacyKeyPosition = environmentSource.indexOf(
+      'process.env.SUPABASE_SERVICE_ROLE_KEY',
+    )
+
+    expect(secretKeyPosition).toBeGreaterThan(-1)
+    expect(legacyKeyPosition).toBeGreaterThan(secretKeyPosition)
+    expect(environmentSource).toContain("startsWith('sb_publishable_')")
+  })
 })

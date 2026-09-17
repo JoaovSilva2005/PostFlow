@@ -1,4 +1,4 @@
-import type { FinancialTransaction } from './finance'
+import type { FinancialTransaction } from './finance.js'
 
 // Academic fixed rate, not a statement about the customer's legal tax regime.
 export const ACADEMIC_TAX_BPS = 600

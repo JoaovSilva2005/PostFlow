@@ -38,6 +38,10 @@ assert.doesNotMatch(
   schema,
   /grant[\s\S]{0,80}on table public\.financial_transactions to anon, authenticated/,
 )
+assert.match(
+  schema,
+  /grant select, insert, update, delete\s+on table public\.financial_transactions to service_role/,
+)
 assert.match(seed, /insert into public\.users/)
 assert.match(seed, /insert into public\.post_drafts/)
 assert.match(seed, /insert into public\.post_hashtags/)
