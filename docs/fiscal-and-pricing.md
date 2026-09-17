@@ -8,25 +8,24 @@ Fonte: `Cronograma Projeto Integrador VI.xlsx`, Planilha1, D3:E5. Financeiro: re
 
 Paleta herdada: Grafite #101112, Carvão #171819, Ardósia #2B2E30, Névoa #EDEEEF, Cinza #A0A4A8, Menta #79E2AE. Inter local: 28px título, 16px seção, 14px conteúdo, 12px apoio. Alinhamento à esquerda e valores tabulares à direita.
 
-Alternativa descartada: um dashboard de cartões com gráficos sem dados suficientes. Escolhida: relatório fiscal com período, totais, lista de receitas e comprovante legível, acompanhado de formulário compacto. Precificação em seção própria expansível para não confundir custos previstos com lançamentos reais.
+Alternativa descartada: um dashboard de cartões com gráficos sem dados suficientes. Escolhida: relatório fiscal interno com período, totais, lista de receitas e comprovante legível. A precificação fica na área administrativa `Planos e custos`, separada do Fiscal para não confundir premissas com lançamentos reais.
 
 ```text
 [Fiscal                       Financeiro]
 [aviso acadêmico / período / atualizar   ]
 [bruto | imposto calculado | após imposto]
 [receitas e comprovante | registrar venda]
-[economia do plano: premissas e resultados]
 ```
 
 No celular, lista em cartões descritivos e formulário abaixo, sem colunas comprimidas. Princípio: cada valor deve explicar sua origem. Comprovante é a única área imprimível. Sem ornamentos que sugiram validade fiscal oficial.
 
 ## Decisão de integração
 
-As receitas de `financial_transactions` são os pedidos/faturamentos de serviço deste incremento acadêmico. O fiscal é uma projeção calculada dessa fonte única: não duplica receitas nem cria uma segunda tabela de valores divergentes. Criar uma venda grava uma receita; mudar status, editar ou excluir pelo financeiro reflete no fiscal ao atualizar. Toda receita é tratada como serviço tributável nesta simplificação. Não usar para aportes/empréstimos ou escrituração real.
+A fatura de assinatura é a origem da cobrança. Sua confirmação de pagamento cria ou atualiza exatamente uma receita em `financial_transactions`, usando uma chave idempotente. Apenas receitas marcadas como venda ou serviço faturado alimentam o Fiscal. Despesas, empréstimos, aportes e outras receitas não geram imposto automaticamente.
 
-Alíquota didática fixa de 6%, não informada pela professora e não representativa de um enquadramento legal. Imposto calculado por lançamento, em centavos, incluído no preço bruto. Valor após imposto = bruto − imposto; não é lucro. Imposto calculado não significa imposto recolhido: não criamos despesa paga automaticamente e não alteramos o saldo de caixa. O comprovante é uma visualização do registro atual, não um documento fiscal imutável nem prova de quitação quando o status está pendente.
+Alíquota didática configurada inicialmente em 6%, não informada pela professora e não representativa de um enquadramento legal. Imposto calculado no backend, em centavos, incluído no preço bruto. Valor após imposto = bruto − imposto; não é lucro. Imposto calculado não significa imposto recolhido e não altera o saldo de caixa. O comprovante guarda um snapshot de alíquota, bruto, imposto e líquido para que documentos antigos não mudem quando a configuração mudar.
 
-API fiscal autenticada; escrita segue papéis do financeiro. Financeiro e fiscal compartilham o mesmo serviço e a mesma fonte ativa para impedir resultados divergentes. No modo demonstrativo, os dados são temporários e a interface informa esse estado. O workspace acadêmico existente foi preservado; isolamento multitenant, comprovante fiscal imutável e emissão NFS-e real permanecem próximos incrementos obrigatórios antes de uso comercial.
+APIs `/api/admin/finance` e `/api/admin/fiscal` exigem `PlatformRole`. `platform_owner` e `finance_admin` escrevem; `support` recebe somente leitura. Clientes consultam exclusivamente `/api/workspaces/:workspaceId/billing` e `/invoices`, depois de o backend validar `brand_members`. O modo demonstrativo é identificado na interface. Não há emissão de NFS-e nem promessa de validade legal.
 
 ## Proposta comercial (pesquisa em 16/09/2026)
 

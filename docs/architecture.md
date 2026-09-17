@@ -8,6 +8,8 @@ PostFlow/
 ├── backend/                   # API, regras de negócio e acesso ao banco
 │   ├── config/                # ambiente e cliente Supabase do servidor
 │   ├── modules/auth/          # autenticação, cookies e autorização
+│   ├── modules/tenancy/       # workspace atual, memberships e platform roles
+│   ├── modules/billing/       # planos, assinaturas, consumo e faturas
 │   ├── modules/finance/       # módulo financeiro completo
 │   ├── modules/fiscal/        # projeção fiscal e vendas integradas ao financeiro
 │   ├── shared/                # recursos compartilhados pelo backend
@@ -31,9 +33,10 @@ PostFlow/
 
 ```text
 Login React → authApi → AuthRoutes → Supabase Auth → cookie HttpOnly
-Tela financeira → financialApi → middleware de autenticação
-                → FinancialService → Repository → Supabase/PostgreSQL
-Tela fiscal     → fiscalApi ────────┘
+Área do cliente → /workspaces/:id → autenticação + WorkspaceRole
+Área administrativa → /admin/* → autenticação + PlatformRole
+Financeiro → FinancialService → Repository → Supabase/PostgreSQL
+Fiscal ────────────────────────────────┘
 ```
 
 - A **tela** coleta os dados e apresenta o resultado.
@@ -51,15 +54,46 @@ Cada pasta em `src/features` reúne a tela, o estilo, o teste e os auxiliares es
 | Funcionalidade | Frontend                | Backend                   | Banco                                                 |
 | -------------- | ----------------------- | ------------------------- | ----------------------------------------------------- |
 | Login          | `src/features/auth`     | `backend/modules/auth`    | Supabase Auth                                         |
-| Marca          | `src/features/brand`    | Data API do Supabase      | `brands`                                              |
+| Marca          | `src/features/brand`    | BFF com contexto de marca | `brands` e `brand_members`                            |
 | Geração        | `src/features/content`  | IA simulada               | `post_drafts` e `post_hashtags`                       |
 | Agenda         | `src/features/calendar` | Data API do Supabase      | `post_drafts`                                         |
+| Cobrança       | `src/features/billing`  | `backend/modules/billing` | `plans`, `subscriptions`, `usage_counters`, `billing_invoices` |
 | Financeiro     | `src/features/finance`  | `backend/modules/finance` | `financial_transactions`                              |
-| Fiscal         | `src/features/fiscal`   | `backend/modules/fiscal`  | mesma `financial_transactions`, sem duplicar receitas |
+| Fiscal         | `src/features/fiscal`   | `backend/modules/fiscal`  | `fiscal_documents` e receitas faturadas               |
 
-Financeiro e Fiscal recebem a mesma instância de `FinancialService`. Assim, leitura, escrita e eventual modo demonstrativo permanecem coerentes entre as duas telas. Os totais financeiros são calculados em centavos e a data de pagamento só muda quando ocorre uma transição real entre pendente e pago.
+Financeiro, Fiscal e economia do plano são backoffice do PostFlow. Eles não são produtos disponíveis a clientes comuns. A área `Assinatura e cobrança` apresenta somente o plano, consumo, faturas e comprovantes do workspace autenticado.
 
-Regras puras em `src/domain/fiscal.ts` são compartilhadas entre API e simulação da tela; o servidor sempre recalcula impostos, sem confiar em valores enviados pelo cliente. O comprovante representa o registro atual e não tem validade fiscal. Consulte `docs/fiscal-and-pricing.md` para hipóteses, fontes e limites. O fluxo de IA está documentado em `docs/content-studio.md`.
+## Autorização em dois contextos
+
+`WorkspaceRole` nunca concede acesso ao backoffice e `PlatformRole` nunca substitui a associação a uma marca.
+
+| Ação | owner | admin | editor | viewer | platform_owner | finance_admin | support |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Conteúdo do próprio workspace | escrever | escrever | escrever | ler | — | — | — |
+| Equipe e assinatura | administrar | administrar | ler | ler | — | — | — |
+| Próprias faturas e consumo | ler | ler | ler | ler | — | — | — |
+| Financeiro/Fiscal interno | — | — | — | — | escrever | escrever | ler |
+| Planos e economia interna | — | — | — | — | administrar | ler | ler |
+
+O frontend usa essas informações para navegação e usabilidade. A autorização real acontece novamente no backend. Ausência de sessão resulta em `401`; sessão sem o papel necessário resulta em `403`.
+
+## Fluxo de cobrança
+
+```text
+Assinatura do workspace
+        ↓
+Fatura pendente ── confirmação idempotente de pagamento
+        ↓
+Fatura paga ─────→ uma única receita no Financeiro
+                          ↓
+                 cálculo fiscal didático
+                          ↓
+                 snapshot do comprovante
+```
+
+A fatura é a origem da cobrança. O livro financeiro registra o efeito econômico sem duplicar a cobrança. O documento fiscal guarda alíquota e valores calculados no momento da emissão; mudar a configuração posterior não reescreve documentos anteriores.
+
+O servidor calcula valores monetários em centavos e nunca confia em `brand_id`, roles, imposto ou totais enviados pelo frontend. `PaymentProvider` e `FiscalProvider` são portas para integrações futuras; os adapters atuais são demonstrativos. O comprovante acadêmico não é NFS-e e não possui validade fiscal. Consulte `docs/fiscal-and-pricing.md` para hipóteses, fontes e limites. O fluxo de IA está documentado em `docs/content-studio.md`.
 
 ## Decisões simples para apresentação
 
