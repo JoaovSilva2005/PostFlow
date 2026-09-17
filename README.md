@@ -2,6 +2,11 @@
 
 Aplicação demonstrável para planejar conteúdo de redes sociais com apoio de inteligência artificial. O projeto foi desenvolvido para o **Projeto Multidisciplinar VI** e possui frontend React, autenticação Supabase Auth, API Express e banco PostgreSQL hospedado no Supabase.
 
+> A integração de geração real está preparada em `POST /api/content/generate`.
+> Antes de receber dados reais de clientes, conclua o roteiro da
+> [auditoria de produção](docs/production-readiness-audit.md); o schema ativo
+> ainda contém políticas acadêmicas de demonstração.
+
 Nesta versão, o usuário configura a identidade da marca, descreve um post no chat, revisa o conteúdo gerado e adiciona o rascunho a uma agenda mensal. O Épico 3 acrescenta uma API REST e o módulo financeiro para cadastrar receitas e despesas, controlar pagamentos e calcular o saldo atual.
 
 ## Interface responsiva — SCRUM-49

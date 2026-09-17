@@ -29,6 +29,8 @@ export const environment = {
   apiPort: Number(process.env.API_PORT ?? 3001),
   appUrl,
   isProduction,
+  allowDemoFallback:
+    !isProduction && process.env.POSTFLOW_ALLOW_DEMO_FALLBACK === 'true',
   passwordResetUrl: `${appUrl}/login`,
   isAllowedOrigin: (origin: string) =>
     origin === appUrl ||
@@ -41,4 +43,6 @@ export const environment = {
   supabasePublishableKey: () =>
     process.env.SUPABASE_PUBLISHABLE_KEY?.trim() ||
     requiredEnvironmentVariable('VITE_SUPABASE_PUBLISHABLE_KEY'),
+  openAiApiKey: () => requiredEnvironmentVariable('OPENAI_API_KEY'),
+  openAiTextModel: process.env.OPENAI_TEXT_MODEL?.trim() || 'gpt-5.6-luna',
 }

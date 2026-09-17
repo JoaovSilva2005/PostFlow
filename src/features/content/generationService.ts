@@ -123,6 +123,6 @@ export const apiGenerationService: GenerationService = {
 }
 
 export const generationService =
-  import.meta.env.VITE_AI_MODE === 'api'
-    ? apiGenerationService
-    : demoGenerationService
+  import.meta.env.VITE_AI_MODE === 'demo' || import.meta.env.MODE === 'test'
+    ? demoGenerationService
+    : apiGenerationService

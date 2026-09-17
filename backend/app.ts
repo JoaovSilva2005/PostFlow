@@ -22,10 +22,14 @@ import {
 import { ResilientFinancialTransactionRepository } from './modules/finance/resilientFinancialRepository.js'
 import { HttpError } from './shared/HttpError.js'
 import { createFiscalRouter } from './modules/fiscal/fiscalRoutes.js'
+import { createContentRouter } from './modules/content/contentRoutes.js'
+import { ContentService } from './modules/content/contentService.js'
+import { OpenAiContentProvider } from './modules/content/openAiContentProvider.js'
 
 interface AppOptions {
   authService?: AuthService
   financialRepository?: FinancialTransactionRepository
+  contentService?: ContentService
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -36,13 +40,23 @@ export function createApp(options: AppOptions = {}) {
     new AuthService(new SupabaseAuthProvider(createSupabaseServerClient))
   const financialRepository = options.financialRepository
     ? options.financialRepository
-    : new ResilientFinancialTransactionRepository(
-        new SupabaseFinancialTransactionRepository(supabase),
-        new MemoryFinancialTransactionRepository(
-          createDemoFinancialTransactions(),
-        ),
-      )
+    : environment.allowDemoFallback
+      ? new ResilientFinancialTransactionRepository(
+          new SupabaseFinancialTransactionRepository(supabase),
+          new MemoryFinancialTransactionRepository(
+            createDemoFinancialTransactions(),
+          ),
+        )
+      : new SupabaseFinancialTransactionRepository(supabase)
   const financialService = new FinancialService(financialRepository)
+  const contentService =
+    options.contentService ??
+    new ContentService(
+      new OpenAiContentProvider(
+        environment.openAiApiKey,
+        environment.openAiTextModel,
+      ),
+    )
 
   app.use(
     cors({
@@ -63,13 +77,23 @@ export function createApp(options: AppOptions = {}) {
     const storage =
       financialRepository instanceof ResilientFinancialTransactionRepository
         ? financialRepository.getMode()
-        : 'test'
+        : options.financialRepository
+          ? 'test'
+          : 'supabase'
     response.json({
       data: { status: 'ok', service: 'PostFlow API', storage },
     })
   })
 
   app.use('/api/auth', createAuthRouter(authService))
+  app.use(
+    '/api/content',
+    requireAuthentication(authService),
+    createContentRouter(
+      contentService,
+      requireRoles(authService, 'owner', 'admin', 'editor'),
+    ),
+  )
   app.use(
     '/api/fiscal',
     requireAuthentication(authService),
