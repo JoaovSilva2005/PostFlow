@@ -4,13 +4,13 @@ import { apiRequest } from '../../services/apiClient'
 export const fiscalApi = {
   report: (period: string, signal?: AbortSignal) =>
     apiRequest<FiscalReport>(
-      `/fiscal/report?period=${encodeURIComponent(period)}`,
+      `/admin/fiscal/report?period=${encodeURIComponent(period)}`,
       { signal },
     ),
   receipt: (id: string) =>
-    apiRequest<FiscalSale>(`/fiscal/receipts/${encodeURIComponent(id)}`),
+    apiRequest<FiscalSale>(`/admin/fiscal/receipts/${encodeURIComponent(id)}`),
   create: (sale: SaleInput) =>
-    apiRequest<FiscalSale>('/fiscal/sales', {
+    apiRequest<FiscalSale>('/admin/fiscal/sales', {
       method: 'POST',
       body: JSON.stringify(sale),
     }),

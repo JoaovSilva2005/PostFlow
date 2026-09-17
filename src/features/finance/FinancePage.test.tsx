@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { financialApi } from './financialApi'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
+import { createTestAuthGateway } from '../../test/testAuthGateway'
 
 vi.mock('./financialApi', () => ({
   financialApi: {
@@ -56,7 +57,7 @@ describe('FinancePage', () => {
 
   it('apresenta o resumo calculado e os dados vindos da API', async () => {
     authenticateDemo()
-    renderApp('/finance')
+    renderApp('/admin/finance')
 
     expect(await screen.findByText('R$ 2.700,00')).toBeInTheDocument()
     expect(screen.getByText('Plano mensal')).toBeInTheDocument()
@@ -66,7 +67,7 @@ describe('FinancePage', () => {
   it('envia um novo lançamento para a API', async () => {
     authenticateDemo()
     const user = userEvent.setup()
-    renderApp('/finance')
+    renderApp('/admin/finance')
     await screen.findByText('Plano mensal')
 
     await user.type(screen.getByLabelText('Descrição'), 'Consultoria mensal')
@@ -93,7 +94,7 @@ describe('FinancePage', () => {
       new Error('Conexão indisponível'),
     )
     authenticateDemo()
-    renderApp('/finance')
+    renderApp('/admin/finance')
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Conexão indisponível',
     )
@@ -104,7 +105,7 @@ describe('FinancePage', () => {
   it('filtra por descrição e status sem alterar os totais financeiros', async () => {
     authenticateDemo()
     const user = userEvent.setup()
-    renderApp('/finance')
+    renderApp('/admin/finance')
     await screen.findByText('Plano mensal')
     await user.type(screen.getByLabelText('Buscar lançamentos'), 'inexistente')
     expect(screen.queryByText('Plano mensal')).not.toBeInTheDocument()
@@ -123,5 +124,31 @@ describe('FinancePage', () => {
       'paid',
     )
     expect(screen.getByText('Plano mensal')).toBeInTheDocument()
+  })
+
+  it('mantém suporte em modo somente leitura', async () => {
+    authenticateDemo()
+    renderApp(
+      '/admin/finance',
+      undefined,
+      createTestAuthGateway({
+        user: {
+          id: 'support-user',
+          email: 'suporte@postflow.com',
+          displayName: 'Suporte',
+        },
+        workspace: null,
+        platformRole: 'support',
+      }),
+    )
+
+    expect(await screen.findByText('Plano mensal')).toBeInTheDocument()
+    expect(screen.getByText('Acesso somente leitura')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Adicionar lançamento' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Editar Plano mensal/ }),
+    ).not.toBeInTheDocument()
   })
 })

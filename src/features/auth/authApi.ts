@@ -1,4 +1,5 @@
 import type {
+  AuthSession,
   AuthUser,
   LoginCredentials,
   RegistrationInput,
@@ -8,6 +9,8 @@ import { ApiError, apiRequest } from '../../services/apiClient'
 
 interface UserResponse {
   user: AuthUser
+  workspace?: AuthSession['workspace']
+  platformRole?: AuthSession['platformRole']
 }
 
 interface RecoveryResponse {
@@ -15,28 +18,36 @@ interface RecoveryResponse {
 }
 
 export interface AuthGateway {
-  currentUser(): Promise<AuthUser | null>
-  login(credentials: LoginCredentials): Promise<AuthUser>
+  currentUser(): Promise<AuthSession | null>
+  login(credentials: LoginCredentials): Promise<AuthSession>
   logout(): Promise<void>
   recoverPassword(email: string): Promise<string>
   register(input: RegistrationInput): Promise<RegistrationResponse>
 }
 
-async function readCurrentUser() {
-  return (await apiRequest<UserResponse>('/auth/me')).user
+function toSession(response: UserResponse): AuthSession {
+  return {
+    user: response.user,
+    workspace: response.workspace ?? null,
+    platformRole: response.platformRole ?? null,
+  }
+}
+
+async function readCurrentSession() {
+  return toSession(await apiRequest<UserResponse>('/auth/me'))
 }
 
 export const authApi: AuthGateway = {
   async currentUser() {
     try {
-      return await readCurrentUser()
+      return await readCurrentSession()
     } catch (error) {
       if (!(error instanceof ApiError) || error.status !== 401) throw error
     }
 
     try {
       await apiRequest<UserResponse>('/auth/refresh', { method: 'POST' })
-      return await readCurrentUser()
+      return await readCurrentSession()
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) return null
       throw error
@@ -44,12 +55,11 @@ export const authApi: AuthGateway = {
   },
 
   async login(credentials) {
-    return (
-      await apiRequest<UserResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(credentials),
-      })
-    ).user
+    await apiRequest<UserResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    })
+    return readCurrentSession()
   },
 
   register: (input) =>

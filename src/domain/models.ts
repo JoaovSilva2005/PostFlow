@@ -23,10 +23,12 @@ export interface AppState {
   authError: string | null
   authStatus: 'checking' | 'authenticated' | 'anonymous'
   authUser: AuthUser | null
+  currentWorkspace: WorkspaceAccess | null
+  platformRole: PlatformRole
   isAuthenticated: boolean
   brand: BrandProfile | null
   drafts: PostDraft[]
   databaseStatus: 'connecting' | 'connected' | 'error'
   databaseError: string | null
 }
-import type { AuthUser } from './auth'
+import type { AuthUser, PlatformRole, WorkspaceAccess } from './auth'

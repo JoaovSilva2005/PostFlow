@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import type {
+  AuthSession,
   LoginCredentials,
   RegistrationInput,
   RegistrationResponse,
@@ -15,13 +16,13 @@ import type {
 import type { AppState, BrandProfile, PostDraft } from '../domain/models'
 import { authApi, type AuthGateway } from '../features/auth/authApi'
 import {
-  SupabasePostFlowRepository,
+  ApiPostFlowRepository,
   type PostFlowDataRepository,
 } from '../services/postFlowRepository'
 
 type AppAction =
   | { type: 'AUTH_CHECKING' }
-  | { type: 'AUTHENTICATED'; payload: AppState['authUser'] }
+  | { type: 'AUTHENTICATED'; payload: AuthSession }
   | { type: 'AUTH_ANONYMOUS'; payload?: string }
   | {
       type: 'DATABASE_CONNECTED'
@@ -55,6 +56,8 @@ function createInitialState(): AppState {
     authError: null,
     authStatus: 'checking',
     authUser: null,
+    currentWorkspace: null,
+    platformRole: null,
     isAuthenticated: false,
     brand: null,
     drafts: [],
@@ -72,7 +75,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         authError: null,
         authStatus: 'authenticated',
-        authUser: action.payload,
+        authUser: action.payload.user,
+        currentWorkspace: action.payload.workspace,
+        platformRole: action.payload.platformRole,
         isAuthenticated: true,
       }
     case 'AUTH_ANONYMOUS':
@@ -81,6 +86,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
         authError: action.payload ?? null,
         authStatus: 'anonymous',
         authUser: null,
+        currentWorkspace: null,
+        platformRole: null,
         isAuthenticated: false,
       }
     case 'DATABASE_CONNECTED':
@@ -138,7 +145,7 @@ const AppContext = createContext<AppContextValue | null>(null)
 export function AppProvider({
   children,
   authGateway = authApi,
-  repository = SupabasePostFlowRepository,
+  repository = ApiPostFlowRepository,
 }: AppProviderProps) {
   const [state, dispatch] = useReducer(
     appReducer,
@@ -153,12 +160,12 @@ export function AppProvider({
 
     authGateway
       .currentUser()
-      .then((user) => {
+      .then((session) => {
         if (!isActive || operation !== authOperation.current) return
 
         dispatch(
-          user
-            ? { type: 'AUTHENTICATED', payload: user }
+          session
+            ? { type: 'AUTHENTICATED', payload: session }
             : { type: 'AUTH_ANONYMOUS' },
         )
       })
@@ -179,8 +186,14 @@ export function AppProvider({
   useEffect(() => {
     let isActive = true
 
+    if (state.authStatus !== 'authenticated' || !state.currentWorkspace) {
+      return () => {
+        isActive = false
+      }
+    }
+
     repository
-      .load()
+      .load(state.currentWorkspace.id)
       .then((data) => {
         if (isActive) {
           dispatch({ type: 'DATABASE_CONNECTED', payload: data })
@@ -195,7 +208,7 @@ export function AppProvider({
     return () => {
       isActive = false
     }
-  }, [repository])
+  }, [repository, state.authStatus, state.currentWorkspace])
 
   const value = useMemo<AppContextValue>(
     () => ({
@@ -205,8 +218,8 @@ export function AppProvider({
         dispatch({ type: 'AUTH_CHECKING' })
 
         try {
-          const user = await authGateway.login(credentials)
-          dispatch({ type: 'AUTHENTICATED', payload: user })
+          const session = await authGateway.login(credentials)
+          dispatch({ type: 'AUTHENTICATED', payload: session })
         } catch (error) {
           dispatch({
             type: 'AUTH_ANONYMOUS',
@@ -230,11 +243,16 @@ export function AppProvider({
 
         try {
           const result = await authGateway.register(input)
-          dispatch(
-            result.requiresEmailConfirmation
-              ? { type: 'AUTH_ANONYMOUS' }
-              : { type: 'AUTHENTICATED', payload: result.user },
-          )
+          if (result.requiresEmailConfirmation) {
+            dispatch({ type: 'AUTH_ANONYMOUS' })
+          } else {
+            const session = await authGateway.currentUser()
+            dispatch(
+              session
+                ? { type: 'AUTHENTICATED', payload: session }
+                : { type: 'AUTH_ANONYMOUS' },
+            )
+          }
           return result
         } catch (error) {
           dispatch({
@@ -245,8 +263,12 @@ export function AppProvider({
         }
       },
       saveBrand: async (brand) => {
+        if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
         try {
-          const savedBrand = await repository.saveBrand(brand)
+          const savedBrand = await repository.saveBrand(
+            state.currentWorkspace.id,
+            brand,
+          )
           dispatch({ type: 'SAVE_BRAND', payload: savedBrand })
         } catch (error) {
           dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
@@ -254,8 +276,12 @@ export function AppProvider({
         }
       },
       addDraft: async (draft) => {
+        if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
         try {
-          const createdDraft = await repository.createDraft(draft)
+          const createdDraft = await repository.createDraft(
+            state.currentWorkspace.id,
+            draft,
+          )
           dispatch({ type: 'ADD_DRAFT', payload: createdDraft })
         } catch (error) {
           dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
@@ -263,8 +289,12 @@ export function AppProvider({
         }
       },
       updateDraft: async (draft) => {
+        if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
         try {
-          const updatedDraft = await repository.updateDraft(draft)
+          const updatedDraft = await repository.updateDraft(
+            state.currentWorkspace.id,
+            draft,
+          )
           dispatch({ type: 'UPDATE_DRAFT', payload: updatedDraft })
         } catch (error) {
           dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
@@ -272,8 +302,9 @@ export function AppProvider({
         }
       },
       removeDraft: async (id) => {
+        if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
         try {
-          await repository.deleteDraft(id)
+          await repository.deleteDraft(state.currentWorkspace.id, id)
           dispatch({ type: 'REMOVE_DRAFT', payload: id })
         } catch (error) {
           dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })

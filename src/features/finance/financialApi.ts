@@ -14,23 +14,23 @@ export interface ApiHealth {
 
 export const financialApi = {
   health: () => apiRequest<ApiHealth>('/health'),
-  list: () => apiRequest<FinancialTransaction[]>('/finance/transactions'),
-  summary: () => apiRequest<FinancialSummary>('/finance/summary'),
+  list: () => apiRequest<FinancialTransaction[]>('/admin/finance/transactions'),
+  summary: () => apiRequest<FinancialSummary>('/admin/finance/summary'),
   create: (input: FinancialTransactionInput) =>
-    apiRequest<FinancialTransaction>('/finance/transactions', {
+    apiRequest<FinancialTransaction>('/admin/finance/transactions', {
       method: 'POST',
       body: JSON.stringify(input),
     }),
   update: (id: string, input: Partial<FinancialTransactionInput>) =>
-    apiRequest<FinancialTransaction>(`/finance/transactions/${id}`, {
+    apiRequest<FinancialTransaction>(`/admin/finance/transactions/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(input),
     }),
   updateStatus: (id: string, status: FinancialTransactionStatus) =>
-    apiRequest<FinancialTransaction>(`/finance/transactions/${id}/status`, {
+    apiRequest<FinancialTransaction>(`/admin/finance/transactions/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
   delete: (id: string) =>
-    apiRequest<void>(`/finance/transactions/${id}`, { method: 'DELETE' }),
+    apiRequest<void>(`/admin/finance/transactions/${id}`, { method: 'DELETE' }),
 }

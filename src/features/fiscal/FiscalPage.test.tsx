@@ -33,9 +33,9 @@ describe('FiscalPage', () => {
     vi.mocked(fiscalApi.create).mockResolvedValue(toFiscalSale(transaction))
     authenticateDemo()
   })
-  it('mostra imposto, comprovante pendente e preço proposto', async () => {
+  it('mostra imposto e comprovante acadêmico pendente', async () => {
     const user = userEvent.setup()
-    renderApp('/fiscal')
+    renderApp('/admin/fiscal')
     await screen.findByText(transaction.description)
     await user.click(screen.getByRole('button', { name: /Ver comprovante/ }))
     const receipt = screen.getByRole('region', {
@@ -48,13 +48,10 @@ describe('FiscalPage', () => {
     expect(
       within(receipt).getByText('Documento acadêmico sem validade fiscal.'),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'PostFlow Essencial' }),
-    ).toBeInTheDocument()
   })
   it('registra uma única venda e atualiza relatório sem enviar imposto do cliente', async () => {
     const user = userEvent.setup()
-    renderApp('/fiscal')
+    renderApp('/admin/fiscal')
     await screen.findByText(transaction.description)
     fireEvent.change(screen.getByLabelText('Vencimento da venda'), {
       target: { value: '2026-09-18' },
@@ -77,23 +74,19 @@ describe('FiscalPage', () => {
     vi.mocked(fiscalApi.report).mockRejectedValue(
       new Error('Banco indisponível'),
     )
-    renderApp('/fiscal')
+    renderApp('/admin/fiscal')
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Banco indisponível',
     )
     const summary = screen.getByRole('region', { name: 'Resumo fiscal' })
     expect(within(summary).getAllByText('—')).toHaveLength(5)
   })
-  it('recalcula a proposta sem alterar a mensalidade da venda', async () => {
-    const user = userEvent.setup()
-    renderApp('/fiscal')
+  it('não mistura o simulador de custos com o módulo fiscal', async () => {
+    renderApp('/admin/fiscal')
     await screen.findByText(transaction.description)
-    await user.click(screen.getByText('Entenda e simule o custo do plano'))
-    expect(screen.getByText('R$ 38,96')).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Gerações de imagem'), {
-      target: { value: '1000' },
-    })
-    expect(screen.queryByText('R$ 38,96')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Entenda e simule o custo do plano'),
+    ).not.toBeInTheDocument()
     expect(screen.getByLabelText('Valor bruto (R$)')).toHaveValue(79.9)
   })
 })

@@ -1,4 +1,5 @@
 import type {
+  AuthSession,
   AuthUser,
   LoginCredentials,
   RegistrationInput,
@@ -11,7 +12,12 @@ const testUser: AuthUser = {
   id: 'test-user',
   email: 'aluno@postflow.com',
   displayName: 'Aluno PostFlow',
-  role: 'editor',
+}
+
+const defaultSession: AuthSession = {
+  user: testUser,
+  workspace: { id: 'brand-1', role: 'owner' },
+  platformRole: 'platform_owner',
 }
 
 export interface TestAuthGateway extends AuthGateway {
@@ -19,17 +25,22 @@ export interface TestAuthGateway extends AuthGateway {
   lastRegistration: RegistrationInput | null
 }
 
-export function createTestAuthGateway(): TestAuthGateway {
+export function createTestAuthGateway(
+  session: AuthSession = defaultSession,
+): TestAuthGateway {
   return {
     lastLogin: null,
     lastRegistration: null,
     async currentUser() {
-      return localStorage.getItem(TEST_SESSION_KEY) === 'true' ? testUser : null
+      return localStorage.getItem(TEST_SESSION_KEY) === 'true' ? session : null
     },
     async login(credentials) {
       this.lastLogin = credentials
       localStorage.setItem(TEST_SESSION_KEY, 'true')
-      return { ...testUser, email: credentials.email }
+      return {
+        ...session,
+        user: { ...session.user, email: credentials.email },
+      }
     },
     async register(input) {
       this.lastRegistration = input
@@ -37,7 +48,7 @@ export function createTestAuthGateway(): TestAuthGateway {
       return {
         requiresEmailConfirmation: false,
         user: {
-          ...testUser,
+          ...session.user,
           displayName: input.displayName,
           email: input.email,
         },

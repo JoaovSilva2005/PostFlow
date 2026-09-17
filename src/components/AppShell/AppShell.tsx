@@ -10,6 +10,8 @@ import {
   Search,
   WalletCards,
   ReceiptText,
+  ShieldCheck,
+  BadgeDollarSign,
   X,
 } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
@@ -17,7 +19,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import styles from './AppShell.module.css'
 
-const navigationGroups = [
+const workspaceNavigation = [
   {
     label: 'Criar e planejar',
     links: [
@@ -29,8 +31,7 @@ const navigationGroups = [
     label: 'Gerenciar',
     links: [
       { to: '/brand', label: 'Minha marca', icon: Palette },
-      { to: '/finance', label: 'Financeiro', icon: WalletCards },
-      { to: '/fiscal', label: 'Fiscal e plano', icon: ReceiptText },
+      { to: '/billing', label: 'Assinatura e cobrança', icon: BadgeDollarSign },
     ],
   },
 ]
@@ -38,10 +39,42 @@ const navigationGroups = [
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const { authUser, brand, databaseStatus, logout } = useApp()
+  const {
+    authUser,
+    brand,
+    currentWorkspace,
+    databaseStatus,
+    logout,
+    platformRole,
+  } = useApp()
   const [menuOpen, setMenuOpen] = useState(false)
   const [search, setSearch] = useState('')
   const menuButton = useRef<HTMLButtonElement>(null)
+  const adminNavigation = platformRole
+    ? [
+        {
+          label: 'Administração',
+          links: [
+            { to: '/admin/finance', label: 'Financeiro', icon: WalletCards },
+            { to: '/admin/fiscal', label: 'Fiscal', icon: ReceiptText },
+            {
+              to: '/admin/plans',
+              label: 'Planos e custos',
+              icon: ShieldCheck,
+            },
+          ],
+        },
+      ]
+    : []
+  const navigationGroups = [
+    ...workspaceNavigation.map((group) => ({
+      ...group,
+      links: group.links.filter(
+        (link) => link.to !== '/billing' || currentWorkspace,
+      ),
+    })),
+    ...adminNavigation,
+  ]
   const currentPage = navigationGroups
     .flatMap((group) => group.links)
     .find((link) => link.to === pathname)?.label
@@ -109,7 +142,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
           <div>
             <strong>{brand?.name || 'Seu workspace'}</strong>
-            <small>Projeto pessoal</small>
+            <small>
+              {currentWorkspace
+                ? `Workspace · ${currentWorkspace.role}`
+                : 'Sem workspace ativo'}
+            </small>
           </div>
         </div>
         <label className={styles.search}>
@@ -166,7 +203,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <div>
               <strong>{authUser?.displayName || 'Minha conta'}</strong>
-              <small>Ambiente acadêmico</small>
+              <small>
+                {platformRole
+                  ? `Administração · ${platformRole}`
+                  : 'Conta de cliente'}
+              </small>
             </div>
             <button
               type="button"

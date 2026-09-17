@@ -19,22 +19,22 @@ export function createTestRepository(initial: TestData = {}): TestRepository {
     async load() {
       return { brand, drafts: [...drafts] }
     },
-    async saveBrand(nextBrand) {
+    async saveBrand(_workspaceId, nextBrand) {
       brand = { ...nextBrand }
       return brand
     },
-    async createDraft(draft) {
+    async createDraft(_workspaceId, draft) {
       const createdDraft = { ...draft, id: `database-draft-${nextId++}` }
       drafts = [...drafts, createdDraft]
       return createdDraft
     },
-    async updateDraft(updatedDraft) {
+    async updateDraft(_workspaceId, updatedDraft) {
       drafts = drafts.map((draft) =>
         draft.id === updatedDraft.id ? updatedDraft : draft,
       )
       return updatedDraft
     },
-    async deleteDraft(id) {
+    async deleteDraft(_workspaceId, id) {
       drafts = drafts.filter((draft) => draft.id !== id)
     },
     snapshot() {

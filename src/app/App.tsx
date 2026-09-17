@@ -5,6 +5,8 @@ import { CalendarPage } from '../features/calendar/CalendarPage'
 import { ChatPage } from '../features/content/ChatPage'
 import { FinancePage } from '../features/finance/FinancePage'
 import { FiscalPage } from '../features/fiscal/FiscalPage'
+import { BillingPage } from '../features/billing/BillingPage'
+import { AdminPlansPage } from '../features/admin/AdminPlansPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
 export function App() {
@@ -37,22 +39,40 @@ export function App() {
         }
       />
       <Route
-        path="/finance"
+        path="/billing"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute workspaceRoles={['owner', 'admin', 'editor', 'viewer']}>
+            <BillingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/finance"
+        element={
+          <ProtectedRoute platformRoles={['platform_owner', 'finance_admin', 'support']}>
             <FinancePage />
           </ProtectedRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/login" replace />} />
       <Route
-        path="/fiscal"
+        path="/admin/fiscal"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute platformRoles={['platform_owner', 'finance_admin', 'support']}>
             <FiscalPage />
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/admin/plans"
+        element={
+          <ProtectedRoute platformRoles={['platform_owner', 'finance_admin', 'support']}>
+            <AdminPlansPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/finance" element={<Navigate to="/admin/finance" replace />} />
+      <Route path="/fiscal" element={<Navigate to="/admin/fiscal" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )
 }

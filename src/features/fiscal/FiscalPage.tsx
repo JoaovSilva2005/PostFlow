@@ -7,11 +7,14 @@ import { Button } from '../../components/ui/Button'
 import type { FiscalReport, FiscalSale } from '../../domain/fiscal'
 import { localDate } from '../../domain/dates'
 import { fiscalApi, currency, formatDate } from './fiscalApi'
-import { PlanEconomics } from './PlanEconomics'
 import { SaleForm } from './SaleForm'
+import { useApp } from '../../app/AppContext'
 import styles from './FiscalPage.module.css'
 
 export function FiscalPage() {
+  const { platformRole } = useApp()
+  const canWrite =
+    platformRole === 'platform_owner' || platformRole === 'finance_admin'
   const [period, setPeriod] = useState(() => localDate().slice(0, 7))
   const [revision, setRevision] = useState(0)
   const [report, setReport] = useState<FiscalReport | null>(null)
@@ -184,7 +187,7 @@ export function FiscalPage() {
             </p>
           )}
         </section>
-        <SaleForm
+        {canWrite ? <SaleForm
           onCreated={(sale) => {
             setPeriod(sale.dueDate.slice(0, 7))
             setRevision((value) => value + 1)
@@ -192,7 +195,15 @@ export function FiscalPage() {
               'Venda registrada no financeiro. O cálculo fiscal usa a mesma receita.',
             )
           }}
-        />
+        /> : (
+          <section className={styles.panel} aria-label="Permissão de acesso">
+            <h2>Acesso somente leitura</h2>
+            <p className={styles.note}>
+              O suporte pode consultar os valores e comprovantes, mas não pode
+              registrar vendas ou alterar dados fiscais.
+            </p>
+          </section>
+        )}
       </div>
       {receipt && (
         <section
@@ -262,10 +273,6 @@ export function FiscalPage() {
           </button>
         </section>
       )}
-      <div className={styles.internalSection}>
-        <span>Simulação interna</span>
-        <PlanEconomics />
-      </div>
     </AppShell>
   )
 }

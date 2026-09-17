@@ -14,6 +14,7 @@ import { Link } from 'react-router'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
+import { useApp } from '../../app/AppContext'
 import { SelectField, TextField } from '../../components/ui/FormField'
 import type {
   FinancialSummary,
@@ -65,6 +66,9 @@ function formatDate(value: string) {
 }
 
 export function FinancePage() {
+  const { platformRole } = useApp()
+  const canWrite =
+    platformRole === 'platform_owner' || platformRole === 'finance_admin'
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([])
   const [summary, setSummary] = useState(emptySummary)
   const [hasLoadedSummary, setHasLoadedSummary] = useState(false)
@@ -389,7 +393,7 @@ export function FinancePage() {
                           type="button"
                           className={`${styles.status} ${styles[transaction.status]}`}
                           onClick={() => void toggleStatus(transaction)}
-                          disabled={updatingId === transaction.id}
+                          disabled={!canWrite || updatingId === transaction.id}
                           aria-label={`Marcar ${transaction.description} como ${transaction.status === 'paid' ? 'pendente' : 'pago'}`}
                         >
                           {transaction.status === 'paid' ? (
@@ -416,7 +420,7 @@ export function FinancePage() {
                         {currency(transaction.amount)}
                       </td>
                       <td>
-                        <div className={styles.actions}>
+                        {canWrite ? <div className={styles.actions}>
                           <button
                             type="button"
                             onClick={() => startEditing(transaction)}
@@ -431,7 +435,7 @@ export function FinancePage() {
                           >
                             <Trash2 size={15} />
                           </button>
-                        </div>
+                        </div> : <span className="sr-only">Somente leitura</span>}
                       </td>
                     </tr>
                   ))}
@@ -441,7 +445,7 @@ export function FinancePage() {
           )}
         </section>
 
-        <section id="transaction-form" className={styles.formCard}>
+        {canWrite ? <section id="transaction-form" className={styles.formCard}>
           <div className={styles.sectionTitle}>
             <div>
               <h2>
@@ -545,7 +549,15 @@ export function FinancePage() {
                   : 'Adicionar lançamento'}
             </Button>
           </form>
-        </section>
+        </section> : (
+          <section className={styles.formCard} aria-label="Permissão de acesso">
+            <h2>Acesso somente leitura</h2>
+            <p>
+              O perfil de suporte pode consultar lançamentos, mas não pode
+              criar, alterar ou excluir dados financeiros.
+            </p>
+          </section>
+        )}
       </div>
     </AppShell>
   )
