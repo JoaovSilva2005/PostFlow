@@ -8,6 +8,7 @@ import {
 } from '../../test/InMemoryAuthProvider.js'
 import { InMemoryFinancialRepository } from '../../test/InMemoryFinancialRepository.js'
 import { AuthService } from '../auth/authService.js'
+import { InMemoryWorkspaceAccessRepository } from '../tenancy/workspaceRepository.js'
 import { ContentService } from './contentService.js'
 import type { ContentProvider } from './contentTypes.js'
 
@@ -27,6 +28,10 @@ function setup(role: 'editor' | 'viewer' = 'editor') {
     authService: new AuthService(new InMemoryAuthProvider(role)),
     financialRepository: new InMemoryFinancialRepository(),
     contentService: new ContentService(provider),
+    workspaceAccessRepository: new InMemoryWorkspaceAccessRepository(
+      'test-workspace',
+      role,
+    ),
   })
 }
 

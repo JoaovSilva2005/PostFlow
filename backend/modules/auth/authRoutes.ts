@@ -10,6 +10,7 @@ import {
 } from './authCookies.js'
 import { requireAuthentication } from './authMiddleware.js'
 import type { AuthService } from './authService.js'
+import type { WorkspaceAccessRepository } from '../tenancy/workspaceTypes.js'
 
 const emailSchema = z.email('Digite um e-mail válido.').trim().toLowerCase()
 
@@ -44,7 +45,10 @@ function validate<T>(schema: z.ZodType<T>, value: unknown) {
   return result.data
 }
 
-export function createAuthRouter(service: AuthService) {
+export function createAuthRouter(
+  service: AuthService,
+  workspaceAccess?: WorkspaceAccessRepository,
+) {
   const router = Router()
 
   router.post('/login', async (request, response) => {
@@ -101,9 +105,28 @@ export function createAuthRouter(service: AuthService) {
     response.status(204).send()
   })
 
-  router.get('/me', requireAuthentication(service), (request, response) => {
-    response.json({ data: { user: request.authUser } })
-  })
+  router.get(
+    '/me',
+    requireAuthentication(service),
+    async (request, response) => {
+      const user = request.authUser!
+      const workspace = workspaceAccess
+        ? await workspaceAccess.getDefaultWorkspace(user.id)
+        : null
+      const platformRole = workspaceAccess
+        ? await workspaceAccess.getPlatformRole(user.id)
+        : null
+      response.json({
+        data: {
+          user,
+          workspace: workspace
+            ? { id: workspace.workspaceId, role: workspace.role }
+            : null,
+          platformRole,
+        },
+      })
+    },
+  )
 
   return router
 }

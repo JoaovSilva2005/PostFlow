@@ -1,5 +1,5 @@
 import { HttpError } from '../../shared/HttpError.js'
-import type { AppRole, AuthProvider } from './authTypes.js'
+import type { AuthProvider } from './authTypes.js'
 
 export class AuthService {
   private readonly provider: AuthProvider
@@ -64,9 +64,5 @@ export class AuthService {
     } catch {
       // A sessão local ainda é encerrada removendo os cookies.
     }
-  }
-
-  canAccess(role: AppRole, allowedRoles: readonly AppRole[]) {
-    return allowedRoles.includes(role)
   }
 }

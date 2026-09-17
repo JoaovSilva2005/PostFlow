@@ -1,9 +1,12 @@
 export type FinancialTransactionType = 'income' | 'expense'
 export type FinancialTransactionStatus = 'pending' | 'paid'
+export type FinancialTransactionSource =
+  'manual' | 'sale_service' | 'subscription_revenue'
 
 export interface FinancialTransaction {
   id: string
-  brandId: string
+  brandId: string | null
+  sourceType?: FinancialTransactionSource
   type: FinancialTransactionType
   category: string
   description: string
@@ -22,6 +25,7 @@ export interface CreateFinancialTransactionInput {
   amount: number
   dueDate: string
   status: FinancialTransactionStatus
+  sourceType?: FinancialTransactionSource
 }
 
 export type UpdateFinancialTransactionInput =

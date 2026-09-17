@@ -1,5 +1,4 @@
 import type {
-  AppRole,
   AuthenticatedUser,
   AuthProvider,
   AuthSession,
@@ -12,7 +11,6 @@ const testUser: AuthenticatedUser = {
   id: '00000000-0000-0000-0000-000000000001',
   email: 'aluno@postflow.com',
   displayName: 'Aluno PostFlow',
-  role: 'editor',
 }
 
 function session(user = testUser): AuthSession {
@@ -29,8 +27,8 @@ export class InMemoryAuthProvider implements AuthProvider {
   readonly users: Map<string, AuthenticatedUser>
   private readonly user: AuthenticatedUser
 
-  constructor(role: AppRole = 'editor') {
-    this.user = { ...testUser, role }
+  constructor(_legacyRole?: 'owner' | 'admin' | 'editor' | 'viewer') {
+    this.user = { ...testUser }
     this.users = new Map([[this.user.email, this.user]])
   }
 
@@ -57,7 +55,6 @@ export class InMemoryAuthProvider implements AuthProvider {
       id: `user-${this.users.size + 1}`,
       email,
       displayName,
-      role: 'editor',
     }
     this.users.set(email, user)
 
@@ -77,8 +74,4 @@ export class InMemoryAuthProvider implements AuthProvider {
   }
 
   async logout() {}
-
-  userWithRole(role: AppRole): AuthenticatedUser {
-    return { ...testUser, role }
-  }
 }

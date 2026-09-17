@@ -6,10 +6,7 @@ import {
   createSupabaseAuthClient,
   createSupabaseAdminDataClient,
 } from './config/supabaseServer.js'
-import {
-  requireAuthentication,
-  requireRoles,
-} from './modules/auth/authMiddleware.js'
+import { requireAuthentication } from './modules/auth/authMiddleware.js'
 import { createAuthRouter } from './modules/auth/authRoutes.js'
 import { AuthService } from './modules/auth/authService.js'
 import { SupabaseAuthProvider } from './modules/auth/supabaseAuthProvider.js'
@@ -29,11 +26,35 @@ import { createFiscalRouter } from './modules/fiscal/fiscalRoutes.js'
 import { createContentRouter } from './modules/content/contentRoutes.js'
 import { ContentService } from './modules/content/contentService.js'
 import { OpenAiContentProvider } from './modules/content/openAiContentProvider.js'
+import {
+  InMemoryWorkspaceAccessRepository,
+  SupabaseWorkspaceAccessRepository,
+} from './modules/tenancy/workspaceRepository.js'
+import {
+  requireWorkspaceContext,
+  requireWorkspaceRole,
+} from './modules/tenancy/authorizationMiddleware.js'
+import { requirePlatformRole } from './modules/tenancy/authorizationMiddleware.js'
+import type { WorkspaceAccessRepository } from './modules/tenancy/workspaceTypes.js'
+import { SupabaseBillingRepository } from './modules/billing/billingRepository.js'
+import { BillingService } from './modules/billing/billingService.js'
+import {
+  DemoFiscalProvider,
+  DemoPaymentProvider,
+  type BillingRepository,
+} from './modules/billing/billingTypes.js'
+import {
+  createAdminBillingRouter,
+  createBillingRouter,
+} from './modules/billing/billingRoutes.js'
+import { createWorkspaceRouter } from './modules/workspace/workspaceRoutes.js'
 
 interface AppOptions {
   authService?: AuthService
   financialRepository?: FinancialTransactionRepository
   contentService?: ContentService
+  workspaceAccessRepository?: WorkspaceAccessRepository
+  billingRepository?: BillingRepository
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -56,6 +77,17 @@ export function createApp(options: AppOptions = {}) {
           createSupabaseAdminDataClient(),
         ))
   const financialService = new FinancialService(financialRepository)
+  const workspaceAccess =
+    options.workspaceAccessRepository ??
+    (options.financialRepository
+      ? new InMemoryWorkspaceAccessRepository()
+      : new SupabaseWorkspaceAccessRepository(createSupabaseAdminDataClient()))
+  const billingService = new BillingService(
+    options.billingRepository ??
+      new SupabaseBillingRepository(createSupabaseAdminDataClient()),
+    new DemoPaymentProvider(),
+    new DemoFiscalProvider(),
+  )
   const contentService =
     options.contentService ??
     new ContentService(
@@ -93,7 +125,7 @@ export function createApp(options: AppOptions = {}) {
   })
 
   app.get('/api/health/ready', async (_request, response) => {
-    await financialRepository.list()
+    await financialRepository.checkHealth()
     response.json({
       data: {
         status: 'ready',
@@ -102,29 +134,95 @@ export function createApp(options: AppOptions = {}) {
     })
   })
 
-  app.use('/api/auth', createAuthRouter(authService))
+  app.use('/api/auth', createAuthRouter(authService, workspaceAccess))
   app.use(
     '/api/content',
     requireAuthentication(authService),
+    requireWorkspaceContext(
+      workspaceAccess,
+      options.financialRepository ? 'test-workspace' : undefined,
+    ),
     createContentRouter(
       contentService,
-      requireRoles(authService, 'owner', 'admin', 'editor'),
+      requireWorkspaceRole('owner', 'admin', 'editor'),
     ),
   )
   app.use(
-    '/api/fiscal',
+    '/api/admin/finance',
     requireAuthentication(authService),
-    createFiscalRouter(
-      financialService,
-      requireRoles(authService, 'owner', 'admin', 'editor'),
+    requirePlatformRole(
+      workspaceAccess,
+      'platform_owner',
+      'finance_admin',
+      'support',
     ),
-  )
-  app.use('/api/finance', requireAuthentication(authService))
-  app.use(
-    '/api/finance',
     createFinancialRouter(
       financialService,
-      requireRoles(authService, 'owner', 'admin', 'editor'),
+      requirePlatformRole(workspaceAccess, 'platform_owner', 'finance_admin'),
+      () => null,
+    ),
+  )
+  app.use(
+    '/api/admin/fiscal',
+    requireAuthentication(authService),
+    requirePlatformRole(
+      workspaceAccess,
+      'platform_owner',
+      'finance_admin',
+      'support',
+    ),
+    createFiscalRouter(
+      financialService,
+      requirePlatformRole(workspaceAccess, 'platform_owner', 'finance_admin'),
+      () => null,
+    ),
+  )
+  // Compatibilidade exclusiva para os testes unitários que injetam o
+  // repositório em memória. Em produção, os aliases antigos não existem:
+  // Financeiro e Fiscal ficam somente no backoffice `/api/admin/*`.
+  if (options.financialRepository) {
+    app.use(
+      '/api/finance',
+      requireAuthentication(authService),
+      requireWorkspaceContext(workspaceAccess, 'test-workspace'),
+      createFinancialRouter(
+        financialService,
+        requireWorkspaceRole('owner', 'admin', 'editor'),
+      ),
+    )
+    app.use(
+      '/api/fiscal',
+      requireAuthentication(authService),
+      requireWorkspaceContext(workspaceAccess, 'test-workspace'),
+      createFiscalRouter(
+        financialService,
+        requireWorkspaceRole('owner', 'admin', 'editor'),
+      ),
+    )
+  }
+  app.use(
+    '/api/workspaces/:workspaceId',
+    requireAuthentication(authService),
+    requireWorkspaceContext(workspaceAccess),
+    createWorkspaceRouter(
+      createSupabaseAdminDataClient(),
+      requireWorkspaceRole('owner', 'admin', 'editor'),
+    ),
+    createBillingRouter(billingService, requireWorkspaceRole('owner', 'admin')),
+  )
+  app.use(
+    '/api/admin',
+    requireAuthentication(authService),
+    requirePlatformRole(
+      workspaceAccess,
+      'platform_owner',
+      'finance_admin',
+      'support',
+    ),
+    createAdminBillingRouter(
+      billingService,
+      requirePlatformRole(workspaceAccess, 'platform_owner', 'finance_admin'),
+      requirePlatformRole(workspaceAccess, 'platform_owner'),
     ),
   )
 

@@ -47,25 +47,36 @@ function validate<T>(schema: z.ZodType<T>, value: unknown) {
   return result.data
 }
 
+function workspaceId(request: Parameters<RequestHandler>[0]) {
+  if (!request.workspaceContext)
+    throw new HttpError(400, 'Contexto de workspace ausente.')
+  return request.workspaceContext.workspaceId
+}
+
+type ScopeResolver = (request: Parameters<RequestHandler>[0]) => string | null
+
 const allowWrite: RequestHandler = (_request, _response, next) => next()
 
 export function createFinancialRouter(
   service: FinancialService,
   authorizeWrite: RequestHandler = allowWrite,
+  resolveScope: ScopeResolver = workspaceId,
 ) {
   const router = Router()
 
-  router.get('/transactions', async (_request, response) => {
-    response.json({ data: await service.list() })
+  router.get('/transactions', async (request, response) => {
+    response.json({ data: await service.list(resolveScope(request)) })
   })
 
-  router.get('/summary', async (_request, response) => {
-    response.json({ data: await service.summary() })
+  router.get('/summary', async (request, response) => {
+    response.json({ data: await service.summary(resolveScope(request)) })
   })
 
   router.post('/transactions', authorizeWrite, async (request, response) => {
     const input = validate(transactionSchema, request.body)
-    response.status(201).json({ data: await service.create(input) })
+    response
+      .status(201)
+      .json({ data: await service.create(input, resolveScope(request)) })
   })
 
   router.patch(
@@ -74,7 +85,9 @@ export function createFinancialRouter(
     async (request, response) => {
       const input = validate(updateTransactionSchema, request.body)
       const id = validate(idSchema, request.params.id)
-      response.json({ data: await service.update(id, input) })
+      response.json({
+        data: await service.update(id, input, resolveScope(request)),
+      })
     },
   )
 
@@ -85,7 +98,7 @@ export function createFinancialRouter(
       const { status } = validate(statusSchema, request.body)
       const id = validate(idSchema, request.params.id)
       response.json({
-        data: await service.updateStatus(id, status),
+        data: await service.updateStatus(id, status, resolveScope(request)),
       })
     },
   )
@@ -95,7 +108,7 @@ export function createFinancialRouter(
     authorizeWrite,
     async (request, response) => {
       const id = validate(idSchema, request.params.id)
-      await service.delete(id)
+      await service.delete(id, resolveScope(request))
       response.status(204).send()
     },
   )

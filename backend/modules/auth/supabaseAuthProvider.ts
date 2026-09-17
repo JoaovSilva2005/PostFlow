@@ -1,19 +1,9 @@
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js'
 import {
-  APP_ROLES,
-  type AppRole,
   type AuthenticatedUser,
   type AuthProvider,
   type AuthSession,
 } from './authTypes.js'
-
-const DEFAULT_ROLE: AppRole = 'editor'
-
-function readRole(value: unknown): AppRole {
-  return APP_ROLES.includes(value as AppRole)
-    ? (value as AppRole)
-    : DEFAULT_ROLE
-}
 
 function toAuthenticatedUser(user: User): AuthenticatedUser {
   const email = user.email ?? ''
@@ -25,7 +15,6 @@ function toAuthenticatedUser(user: User): AuthenticatedUser {
       typeof user.user_metadata.display_name === 'string'
         ? user.user_metadata.display_name
         : email.split('@')[0] || 'Usuário PostFlow',
-    role: readRole(user.app_metadata.role),
   }
 }
 

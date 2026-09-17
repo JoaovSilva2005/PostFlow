@@ -44,7 +44,7 @@ describe('FinancialService', () => {
       }),
     ])
 
-    const summary = await new FinancialService(repository).summary()
+    const summary = await new FinancialService(repository).summary('brand')
 
     expect(summary).toEqual({
       paidIncome: 3500,
@@ -62,7 +62,7 @@ describe('FinancialService', () => {
       new InMemoryFinancialRepository([pending]),
     )
 
-    const updated = await service.updateStatus(pending.id, 'paid')
+    const updated = await service.updateStatus(pending.id, 'paid', 'brand')
 
     expect(updated.status).toBe('paid')
     expect(updated.paidAt).not.toBeNull()
@@ -72,10 +72,14 @@ describe('FinancialService', () => {
     const repository = new InMemoryFinancialRepository([paidIncome])
     const service = new FinancialService(repository)
 
-    const updated = await service.update(paidIncome.id, {
-      description: 'Receita mensal atualizada',
-      status: 'paid',
-    })
+    const updated = await service.update(
+      paidIncome.id,
+      {
+        description: 'Receita mensal atualizada',
+        status: 'paid',
+      },
+      'brand',
+    )
 
     expect(updated.paidAt).toBe(paidIncome.paidAt)
   })
@@ -86,7 +90,7 @@ describe('FinancialService', () => {
       transaction({ id: 'cent-2', amount: 0.2 }),
     ])
 
-    const summary = await new FinancialService(repository).summary()
+    const summary = await new FinancialService(repository).summary('brand')
 
     expect(summary.paidIncome).toBe(0.3)
     expect(summary.balance).toBe(0.3)

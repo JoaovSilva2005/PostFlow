@@ -6,7 +6,7 @@ import type {
   UpdateFinancialTransactionInput,
 } from './financialTypes.js'
 
-const DEMO_BRAND_ID = '10000000-0000-0000-0000-000000000001'
+const TEST_WORKSPACE_ID = 'test-workspace'
 
 export function createDemoFinancialTransactions(): FinancialTransaction[] {
   const createdAt = '2026-09-01T12:00:00.000Z'
@@ -14,7 +14,8 @@ export function createDemoFinancialTransactions(): FinancialTransaction[] {
   return [
     {
       id: '40000000-0000-0000-0000-000000000001',
-      brandId: DEMO_BRAND_ID,
+      brandId: TEST_WORKSPACE_ID,
+      sourceType: 'subscription_revenue',
       type: 'income',
       category: 'Assinaturas',
       description: 'Receita mensal dos planos PostFlow',
@@ -27,7 +28,8 @@ export function createDemoFinancialTransactions(): FinancialTransaction[] {
     },
     {
       id: '40000000-0000-0000-0000-000000000002',
-      brandId: DEMO_BRAND_ID,
+      brandId: TEST_WORKSPACE_ID,
+      sourceType: 'manual',
       type: 'expense',
       category: 'Infraestrutura',
       description: 'Serviços de hospedagem e banco de dados',
@@ -40,7 +42,8 @@ export function createDemoFinancialTransactions(): FinancialTransaction[] {
     },
     {
       id: '40000000-0000-0000-0000-000000000003',
-      brandId: DEMO_BRAND_ID,
+      brandId: TEST_WORKSPACE_ID,
+      sourceType: 'manual',
       type: 'expense',
       category: 'Marketing',
       description: 'Campanha de divulgação do produto',
@@ -53,7 +56,8 @@ export function createDemoFinancialTransactions(): FinancialTransaction[] {
     },
     {
       id: '40000000-0000-0000-0000-000000000004',
-      brandId: DEMO_BRAND_ID,
+      brandId: TEST_WORKSPACE_ID,
+      sourceType: 'sale_service',
       type: 'income',
       category: 'Serviços',
       description: 'Consultoria de conteúdo para cliente',
@@ -74,23 +78,35 @@ export class MemoryFinancialTransactionRepository implements FinancialTransactio
     this.transactions = transactions
   }
 
-  async list() {
-    return [...this.transactions]
+  async checkHealth() {}
+
+  async list(workspaceId: string | null) {
+    return workspaceId
+      ? this.transactions.filter(
+          (transaction) => transaction.brandId === workspaceId,
+        )
+      : [...this.transactions]
   }
 
-  async findById(id: string) {
+  async findById(id: string, workspaceId: string | null) {
     return (
-      this.transactions.find((transaction) => transaction.id === id) ?? null
+      this.transactions.find(
+        (transaction) =>
+          transaction.id === id &&
+          (!workspaceId || transaction.brandId === workspaceId),
+      ) ?? null
     )
   }
 
   async create(
     input: CreateFinancialTransactionInput & { paidAt: string | null },
+    workspaceId: string | null,
   ) {
     const now = new Date().toISOString()
     const transaction: FinancialTransaction = {
       id: randomUUID(),
-      brandId: DEMO_BRAND_ID,
+      brandId: workspaceId,
+      sourceType: input.sourceType ?? 'manual',
       ...input,
       createdAt: now,
       updatedAt: now,
@@ -102,9 +118,12 @@ export class MemoryFinancialTransactionRepository implements FinancialTransactio
   async update(
     id: string,
     input: UpdateFinancialTransactionInput & { paidAt?: string | null },
+    workspaceId: string | null,
   ) {
     const index = this.transactions.findIndex(
-      (transaction) => transaction.id === id,
+      (transaction) =>
+        transaction.id === id &&
+        (!workspaceId || transaction.brandId === workspaceId),
     )
     if (index < 0) return null
 
@@ -117,10 +136,12 @@ export class MemoryFinancialTransactionRepository implements FinancialTransactio
     return updated
   }
 
-  async delete(id: string) {
+  async delete(id: string, workspaceId: string | null) {
     const originalLength = this.transactions.length
     this.transactions = this.transactions.filter(
-      (transaction) => transaction.id !== id,
+      (transaction) =>
+        transaction.id !== id ||
+        Boolean(workspaceId && transaction.brandId !== workspaceId),
     )
     return this.transactions.length < originalLength
   }

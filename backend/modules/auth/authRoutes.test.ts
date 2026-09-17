@@ -8,12 +8,20 @@ import {
 } from '../../test/InMemoryAuthProvider.js'
 import { InMemoryFinancialRepository } from '../../test/InMemoryFinancialRepository.js'
 import { AuthService } from './authService.js'
+import { InMemoryWorkspaceAccessRepository } from '../tenancy/workspaceRepository.js'
 
-function testApp(provider = new InMemoryAuthProvider()) {
+function testApp(
+  provider = new InMemoryAuthProvider(),
+  workspaceRole: 'owner' | 'admin' | 'editor' | 'viewer' = 'editor',
+) {
   return {
     app: createApp({
       authService: new AuthService(provider),
       financialRepository: new InMemoryFinancialRepository(),
+      workspaceAccessRepository: new InMemoryWorkspaceAccessRepository(
+        'test-workspace',
+        workspaceRole,
+      ),
     }),
     provider,
   }
@@ -74,8 +82,8 @@ describe('autenticação', () => {
     expect(login.status).toBe(200)
     expect(login.body.data.user).toMatchObject({
       email: 'aluno@postflow.com',
-      role: 'editor',
     })
+    expect(login.body.data.user).not.toHaveProperty('role')
     expect(login.body.data).not.toHaveProperty('accessToken')
     const cookies = login.headers['set-cookie']
     const serializedCookies = Array.isArray(cookies)
@@ -100,7 +108,7 @@ describe('autenticação', () => {
     })
 
     expect(registered.status).toBe(201)
-    expect(registered.body.data.user.role).toBe('editor')
+    expect(registered.body.data.user).not.toHaveProperty('role')
     expect(recovered.status).toBe(200)
     expect(provider.recoveredEmails).toContain('maria@postflow.com')
   })
@@ -117,7 +125,7 @@ describe('autenticação', () => {
   })
 
   it('permite leitura e bloqueia escrita para o perfil viewer', async () => {
-    const { app } = testApp(new InMemoryAuthProvider('viewer'))
+    const { app } = testApp(new InMemoryAuthProvider('viewer'), 'viewer')
     const read = await request(app)
       .get('/api/finance/summary')
       .set('Authorization', `Bearer ${TEST_ACCESS_TOKEN}`)

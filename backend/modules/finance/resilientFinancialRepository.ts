@@ -23,27 +23,37 @@ export class ResilientFinancialTransactionRepository implements FinancialTransac
     return this.mode
   }
 
-  list() {
-    return this.execute((repository) => repository.list())
+  checkHealth() {
+    return this.execute((repository) => repository.checkHealth())
   }
 
-  findById(id: string) {
-    return this.execute((repository) => repository.findById(id))
+  list(workspaceId: string | null) {
+    return this.execute((repository) => repository.list(workspaceId))
   }
 
-  create(input: CreateFinancialTransactionInput & { paidAt: string | null }) {
-    return this.execute((repository) => repository.create(input))
+  findById(id: string, workspaceId: string | null) {
+    return this.execute((repository) => repository.findById(id, workspaceId))
+  }
+
+  create(
+    input: CreateFinancialTransactionInput & { paidAt: string | null },
+    workspaceId: string | null,
+  ) {
+    return this.execute((repository) => repository.create(input, workspaceId))
   }
 
   update(
     id: string,
     input: UpdateFinancialTransactionInput & { paidAt?: string | null },
+    workspaceId: string | null,
   ) {
-    return this.execute((repository) => repository.update(id, input))
+    return this.execute((repository) =>
+      repository.update(id, input, workspaceId),
+    )
   }
 
-  delete(id: string) {
-    return this.execute((repository) => repository.delete(id))
+  delete(id: string, workspaceId: string | null) {
+    return this.execute((repository) => repository.delete(id, workspaceId))
   }
 
   private async execute<T>(

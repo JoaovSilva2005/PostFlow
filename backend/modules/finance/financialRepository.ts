@@ -5,11 +5,10 @@ import type {
   UpdateFinancialTransactionInput,
 } from './financialTypes.js'
 
-export const DEMO_BRAND_ID = '10000000-0000-0000-0000-000000000001'
-
 interface FinancialTransactionRow {
   id: string
-  brand_id: string
+  brand_id: string | null
+  source_type: FinancialTransaction['sourceType']
   type: 'income' | 'expense'
   category: string
   description: string
@@ -22,22 +21,29 @@ interface FinancialTransactionRow {
 }
 
 export interface FinancialTransactionRepository {
-  list(): Promise<FinancialTransaction[]>
-  findById(id: string): Promise<FinancialTransaction | null>
+  checkHealth(): Promise<void>
+  list(workspaceId: string | null): Promise<FinancialTransaction[]>
+  findById(
+    id: string,
+    workspaceId: string | null,
+  ): Promise<FinancialTransaction | null>
   create(
     input: CreateFinancialTransactionInput & { paidAt: string | null },
+    workspaceId: string | null,
   ): Promise<FinancialTransaction>
   update(
     id: string,
     input: UpdateFinancialTransactionInput & { paidAt?: string | null },
+    workspaceId: string | null,
   ): Promise<FinancialTransaction | null>
-  delete(id: string): Promise<boolean>
+  delete(id: string, workspaceId: string | null): Promise<boolean>
 }
 
 function toDomain(row: FinancialTransactionRow): FinancialTransaction {
   return {
     id: row.id,
     brandId: row.brand_id,
+    sourceType: row.source_type,
     type: row.type,
     category: row.category,
     description: row.description,
@@ -61,6 +67,7 @@ function toDatabasePatch(
     ...(input.dueDate !== undefined && { due_date: input.dueDate }),
     ...(input.status !== undefined && { status: input.status }),
     ...(input.paidAt !== undefined && { paid_at: input.paidAt }),
+    ...(input.sourceType !== undefined && { source_type: input.sourceType }),
   }
 }
 
@@ -71,24 +78,33 @@ export class SupabaseFinancialTransactionRepository implements FinancialTransact
     this.supabase = supabase
   }
 
-  async list() {
-    const { data, error } = await this.supabase
+  async checkHealth() {
+    const { error } = await this.supabase
+      .from('financial_transactions')
+      .select('id')
+      .limit(1)
+    if (error) throw new Error(`Falha ao verificar banco: ${error.message}`)
+  }
+
+  async list(workspaceId: string | null) {
+    let query = this.supabase
       .from('financial_transactions')
       .select('*')
-      .eq('brand_id', DEMO_BRAND_ID)
       .order('due_date', { ascending: false })
+    if (workspaceId) query = query.eq('brand_id', workspaceId)
+    const { data, error } = await query
 
     if (error) throw new Error(`Falha ao listar lançamentos: ${error.message}`)
     return (data as FinancialTransactionRow[]).map(toDomain)
   }
 
-  async findById(id: string) {
-    const { data, error } = await this.supabase
+  async findById(id: string, workspaceId: string | null) {
+    let query = this.supabase
       .from('financial_transactions')
       .select('*')
       .eq('id', id)
-      .eq('brand_id', DEMO_BRAND_ID)
-      .maybeSingle()
+    if (workspaceId) query = query.eq('brand_id', workspaceId)
+    const { data, error } = await query.maybeSingle()
 
     if (error) throw new Error(`Falha ao buscar lançamento: ${error.message}`)
     return data ? toDomain(data as FinancialTransactionRow) : null
@@ -96,11 +112,12 @@ export class SupabaseFinancialTransactionRepository implements FinancialTransact
 
   async create(
     input: CreateFinancialTransactionInput & { paidAt: string | null },
+    workspaceId: string | null,
   ) {
     const { data, error } = await this.supabase
       .from('financial_transactions')
       .insert({
-        brand_id: DEMO_BRAND_ID,
+        brand_id: workspaceId,
         type: input.type,
         category: input.category,
         description: input.description,
@@ -108,6 +125,7 @@ export class SupabaseFinancialTransactionRepository implements FinancialTransact
         due_date: input.dueDate,
         status: input.status,
         paid_at: input.paidAt,
+        source_type: input.sourceType ?? 'manual',
       })
       .select('*')
       .single()
@@ -119,27 +137,27 @@ export class SupabaseFinancialTransactionRepository implements FinancialTransact
   async update(
     id: string,
     input: UpdateFinancialTransactionInput & { paidAt?: string | null },
+    workspaceId: string | null,
   ) {
-    const { data, error } = await this.supabase
+    let query = this.supabase
       .from('financial_transactions')
       .update(toDatabasePatch(input))
       .eq('id', id)
-      .eq('brand_id', DEMO_BRAND_ID)
-      .select('*')
-      .maybeSingle()
+    if (workspaceId) query = query.eq('brand_id', workspaceId)
+    const { data, error } = await query.select('*').maybeSingle()
 
     if (error)
       throw new Error(`Falha ao atualizar lançamento: ${error.message}`)
     return data ? toDomain(data as FinancialTransactionRow) : null
   }
 
-  async delete(id: string) {
-    const { data, error } = await this.supabase
+  async delete(id: string, workspaceId: string | null) {
+    let query = this.supabase
       .from('financial_transactions')
       .delete()
       .eq('id', id)
-      .eq('brand_id', DEMO_BRAND_ID)
-      .select('id')
+    if (workspaceId) query = query.eq('brand_id', workspaceId)
+    const { data, error } = await query.select('id')
 
     if (error) throw new Error(`Falha ao excluir lançamento: ${error.message}`)
     return data.length > 0

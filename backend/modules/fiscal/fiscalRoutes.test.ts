@@ -8,6 +8,7 @@ import {
 } from '../../test/InMemoryAuthProvider'
 import { InMemoryFinancialRepository } from '../../test/InMemoryFinancialRepository'
 import { AuthService } from '../auth/authService'
+import { InMemoryWorkspaceAccessRepository } from '../tenancy/workspaceRepository.js'
 
 const authorize = (test: request.Test) =>
   test.set('Authorization', `Bearer ${TEST_ACCESS_TOKEN}`)
@@ -22,6 +23,10 @@ function setup(role: 'editor' | 'viewer' = 'editor') {
   const app = createApp({
     authService: new AuthService(new InMemoryAuthProvider(role)),
     financialRepository: repository,
+    workspaceAccessRepository: new InMemoryWorkspaceAccessRepository(
+      'test-workspace',
+      role,
+    ),
   })
   return { app, repository }
 }

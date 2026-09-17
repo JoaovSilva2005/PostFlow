@@ -60,45 +60,60 @@ export class FinancialService {
     this.repository = repository
   }
 
-  list() {
-    return this.repository.list()
+  list(workspaceId: string | null) {
+    return this.repository.list(workspaceId)
   }
 
-  async summary() {
-    return calculateFinancialSummary(await this.repository.list())
+  async summary(workspaceId: string | null) {
+    return calculateFinancialSummary(await this.repository.list(workspaceId))
   }
 
-  create(input: CreateFinancialTransactionInput) {
-    return this.repository.create({
-      ...input,
-      paidAt: input.status === 'paid' ? new Date().toISOString() : null,
-    })
+  create(input: CreateFinancialTransactionInput, workspaceId: string | null) {
+    return this.repository.create(
+      {
+        ...input,
+        paidAt: input.status === 'paid' ? new Date().toISOString() : null,
+      },
+      workspaceId,
+    )
   }
 
-  async update(id: string, input: UpdateFinancialTransactionInput) {
-    const current = await this.requireTransaction(id)
+  async update(
+    id: string,
+    input: UpdateFinancialTransactionInput,
+    workspaceId: string | null,
+  ) {
+    const current = await this.requireTransaction(id, workspaceId)
     const paidAt = this.paidAtFor(current, input.status)
-    const updated = await this.repository.update(id, {
-      ...input,
-      ...(paidAt !== undefined && { paidAt }),
-    })
+    const updated = await this.repository.update(
+      id,
+      {
+        ...input,
+        ...(paidAt !== undefined && { paidAt }),
+      },
+      workspaceId,
+    )
 
     if (!updated) throw new HttpError(404, 'Lançamento não encontrado.')
     return updated
   }
 
-  updateStatus(id: string, status: FinancialTransactionStatus) {
-    return this.update(id, { status })
+  updateStatus(
+    id: string,
+    status: FinancialTransactionStatus,
+    workspaceId: string | null,
+  ) {
+    return this.update(id, { status }, workspaceId)
   }
 
-  async delete(id: string) {
-    if (!(await this.repository.delete(id))) {
+  async delete(id: string, workspaceId: string | null) {
+    if (!(await this.repository.delete(id, workspaceId))) {
       throw new HttpError(404, 'Lançamento não encontrado.')
     }
   }
 
-  private async requireTransaction(id: string) {
-    const transaction = await this.repository.findById(id)
+  private async requireTransaction(id: string, workspaceId: string | null) {
+    const transaction = await this.repository.findById(id, workspaceId)
     if (!transaction) throw new HttpError(404, 'Lançamento não encontrado.')
     return transaction
   }

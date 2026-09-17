@@ -1,12 +1,7 @@
-export const APP_ROLES = ['owner', 'admin', 'editor', 'viewer'] as const
-
-export type AppRole = (typeof APP_ROLES)[number]
-
 export interface AuthenticatedUser {
   id: string
   email: string
   displayName: string
-  role: AppRole
 }
 
 export interface AuthSession {
