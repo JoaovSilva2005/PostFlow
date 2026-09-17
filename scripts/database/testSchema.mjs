@@ -30,6 +30,14 @@ assert.match(schema, /type in \('income', 'expense'\)/)
 assert.match(schema, /status in \('pending', 'paid'\)/)
 assert.match(schema, /financial_transactions_amount_check check \(amount > 0\)/)
 assert.match(schema, /enable row level security/g)
+assert.match(
+  schema,
+  /revoke all on table public\.financial_transactions from anon, authenticated/,
+)
+assert.doesNotMatch(
+  schema,
+  /grant[\s\S]{0,80}on table public\.financial_transactions to anon, authenticated/,
+)
 assert.match(seed, /insert into public\.users/)
 assert.match(seed, /insert into public\.post_drafts/)
 assert.match(seed, /insert into public\.post_hashtags/)

@@ -180,8 +180,9 @@ grant select, insert, update, delete
   on table public.post_drafts to anon, authenticated;
 grant select, insert, update, delete
   on table public.post_hashtags to anon, authenticated;
-grant select, insert, update, delete
-  on table public.financial_transactions to anon, authenticated;
+
+-- Financeiro e fiscal são acessados somente pela API server-side.
+-- A service role ignora RLS; anon/authenticated permanecem sem privilégios.
 
 drop policy if exists "demo_user_can_be_read" on public.users;
 create policy "demo_user_can_be_read"
@@ -341,64 +342,9 @@ using (
 
 drop policy if exists "demo_finances_can_be_read"
   on public.financial_transactions;
-create policy "demo_finances_can_be_read"
-on public.financial_transactions for select
-to anon, authenticated
-using (
-  exists (
-    select 1
-    from public.brands
-    where brands.id = financial_transactions.brand_id
-      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
-  )
-);
-
 drop policy if exists "demo_finances_can_be_created"
   on public.financial_transactions;
-create policy "demo_finances_can_be_created"
-on public.financial_transactions for insert
-to anon, authenticated
-with check (
-  exists (
-    select 1
-    from public.brands
-    where brands.id = financial_transactions.brand_id
-      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
-  )
-);
-
 drop policy if exists "demo_finances_can_be_updated"
   on public.financial_transactions;
-create policy "demo_finances_can_be_updated"
-on public.financial_transactions for update
-to anon, authenticated
-using (
-  exists (
-    select 1
-    from public.brands
-    where brands.id = financial_transactions.brand_id
-      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
-  )
-)
-with check (
-  exists (
-    select 1
-    from public.brands
-    where brands.id = financial_transactions.brand_id
-      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
-  )
-);
-
 drop policy if exists "demo_finances_can_be_deleted"
   on public.financial_transactions;
-create policy "demo_finances_can_be_deleted"
-on public.financial_transactions for delete
-to anon, authenticated
-using (
-  exists (
-    select 1
-    from public.brands
-    where brands.id = financial_transactions.brand_id
-      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
-  )
-);

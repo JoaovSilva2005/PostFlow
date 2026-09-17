@@ -53,72 +53,17 @@ for each row execute function public.set_updated_at();
 
 alter table public.financial_transactions enable row level security;
 revoke all on table public.financial_transactions from anon, authenticated;
-grant select, insert, update, delete
-  on table public.financial_transactions to anon, authenticated;
+
+-- A API usa uma chave server-side. Não conceda acesso direto ao navegador.
 
 drop policy if exists "demo_finances_can_be_read"
   on public.financial_transactions;
-create policy "demo_finances_can_be_read"
-on public.financial_transactions for select
-to anon, authenticated
-using (
-  exists (
-    select 1
-    from public.brands
-    where brands.id = financial_transactions.brand_id
-      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
-  )
-);
-
 drop policy if exists "demo_finances_can_be_created"
   on public.financial_transactions;
-create policy "demo_finances_can_be_created"
-on public.financial_transactions for insert
-to anon, authenticated
-with check (
-  exists (
-    select 1
-    from public.brands
-    where brands.id = financial_transactions.brand_id
-      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
-  )
-);
-
 drop policy if exists "demo_finances_can_be_updated"
   on public.financial_transactions;
-create policy "demo_finances_can_be_updated"
-on public.financial_transactions for update
-to anon, authenticated
-using (
-  exists (
-    select 1
-    from public.brands
-    where brands.id = financial_transactions.brand_id
-      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
-  )
-)
-with check (
-  exists (
-    select 1
-    from public.brands
-    where brands.id = financial_transactions.brand_id
-      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
-  )
-);
-
 drop policy if exists "demo_finances_can_be_deleted"
   on public.financial_transactions;
-create policy "demo_finances_can_be_deleted"
-on public.financial_transactions for delete
-to anon, authenticated
-using (
-  exists (
-    select 1
-    from public.brands
-    where brands.id = financial_transactions.brand_id
-      and brands.user_id = '00000000-0000-0000-0000-000000000001'::uuid
-  )
-);
 
 insert into public.financial_transactions (
   id, brand_id, type, category, description, amount, due_date, status, paid_at
