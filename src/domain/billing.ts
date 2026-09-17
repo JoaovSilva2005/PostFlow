@@ -1,4 +1,5 @@
-export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled'
+export type SubscriptionStatus =
+  'trialing' | 'active' | 'past_due' | 'cancelled'
 export type InvoiceStatus = 'pending' | 'paid' | 'void'
 
 export interface PlanLimits {
@@ -8,6 +9,7 @@ export interface PlanLimits {
 
 export interface BillingPlan {
   id: string
+  code: string
   name: string
   price: number
   limits: PlanLimits

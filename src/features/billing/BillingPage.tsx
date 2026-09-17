@@ -1,16 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   BadgeCheck,
   CalendarClock,
+  CheckCircle2,
+  CircleDollarSign,
   FileText,
   Gauge,
+  Image,
+  LoaderCircle,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react'
 import { useApp } from '../../app/AppContext'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import { PageHeader } from '../../components/ui/PageHeader'
-import type { BillingInvoice, BillingOverview } from '../../domain/billing'
+import type {
+  BillingInvoice,
+  BillingOverview,
+  BillingPlan,
+} from '../../domain/billing'
 import { ApiError } from '../../services/apiClient'
 import { billingApi } from './billingApi'
 import styles from './BillingPage.module.css'
@@ -29,11 +38,31 @@ const statusLabel = {
   trialing: 'Período de teste',
   active: 'Ativa',
   past_due: 'Pagamento pendente',
-  canceled: 'Cancelada',
+  cancelled: 'Cancelada',
   pending: 'Pendente',
   paid: 'Paga',
   void: 'Cancelada',
 } as const
+
+type SubscriptionFlow =
+  | 'idle'
+  | 'selection'
+  | 'confirmation'
+  | 'processing'
+  | 'invoice_pending'
+  | 'payment_processing'
+  | 'success'
+  | 'error'
+
+function idempotencyKey() {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID()
+  }
+  return `billing-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
 function UsageBar({
   label,
@@ -65,6 +94,7 @@ function UsageBar({
 export function BillingPage() {
   const { currentWorkspace } = useApp()
   const [overview, setOverview] = useState<BillingOverview | null>(null)
+  const [plans, setPlans] = useState<BillingPlan[]>([])
   const [invoices, setInvoices] = useState<BillingInvoice[]>([])
   const [selectedInvoice, setSelectedInvoice] = useState<BillingInvoice | null>(
     null,
@@ -72,6 +102,19 @@ export function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [revision, setRevision] = useState(0)
+  const [subscriptionFlow, setSubscriptionFlow] =
+    useState<SubscriptionFlow>('idle')
+  const [flowError, setFlowError] = useState('')
+  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null)
+  const [paymentError, setPaymentError] = useState('')
+  const subscriptionKey = useRef<string | null>(null)
+  const paymentKeys = useRef(new Map<string, string>())
+  const [pendingSubscriptionInvoice, setPendingSubscriptionInvoice] =
+    useState<BillingInvoice | null>(null)
+  const professionalPlan =
+    plans.find((plan) => plan.code === 'professional') ?? plans[0] ?? null
+  const canManageBilling =
+    currentWorkspace?.role === 'owner' || currentWorkspace?.role === 'admin'
 
   useEffect(() => {
     if (!currentWorkspace) {
@@ -82,11 +125,13 @@ export function BillingPage() {
     setLoading(true)
     setError('')
     Promise.all([
+      billingApi.plans(currentWorkspace.id, controller.signal),
       billingApi.overview(currentWorkspace.id, controller.signal),
       billingApi.invoices(currentWorkspace.id, controller.signal),
     ])
-      .then(([nextOverview, nextInvoices]) => {
+      .then(([nextPlans, nextOverview, nextInvoices]) => {
         if (!controller.signal.aborted) {
+          setPlans(nextPlans)
           setOverview(nextOverview)
           setInvoices(nextInvoices)
         }
@@ -109,6 +154,92 @@ export function BillingPage() {
     return () => controller.abort()
   }, [currentWorkspace, revision])
 
+  function startPlanSelection() {
+    if (!professionalPlan || !canManageBilling) return
+    setFlowError('')
+    setSubscriptionFlow('selection')
+  }
+
+  function confirmPlanSelection() {
+    setFlowError('')
+    setSubscriptionFlow('confirmation')
+  }
+
+  async function subscribe() {
+    if (!currentWorkspace || !professionalPlan || !canManageBilling) return
+    const key = subscriptionKey.current ?? idempotencyKey()
+    subscriptionKey.current = key
+    setSubscriptionFlow('processing')
+    setFlowError('')
+    try {
+      const invoice = await billingApi.subscribe(
+        currentWorkspace.id,
+        professionalPlan.code,
+        key,
+      )
+      setInvoices((current) => [
+        invoice,
+        ...current.filter((currentInvoice) => currentInvoice.id !== invoice.id),
+      ])
+      setPendingSubscriptionInvoice(invoice)
+      setSubscriptionFlow('invoice_pending')
+      subscriptionKey.current = null
+      setRevision((value) => value + 1)
+    } catch (cause) {
+      setSubscriptionFlow('error')
+      setFlowError(
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível confirmar a assinatura demonstrativa.',
+      )
+    }
+  }
+
+  async function payInvoice(invoice: BillingInvoice) {
+    if (!currentWorkspace || !canManageBilling) return
+    const isSubscriptionPayment = pendingSubscriptionInvoice?.id === invoice.id
+    const key = paymentKeys.current.get(invoice.id) ?? idempotencyKey()
+    paymentKeys.current.set(invoice.id, key)
+    setPayingInvoiceId(invoice.id)
+    setPaymentError('')
+    if (isSubscriptionPayment) {
+      setSubscriptionFlow('payment_processing')
+      setFlowError('')
+    }
+    try {
+      const paidInvoice = await billingApi.payInvoice(
+        currentWorkspace.id,
+        invoice.id,
+        key,
+      )
+      setInvoices((current) =>
+        current.map((currentInvoice) =>
+          currentInvoice.id === paidInvoice.id ? paidInvoice : currentInvoice,
+        ),
+      )
+      setSelectedInvoice(paidInvoice.receipt ? paidInvoice : null)
+      paymentKeys.current.delete(invoice.id)
+      if (isSubscriptionPayment) {
+        setPendingSubscriptionInvoice(null)
+        setSubscriptionFlow('success')
+      }
+      setRevision((value) => value + 1)
+    } catch (cause) {
+      const message =
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível registrar o pagamento demonstrativo.'
+      if (isSubscriptionPayment) {
+        setSubscriptionFlow('invoice_pending')
+        setFlowError(message)
+      } else {
+        setPaymentError(message)
+      }
+    } finally {
+      setPayingInvoiceId(null)
+    }
+  }
+
   return (
     <AppShell>
       <PageHeader
@@ -126,11 +257,15 @@ export function BillingPage() {
 
       {overview?.demoMode ? (
         <p className={styles.demoNotice}>
-          <strong>Ambiente demonstrativo.</strong> Pagamentos, limites e
-          comprovantes ainda não representam uma cobrança real.
+          <strong>Ambiente acadêmico demonstrativo.</strong> Nenhuma cobrança
+          real será feita e nenhum dado financeiro é solicitado nesta tela.
         </p>
       ) : null}
-      {loading ? <p role="status">Carregando assinatura...</p> : null}
+      {loading ? (
+        <p className={styles.loading} role="status">
+          <LoaderCircle size={16} aria-hidden="true" /> Carregando assinatura...
+        </p>
+      ) : null}
       {error ? (
         <p className={styles.error} role="alert">
           {error}
@@ -139,6 +274,169 @@ export function BillingPage() {
 
       {overview ? (
         <>
+          {!overview.plan && professionalPlan ? (
+            <section
+              className={styles.offer}
+              aria-labelledby="plan-offer-title"
+            >
+              <div className={styles.offerCopy}>
+                <span className={styles.offerEyebrow}>Plano disponível</span>
+                <h2 id="plan-offer-title">PostFlow {professionalPlan.name}</h2>
+                <p>
+                  Uma assinatura mensal para manter a produção de conteúdo do
+                  seu workspace em movimento.
+                </p>
+                <ul className={styles.limitList} aria-label="Limites do plano">
+                  <li>
+                    <Sparkles size={16} aria-hidden="true" />
+                    <strong>{professionalPlan.limits.text} textos</strong> por
+                    mês
+                  </li>
+                  <li>
+                    <Image size={16} aria-hidden="true" />
+                    <strong>{professionalPlan.limits.image} imagens</strong> por
+                    mês
+                  </li>
+                </ul>
+              </div>
+              <div className={styles.priceBlock}>
+                <span>A partir de</span>
+                <strong>{currency(professionalPlan.price)}</strong>
+                <small>por mês</small>
+                {canManageBilling ? (
+                  <Button onClick={startPlanSelection}>
+                    Escolher {professionalPlan.name}
+                  </Button>
+                ) : (
+                  <small>Somente owner ou admin pode contratar o plano.</small>
+                )}
+              </div>
+            </section>
+          ) : !overview.plan ? (
+            <section className={styles.panel} aria-label="Planos indisponíveis">
+              <p className={styles.empty}>
+                Nenhum plano está disponível para contratação agora.
+              </p>
+            </section>
+          ) : null}
+
+          {subscriptionFlow !== 'idle' && professionalPlan ? (
+            <section
+              className={styles.checkout}
+              aria-labelledby="checkout-title"
+              aria-live="polite"
+            >
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span>Resumo da assinatura</span>
+                  <h2 id="checkout-title">
+                    {subscriptionFlow === 'success'
+                      ? 'Pagamento demonstrativo confirmado'
+                      : subscriptionFlow === 'invoice_pending' ||
+                          subscriptionFlow === 'payment_processing'
+                        ? 'Fatura demonstrativa emitida'
+                        : `PostFlow ${professionalPlan.name}`}
+                  </h2>
+                </div>
+                <CircleDollarSign size={22} aria-hidden="true" />
+              </div>
+
+              {subscriptionFlow === 'success' ? (
+                <div className={styles.successState}>
+                  <CheckCircle2 size={20} aria-hidden="true" />
+                  <p>
+                    Sua fatura foi marcada como paga no ambiente acadêmico. O
+                    comprovante demonstrativo fica disponível abaixo.
+                  </p>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setSubscriptionFlow('idle')}
+                  >
+                    Fechar resumo
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <dl className={styles.checkoutDetails}>
+                    <div>
+                      <dt>Plano</dt>
+                      <dd>{professionalPlan.name}</dd>
+                    </div>
+                    <div>
+                      <dt>Franquia mensal</dt>
+                      <dd>
+                        {professionalPlan.limits.text} textos e{' '}
+                        {professionalPlan.limits.image} imagens
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Total mensal</dt>
+                      <dd>{currency(professionalPlan.price)}</dd>
+                    </div>
+                  </dl>
+                  <p className={styles.checkoutNotice}>
+                    Simulação acadêmica: ao confirmar, o PostFlow apenas
+                    registra uma assinatura e uma fatura de demonstração. Não há
+                    cobrança real.
+                  </p>
+                  {subscriptionFlow === 'error' || flowError ? (
+                    <p className={styles.inlineError} role="alert">
+                      {flowError}
+                    </p>
+                  ) : null}
+                  <div className={styles.checkoutActions}>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setSubscriptionFlow('idle')}
+                      disabled={
+                        subscriptionFlow === 'processing' ||
+                        subscriptionFlow === 'payment_processing'
+                      }
+                    >
+                      Cancelar
+                    </Button>
+                    {subscriptionFlow === 'selection' ? (
+                      <Button onClick={confirmPlanSelection}>Ver resumo</Button>
+                    ) : subscriptionFlow === 'invoice_pending' ||
+                      subscriptionFlow === 'payment_processing' ? (
+                      <Button
+                        onClick={() =>
+                          pendingSubscriptionInvoice
+                            ? void payInvoice(pendingSubscriptionInvoice)
+                            : undefined
+                        }
+                        disabled={subscriptionFlow === 'payment_processing'}
+                      >
+                        {subscriptionFlow === 'payment_processing' ? (
+                          <>
+                            <LoaderCircle size={16} aria-hidden="true" />
+                            Processando pagamento...
+                          </>
+                        ) : (
+                          'Confirmar pagamento demonstrativo'
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => void subscribe()}
+                        disabled={subscriptionFlow === 'processing'}
+                      >
+                        {subscriptionFlow === 'processing' ? (
+                          <>
+                            <LoaderCircle size={16} aria-hidden="true" />
+                            Processando...
+                          </>
+                        ) : (
+                          'Confirmar assinatura demonstrativa'
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </section>
+          ) : null}
+
           <section className={styles.summary} aria-label="Resumo da assinatura">
             <article>
               <BadgeCheck size={18} />
@@ -224,17 +522,35 @@ export function BillingPage() {
                       {statusLabel[invoice.status]}
                     </span>
                     <strong>{currency(invoice.amount)}</strong>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedInvoice(invoice)}
-                      disabled={!invoice.receipt}
-                    >
-                      Ver comprovante
-                    </button>
+                    <div className={styles.invoiceActions}>
+                      {invoice.status === 'pending' && canManageBilling ? (
+                        <button
+                          type="button"
+                          onClick={() => void payInvoice(invoice)}
+                          disabled={payingInvoiceId === invoice.id}
+                        >
+                          {payingInvoiceId === invoice.id
+                            ? 'Processando...'
+                            : 'Pagar em demonstração'}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInvoice(invoice)}
+                        disabled={!invoice.receipt}
+                      >
+                        Ver comprovante
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>
             )}
+            {paymentError ? (
+              <p className={styles.inlineError} role="alert">
+                {paymentError}
+              </p>
+            ) : null}
           </section>
         </>
       ) : null}
@@ -255,7 +571,8 @@ export function BillingPage() {
           </div>
           <p>
             <strong>
-              Documento demonstrativo sem validade fiscal. Não é NFS-e.
+              Documento demonstrativo acadêmico sem validade fiscal. Não é
+              NFS-e.
             </strong>
           </p>
           <dl>
