@@ -21,6 +21,16 @@ create table if not exists public.plans (
   updated_at timestamptz not null default now()
 );
 
+insert into public.plans(code, name, price_cents, text_limit, image_limit, active)
+values ('professional', 'Profissional', 7990, 100, 30, true)
+on conflict (code) do update set
+  name = excluded.name,
+  price_cents = excluded.price_cents,
+  text_limit = excluded.text_limit,
+  image_limit = excluded.image_limit,
+  active = excluded.active,
+  updated_at = now();
+
 create table if not exists public.subscriptions (
   id uuid primary key default gen_random_uuid(),
   brand_id uuid not null references public.brands(id) on delete cascade,
