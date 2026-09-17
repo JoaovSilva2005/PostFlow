@@ -26,18 +26,16 @@ function invoice(row: any, fiscal?: any): BillingInvoice {
     status: row.status,
     dueDate: row.due_date,
     paidAt: row.paid_at,
-    ...(fiscal
+    receipt: fiscal
       ? {
-          receipt: {
-            reference: fiscal.external_reference,
-            taxRate: Number(fiscal.tax_rate) * 100,
-            taxAmount: cents(fiscal.tax_cents),
-            netAmount: cents(fiscal.net_cents),
-            issuedAt: fiscal.issued_at,
-            legalValidity: 'academic_only' as const,
-          },
+          reference: fiscal.external_reference,
+          taxRate: Number(fiscal.tax_rate) * 100,
+          taxAmount: cents(fiscal.tax_cents),
+          netAmount: cents(fiscal.net_cents),
+          issuedAt: fiscal.issued_at,
+          legalValidity: 'academic_only' as const,
         }
-      : {}),
+      : null,
   }
 }
 
@@ -58,7 +56,7 @@ export class SupabaseBillingRepository implements BillingRepository {
           'id,status,current_period_start,current_period_end,plans(id,code,name,price_cents,text_limit,image_limit)',
         )
         .eq('brand_id', workspaceId)
-        .in('status', ['active', 'trialing'])
+        .in('status', ['active', 'trialing', 'past_due'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -192,15 +190,11 @@ export class SupabaseBillingRepository implements BillingRepository {
     workspaceId: string
     planCode: string
     idempotencyKey: string
-    paymentReference: string
-    fiscalReference: string
   }) {
     return this.workflow('create_subscription_invoice_workflow', {
       p_workspace_id: input.workspaceId,
       p_plan_code: input.planCode,
       p_idempotency_key: input.idempotencyKey,
-      p_payment_reference: input.paymentReference,
-      p_fiscal_reference: input.fiscalReference,
     })
   }
 

@@ -43,6 +43,9 @@ export function createBillingRouter(
   authorizeWrite: RequestHandler,
 ) {
   const router = Router({ mergeParams: true })
+  router.get('/billing/plans', async (_request, response) =>
+    response.json({ data: await service.listPlans() }),
+  )
   router.get('/billing', async (request, response) =>
     response.json({ data: await service.getOverview(workspaceId(request)) }),
   )

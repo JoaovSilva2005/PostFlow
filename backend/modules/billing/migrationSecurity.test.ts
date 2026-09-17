@@ -15,14 +15,16 @@ describe('migração SaaS: funções privilegiadas', () => {
   it('não expõe os workflows SECURITY DEFINER a clientes', () => {
     expect(migration).toContain("security definer set search_path = ''")
     expect(migration).toContain(
-      'revoke all on function public.create_subscription_invoice_workflow(uuid,text,text,text,text) from public, anon, authenticated;',
+      'revoke all on function public.create_subscription_invoice_workflow(uuid,text,text) from public, anon, authenticated;',
     )
     expect(migration).toContain(
       'revoke all on function public.pay_billing_invoice_workflow(uuid,uuid,text,text,text) from public, anon, authenticated;',
     )
     expect(migration).toContain(
-      'grant execute on function public.create_subscription_invoice_workflow(uuid,text,text,text,text) to service_role;',
+      'grant execute on function public.create_subscription_invoice_workflow(uuid,text,text) to service_role;',
     )
+    expect(migration).toContain("v_plan.price_cents,'pending'")
+    expect(migration).toContain("set status='active'")
     expect(migration).toContain('gross_cents,description,idempotency_key')
     expect(migration).toContain(
       'create or replace function public.claim_billing_operation',

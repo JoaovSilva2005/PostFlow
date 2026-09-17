@@ -16,6 +16,7 @@ function fixture() {
     status: 'pending',
     dueDate: '2026-09-18',
     paidAt: null,
+    receipt: null,
   }
   const claims = new Set<string>()
   const repository: BillingRepository = {
@@ -28,12 +29,20 @@ function fixture() {
       return 'claimed'
     }),
     releaseOperation: vi.fn(async () => undefined),
-    createSubscriptionWorkflow: vi.fn(),
+    createSubscriptionWorkflow: vi.fn(async () => invoice),
     payInvoiceWorkflow: vi.fn(async () => {
       invoice = { ...invoice, status: 'paid', paidAt: new Date().toISOString() }
       return invoice
     }),
-    listPlans: vi.fn(async () => []),
+    listPlans: vi.fn(async () => [
+      {
+        id: 'plan-1',
+        code: 'professional',
+        name: 'Profissional',
+        price: 79.9,
+        limits: { text: 100, image: 30 },
+      },
+    ]),
     createPlan: vi.fn(),
     adminFinance: vi.fn(),
     adminFiscal: vi.fn(),
@@ -52,6 +61,20 @@ function fixture() {
 }
 
 describe('BillingService', () => {
+  it('cria uma fatura pendente antes de acionar provedores de pagamento', async () => {
+    const { service, payment, fiscal } = fixture()
+
+    const invoice = await service.subscribe(
+      'brand-1',
+      'professional',
+      'subscription-request-1',
+    )
+
+    expect(invoice.status).toBe('pending')
+    expect(payment.capture).not.toHaveBeenCalled()
+    expect(fiscal.issue).not.toHaveBeenCalled()
+  })
+
   it('usa uma chave estável por fatura e evita efeitos externos duplicados', async () => {
     const { service, payment, fiscal } = fixture()
     const results = await Promise.allSettled([

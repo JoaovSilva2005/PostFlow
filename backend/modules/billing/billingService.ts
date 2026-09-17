@@ -61,23 +61,10 @@ export class BillingService {
       const plans = await this.repository.listPlans()
       const selected = plans.find((candidate) => candidate.code === planCode)
       if (!selected) throw new HttpError(404, 'Plano não encontrado.')
-      const provisionalId = `${workspaceId}:${planCode}`
-      const payment = await this.payments.capture({
-        invoiceId: provisionalId,
-        amount: selected.price,
-        idempotencyKey,
-      })
-      const fiscal = await this.fiscal.issue({
-        invoiceId: provisionalId,
-        amount: selected.price,
-        idempotencyKey,
-      })
       return await this.repository.createSubscriptionWorkflow({
         workspaceId,
         planCode,
         idempotencyKey,
-        paymentReference: payment.reference,
-        fiscalReference: fiscal.reference,
       })
     } catch (error) {
       await this.repository.releaseOperation(

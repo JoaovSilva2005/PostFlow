@@ -15,14 +15,14 @@ export interface BillingInvoice {
   status: InvoiceStatus
   dueDate: string
   paidAt: string | null
-  receipt?: {
+  receipt: {
     reference: string
     taxRate: number
     taxAmount: number
     netAmount: number
     issuedAt: string
     legalValidity: 'academic_only'
-  }
+  } | null
 }
 
 export interface BillingOverview {
@@ -89,8 +89,6 @@ export interface BillingRepository {
     workspaceId: string
     planCode: string
     idempotencyKey: string
-    paymentReference: string
-    fiscalReference: string
   }): Promise<BillingInvoice>
   payInvoiceWorkflow(input: {
     workspaceId: string
