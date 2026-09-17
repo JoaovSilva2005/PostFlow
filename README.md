@@ -134,6 +134,18 @@ No **SQL Editor** do Supabase, execute `database/schema.sql` em instalações no
 1. [`database/schema.sql`](database/schema.sql);
 2. [`database/seed.sql`](database/seed.sql).
 
+### Perfis de demonstração
+
+Depois de criar e confirmar as contas no Supabase Auth, execute [`database/demo-personas.sql`](database/demo-personas.sql). O script não contém senhas e prepara três cenários isolados:
+
+| Conta                    | Workspace              | Permissões                                             | Cobrança                    |
+| ------------------------ | ---------------------- | ------------------------------------------------------ | --------------------------- |
+| `admin@postflow.test`    | PostFlow Administração | `platform_owner` + `owner`; cliente e administração    | Acesso administrativo total |
+| `cliente@postflow.test`  | Aurora Conteúdo        | `owner`; somente telas do cliente                      | Plano Profissional ativo    |
+| `semplano@postflow.test` | Novo Cliente           | `owner`; somente contratação até ativar uma assinatura | Sem plano ou fatura         |
+
+Contas sem plano são direcionadas para `/billing`. As rotas e APIs de marca, conteúdo e agenda exigem assinatura `active` ou `trialing`; `platform_owner` pode acessar o produto para suporte administrativo. As credenciais de demonstração devem ser mantidas fora do Git e trocadas ou removidas após a apresentação.
+
 Depois, valide a conexão e o CRUD real:
 
 ```bash
