@@ -85,7 +85,7 @@ Antes de publicar, execute `database/schema.sql` e `database/seed.sql` no SQL Ed
 - `/finance`: indicadores e lançamentos consultados pelo Supabase;
 - `/api/health`: resposta JSON com `status: "ok"` e `storage: "supabase"`.
 
-O `.env` e a pasta local `.vercel` são ignorados pelo Git. Nunca cadastre uma chave `service_role` em variável iniciada com `VITE_`; o projeto utiliza somente a chave publicável protegida pelas políticas RLS.
+O `.env` e a pasta local `.vercel` são ignorados pelo Git. A chave publicável pode ser usada no frontend para autenticação, mas o acesso do backend aos dados utiliza exclusivamente `SUPABASE_SERVICE_ROLE_KEY` (ou `SUPABASE_SECRET_KEY`) em variável server-side. Nunca cadastre uma chave `service_role` em variável iniciada com `VITE_`, nem a exponha no navegador. A API nunca substitui a chave privilegiada pela chave pública.
 
 ## Autenticação e autorização
 

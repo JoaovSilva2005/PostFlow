@@ -1,7 +1,10 @@
 import cors from 'cors'
 import express, { type ErrorRequestHandler } from 'express'
 import { environment } from './config/environment.js'
-import { createSupabaseServerClient } from './config/supabaseServer.js'
+import {
+  createSupabaseAuthClient,
+  createSupabaseAdminDataClient,
+} from './config/supabaseServer.js'
 import {
   requireAuthentication,
   requireRoles,
@@ -34,20 +37,23 @@ interface AppOptions {
 
 export function createApp(options: AppOptions = {}) {
   const app = express()
-  const supabase = createSupabaseServerClient()
   const authService =
     options.authService ??
-    new AuthService(new SupabaseAuthProvider(createSupabaseServerClient))
-  const financialRepository = options.financialRepository
-    ? options.financialRepository
-    : environment.allowDemoFallback
+    new AuthService(new SupabaseAuthProvider(createSupabaseAuthClient))
+  const financialRepository =
+    options.financialRepository ??
+    (environment.allowDemoFallback
       ? new ResilientFinancialTransactionRepository(
-          new SupabaseFinancialTransactionRepository(supabase),
+          new SupabaseFinancialTransactionRepository(
+            createSupabaseAdminDataClient(),
+          ),
           new MemoryFinancialTransactionRepository(
             createDemoFinancialTransactions(),
           ),
         )
-      : new SupabaseFinancialTransactionRepository(supabase)
+      : new SupabaseFinancialTransactionRepository(
+          createSupabaseAdminDataClient(),
+        ))
   const financialService = new FinancialService(financialRepository)
   const contentService =
     options.contentService ??

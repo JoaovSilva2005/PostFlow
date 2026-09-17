@@ -43,6 +43,16 @@ export const environment = {
   supabasePublishableKey: () =>
     process.env.SUPABASE_PUBLISHABLE_KEY?.trim() ||
     requiredEnvironmentVariable('VITE_SUPABASE_PUBLISHABLE_KEY'),
+  /** Chave privilegiada usada exclusivamente por repositórios no backend. */
+  supabaseServiceRoleKey: () => {
+    const serviceRoleKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+      process.env.SUPABASE_SECRET_KEY?.trim()
+
+    return (
+      serviceRoleKey ?? requiredEnvironmentVariable('SUPABASE_SERVICE_ROLE_KEY')
+    )
+  },
   openAiApiKey: () => requiredEnvironmentVariable('OPENAI_API_KEY'),
   openAiTextModel: process.env.OPENAI_TEXT_MODEL?.trim() || 'gpt-5.6-luna',
 }

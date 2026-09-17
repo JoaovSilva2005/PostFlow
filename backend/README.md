@@ -4,14 +4,14 @@ O backend é uma API Express escrita em TypeScript. A entrada local está em `in
 
 ## Organização
 
-| Pasta ou arquivo | Responsabilidade                               |
-| ---------------- | ---------------------------------------------- |
-| `app.ts`         | monta middlewares, rotas e tratamento de erros |
-| `index.ts`       | inicia o servidor no desenvolvimento local     |
-| `config`         | lê o ambiente e cria o cliente Supabase        |
-| `modules`        | agrupa cada domínio da API                     |
-| `shared`         | recursos comuns aos módulos                    |
-| `test`           | implementações auxiliares usadas nos testes    |
+| Pasta ou arquivo | Responsabilidade                                                      |
+| ---------------- | --------------------------------------------------------------------- |
+| `app.ts`         | monta middlewares, rotas e tratamento de erros                        |
+| `index.ts`       | inicia o servidor no desenvolvimento local                            |
+| `config`         | lê o ambiente e cria clientes Supabase separados por responsabilidade |
+| `modules`        | agrupa cada domínio da API                                            |
+| `shared`         | recursos comuns aos módulos                                           |
+| `test`           | implementações auxiliares usadas nos testes                           |
 
 ## Módulo de autenticação
 
@@ -25,6 +25,15 @@ Dentro de `modules/auth`:
 - `authTypes.ts` define `owner`, `admin`, `editor` e `viewer`.
 
 O endpoint de saúde é público. A API financeira exige autenticação; operações de escrita também rejeitam o papel `viewer`.
+
+## Clientes Supabase e configuração
+
+O backend mantém dois clientes com responsabilidades diferentes:
+
+- `createSupabaseAuthClient` usa `SUPABASE_PUBLISHABLE_KEY` (ou `VITE_SUPABASE_PUBLISHABLE_KEY`) para login, renovação e validação de sessões;
+- `createSupabaseAdminDataClient` usa `SUPABASE_SERVICE_ROLE_KEY` (ou `SUPABASE_SECRET_KEY`) exclusivamente no repositório financeiro, que também abastece as consultas fiscais.
+
+As chaves privilegiadas não podem ter prefixo `VITE_`, não devem aparecer no frontend e nunca devem ser versionadas. A API falha ao iniciar o acesso a dados sem a chave privilegiada; ela nunca degrada para a chave pública.
 
 ## Módulo financeiro
 

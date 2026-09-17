@@ -31,7 +31,7 @@ VITE_API_URL=http://localhost:3001/api
 API_PORT=3001
 ```
 
-O `.env` é ignorado pelo Git para evitar o versionamento de configurações locais. A chave utilizada no navegador deve ser apenas a **publishable/anon key**; nunca utilize a `service_role` no frontend.
+O `.env` é ignorado pelo Git para evitar o versionamento de configurações locais. A chave utilizada no navegador deve ser apenas a **publishable/anon key**. O backend usa `SUPABASE_SERVICE_ROLE_KEY` (ou `SUPABASE_SECRET_KEY`) somente no ambiente server-side para acessar os repositórios; nunca utilize essa chave no frontend.
 
 Quando o projeto remoto não responde, somente o módulo financeiro usa uma massa temporária em memória para permitir a apresentação. A interface sinaliza **API demonstração**; esse modo não substitui a aplicação da migração no Supabase.
 
