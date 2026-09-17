@@ -8,16 +8,23 @@ interface ProtectedRouteProps {
   children: ReactNode
   platformRoles?: Exclude<PlatformRole, null>[]
   workspaceRoles?: WorkspaceRole[]
+  requiresActivePlan?: boolean
 }
 
 export function ProtectedRoute({
   children,
   platformRoles,
   workspaceRoles,
+  requiresActivePlan = false,
 }: ProtectedRouteProps) {
   const location = useLocation()
-  const { authStatus, currentWorkspace, isAuthenticated, platformRole } =
-    useApp()
+  const {
+    authStatus,
+    billingStatus,
+    currentWorkspace,
+    isAuthenticated,
+    platformRole,
+  } = useApp()
 
   if (authStatus === 'checking') {
     return <div role="status">Verificando sua sessão...</div>
@@ -39,6 +46,16 @@ export function ProtectedRoute({
     (!currentWorkspace || !workspaceRoles.includes(currentWorkspace.role))
   ) {
     return <AccessDenied />
+  }
+
+  const hasActivePlan =
+    billingStatus === 'active' || billingStatus === 'trialing'
+  if (
+    requiresActivePlan &&
+    !hasActivePlan &&
+    platformRole !== 'platform_owner'
+  ) {
+    return <Navigate to="/billing" replace />
   }
 
   return children

@@ -10,6 +10,7 @@ const clientSession = {
   },
   workspace: { id: 'brand-client', role: 'owner' as const },
   platformRole: null,
+  billingStatus: 'active' as const,
 }
 
 describe('limites de autorização da interface', () => {
@@ -41,11 +42,49 @@ describe('limites de autorização da interface', () => {
       ...clientSession,
       workspace: null,
       platformRole: 'support' as const,
+      billingStatus: 'none' as const,
     }
     renderApp('/admin/plans', undefined, createTestAuthGateway(supportSession))
 
     expect(
       await screen.findByRole('heading', { name: 'Planos e custos' }),
+    ).toBeInTheDocument()
+  })
+
+  it('direciona cliente sem plano para cobrança e oculta o produto', async () => {
+    authenticateDemo()
+    const withoutPlan = {
+      ...clientSession,
+      billingStatus: 'none' as const,
+    }
+    renderApp('/brand', undefined, createTestAuthGateway(withoutPlan))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Assinatura e cobrança' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Criar com IA' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Agenda' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Minha marca' })).toBeNull()
+    expect(
+      screen.getByRole('link', { name: 'Assinatura e cobrança' }),
+    ).toBeInTheDocument()
+  })
+
+  it('permite que platform_owner acesse todas as telas mesmo sem plano', async () => {
+    authenticateDemo()
+    const administrator = {
+      ...clientSession,
+      platformRole: 'platform_owner' as const,
+      billingStatus: 'none' as const,
+    }
+    renderApp('/brand', undefined, createTestAuthGateway(administrator))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Identidade da marca' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Financeiro' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Criar com IA' }),
     ).toBeInTheDocument()
   })
 })

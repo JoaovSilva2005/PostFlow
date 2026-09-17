@@ -25,10 +25,16 @@ export interface AppState {
   authUser: AuthUser | null
   currentWorkspace: WorkspaceAccess | null
   platformRole: PlatformRole
+  billingStatus: BillingAccessStatus
   isAuthenticated: boolean
   brand: BrandProfile | null
   drafts: PostDraft[]
   databaseStatus: 'connecting' | 'connected' | 'error'
   databaseError: string | null
 }
-import type { AuthUser, PlatformRole, WorkspaceAccess } from './auth'
+import type {
+  AuthUser,
+  BillingAccessStatus,
+  PlatformRole,
+  WorkspaceAccess,
+} from './auth'

@@ -18,6 +18,7 @@ const defaultSession: AuthSession = {
   user: testUser,
   workspace: { id: 'brand-1', role: 'owner' },
   platformRole: 'platform_owner',
+  billingStatus: 'active',
 }
 
 export interface TestAuthGateway extends AuthGateway {

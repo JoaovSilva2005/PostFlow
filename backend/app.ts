@@ -31,6 +31,7 @@ import {
   SupabaseWorkspaceAccessRepository,
 } from './modules/tenancy/workspaceRepository.js'
 import {
+  requireActiveSubscription,
   requireWorkspaceContext,
   requireWorkspaceRole,
 } from './modules/tenancy/authorizationMiddleware.js'
@@ -142,6 +143,7 @@ export function createApp(options: AppOptions = {}) {
       workspaceAccess,
       options.financialRepository ? 'test-workspace' : undefined,
     ),
+    requireActiveSubscription(workspaceAccess),
     createContentRouter(
       contentService,
       requireWorkspaceRole('owner', 'admin', 'editor'),
@@ -204,11 +206,12 @@ export function createApp(options: AppOptions = {}) {
     '/api/workspaces/:workspaceId',
     requireAuthentication(authService),
     requireWorkspaceContext(workspaceAccess),
+    createBillingRouter(billingService, requireWorkspaceRole('owner', 'admin')),
+    requireActiveSubscription(workspaceAccess),
     createWorkspaceRouter(
       createSupabaseAdminDataClient(),
       requireWorkspaceRole('owner', 'admin', 'editor'),
     ),
-    createBillingRouter(billingService, requireWorkspaceRole('owner', 'admin')),
   )
   app.use(
     '/api/admin',

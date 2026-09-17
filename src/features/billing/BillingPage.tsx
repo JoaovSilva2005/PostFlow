@@ -92,7 +92,7 @@ function UsageBar({
 }
 
 export function BillingPage() {
-  const { currentWorkspace } = useApp()
+  const { currentWorkspace, refreshSession } = useApp()
   const [overview, setOverview] = useState<BillingOverview | null>(null)
   const [plans, setPlans] = useState<BillingPlan[]>([])
   const [invoices, setInvoices] = useState<BillingInvoice[]>([])
@@ -223,6 +223,7 @@ export function BillingPage() {
         setPendingSubscriptionInvoice(null)
         setSubscriptionFlow('success')
       }
+      await refreshSession()
       setRevision((value) => value + 1)
     } catch (cause) {
       const message =

@@ -41,6 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
   const {
     authUser,
+    billingStatus,
     brand,
     currentWorkspace,
     databaseStatus,
@@ -50,6 +51,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [search, setSearch] = useState('')
   const menuButton = useRef<HTMLButtonElement>(null)
+  const hasActivePlan =
+    billingStatus === 'active' || billingStatus === 'trialing'
+  const canUseProduct = hasActivePlan || platformRole === 'platform_owner'
+  const visibleWorkspaceNavigation = canUseProduct
+    ? workspaceNavigation
+    : workspaceNavigation
+        .map((group) => ({
+          ...group,
+          links: group.links.filter((link) => link.to === '/billing'),
+        }))
+        .filter((group) => group.links.length > 0)
   const adminNavigation = platformRole
     ? [
         {
@@ -67,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       ]
     : []
   const navigationGroups = [
-    ...(currentWorkspace ? workspaceNavigation : []),
+    ...(currentWorkspace ? visibleWorkspaceNavigation : []),
     ...adminNavigation,
   ]
   const currentPage = navigationGroups
@@ -125,7 +137,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <NavLink
           className={styles.logo}
-          to="/brand"
+          to={canUseProduct ? '/brand' : '/billing'}
           aria-label="Início do PostFlow"
           onClick={closeMenu}
         >

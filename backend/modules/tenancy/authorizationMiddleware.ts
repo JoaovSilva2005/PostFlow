@@ -54,6 +54,35 @@ export function requireWorkspaceRole(
   }
 }
 
+export function requireActiveSubscription(
+  repository: WorkspaceAccessRepository,
+): RequestHandler {
+  return async (request, _response, next) => {
+    try {
+      if (!request.workspaceContext)
+        throw new HttpError(400, 'Contexto de workspace ausente.')
+      const status = await repository.getBillingStatus(
+        request.workspaceContext.workspaceId,
+      )
+      const hasActivePlan = status === 'active' || status === 'trialing'
+      const canBypassBilling =
+        !hasActivePlan &&
+        request.authUser &&
+        (await repository.getPlatformRole(request.authUser.id)) ===
+          'platform_owner'
+      if (!hasActivePlan && !canBypassBilling) {
+        throw new HttpError(
+          402,
+          'Um plano ativo é necessário para utilizar esta funcionalidade.',
+        )
+      }
+      next()
+    } catch (error) {
+      next(error)
+    }
+  }
+}
+
 export function requirePlatformRole(
   repository: WorkspaceAccessRepository,
   ...roles: PlatformRole[]

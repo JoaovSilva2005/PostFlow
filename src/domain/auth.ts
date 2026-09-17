@@ -1,5 +1,7 @@
 export type WorkspaceRole = 'owner' | 'admin' | 'editor' | 'viewer'
 export type PlatformRole = 'platform_owner' | 'finance_admin' | 'support' | null
+export type BillingAccessStatus =
+  'none' | 'trialing' | 'active' | 'past_due' | 'cancelled'
 
 export interface AuthUser {
   id: string
@@ -16,6 +18,7 @@ export interface AuthSession {
   user: AuthUser
   workspace: WorkspaceAccess | null
   platformRole: PlatformRole
+  billingStatus: BillingAccessStatus
 }
 
 export interface LoginCredentials {

@@ -139,6 +139,7 @@ describe('FinancePage', () => {
         },
         workspace: null,
         platformRole: 'support',
+        billingStatus: 'none',
       }),
     )
 

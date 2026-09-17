@@ -94,6 +94,7 @@ describe('autenticação', () => {
     const currentUser = await agent.get('/api/auth/me')
     expect(currentUser.status).toBe(200)
     expect(currentUser.body.data.user.displayName).toBe('Aluno PostFlow')
+    expect(currentUser.body.data.billingStatus).toBe('active')
   })
 
   it('permite criar conta e solicitar recuperação de senha', async () => {

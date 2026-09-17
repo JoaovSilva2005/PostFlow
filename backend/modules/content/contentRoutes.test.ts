@@ -23,7 +23,10 @@ const provider: ContentProvider = {
   },
 }
 
-function setup(role: 'editor' | 'viewer' = 'editor') {
+function setup(
+  role: 'editor' | 'viewer' = 'editor',
+  billingStatus: 'active' | 'none' = 'active',
+) {
   return createApp({
     authService: new AuthService(new InMemoryAuthProvider(role)),
     financialRepository: new InMemoryFinancialRepository(),
@@ -31,6 +34,8 @@ function setup(role: 'editor' | 'viewer' = 'editor') {
     workspaceAccessRepository: new InMemoryWorkspaceAccessRepository(
       'test-workspace',
       role,
+      null,
+      billingStatus,
     ),
   })
 }
@@ -82,5 +87,14 @@ describe('geração de conteúdo', () => {
       status: 'draft',
       color: '#4F46E5',
     })
+  })
+
+  it('bloqueia o uso do produto quando o workspace não possui plano', async () => {
+    const response = await authorize(
+      request(setup('editor', 'none')).post('/api/content/generate'),
+    ).send(validRequest)
+
+    expect(response.status).toBe(402)
+    expect(response.body.error).toMatch(/plano ativo/i)
   })
 })

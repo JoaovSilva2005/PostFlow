@@ -7,6 +7,8 @@ export const PLATFORM_ROLES = [
   'support',
 ] as const
 export type PlatformRole = (typeof PLATFORM_ROLES)[number]
+export type BillingAccessStatus =
+  'none' | 'trialing' | 'active' | 'past_due' | 'cancelled'
 
 export interface WorkspaceMembership {
   workspaceId: string
@@ -26,4 +28,5 @@ export interface WorkspaceAccessRepository {
   ): Promise<WorkspaceMembership | null>
   getDefaultWorkspace(userId: string): Promise<WorkspaceMembership | null>
   getPlatformRole(userId: string): Promise<PlatformRole | null>
+  getBillingStatus(workspaceId: string): Promise<BillingAccessStatus>
 }

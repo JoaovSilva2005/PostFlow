@@ -116,6 +116,10 @@ export function createAuthRouter(
       const platformRole = workspaceAccess
         ? await workspaceAccess.getPlatformRole(user.id)
         : null
+      const billingStatus =
+        workspace && workspaceAccess
+          ? await workspaceAccess.getBillingStatus(workspace.workspaceId)
+          : 'none'
       response.json({
         data: {
           user,
@@ -123,6 +127,7 @@ export function createAuthRouter(
             ? { id: workspace.workspaceId, role: workspace.role }
             : null,
           platformRole,
+          billingStatus,
         },
       })
     },

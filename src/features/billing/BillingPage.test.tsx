@@ -206,6 +206,7 @@ describe('BillingPage', () => {
       },
       workspace: { id: 'brand-1', role: 'viewer' },
       platformRole: null,
+      billingStatus: 'none',
     })
     renderApp('/billing', createTestRepository(), authGateway)
 

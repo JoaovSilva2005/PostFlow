@@ -39,6 +39,7 @@ interface AppContextValue extends AppState {
   logout: () => Promise<void>
   recoverPassword: (email: string) => Promise<string>
   register: (input: RegistrationInput) => Promise<RegistrationResponse>
+  refreshSession: () => Promise<AuthSession | null>
   saveBrand: (brand: BrandProfile) => Promise<void>
   addDraft: (draft: PostDraft) => Promise<void>
   updateDraft: (draft: PostDraft) => Promise<void>
@@ -58,6 +59,7 @@ function createInitialState(): AppState {
     authUser: null,
     currentWorkspace: null,
     platformRole: null,
+    billingStatus: 'none',
     isAuthenticated: false,
     brand: null,
     drafts: [],
@@ -78,6 +80,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         authUser: action.payload.user,
         currentWorkspace: action.payload.workspace,
         platformRole: action.payload.platformRole,
+        billingStatus: action.payload.billingStatus,
         isAuthenticated: true,
       }
     case 'AUTH_ANONYMOUS':
@@ -88,6 +91,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         authUser: null,
         currentWorkspace: null,
         platformRole: null,
+        billingStatus: 'none',
         isAuthenticated: false,
       }
     case 'DATABASE_CONNECTED':
@@ -202,6 +206,18 @@ export function AppProvider({
       }
     }
 
+    const hasActivePlan =
+      state.billingStatus === 'active' || state.billingStatus === 'trialing'
+    if (!hasActivePlan && state.platformRole !== 'platform_owner') {
+      dispatch({
+        type: 'DATABASE_CONNECTED',
+        payload: { brand: null, drafts: [] },
+      })
+      return () => {
+        isActive = false
+      }
+    }
+
     repository
       .load(state.currentWorkspace.id)
       .then((data) => {
@@ -218,7 +234,13 @@ export function AppProvider({
     return () => {
       isActive = false
     }
-  }, [repository, state.authStatus, state.currentWorkspace])
+  }, [
+    repository,
+    state.authStatus,
+    state.billingStatus,
+    state.currentWorkspace,
+    state.platformRole,
+  ])
 
   const value = useMemo<AppContextValue>(
     () => ({
@@ -271,6 +293,15 @@ export function AppProvider({
           })
           throw error
         }
+      },
+      refreshSession: async () => {
+        const session = await authGateway.currentUser()
+        dispatch(
+          session
+            ? { type: 'AUTHENTICATED', payload: session }
+            : { type: 'AUTH_ANONYMOUS' },
+        )
+        return session
       },
       saveBrand: async (brand) => {
         if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')

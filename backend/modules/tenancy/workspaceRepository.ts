@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   PlatformRole,
+  BillingAccessStatus,
   WorkspaceAccessRepository,
   WorkspaceMembership,
   WorkspaceRole,
@@ -58,6 +59,20 @@ export class SupabaseWorkspaceAccessRepository implements WorkspaceAccessReposit
       )
     return (data?.role as PlatformRole | undefined) ?? null
   }
+
+  async getBillingStatus(workspaceId: string) {
+    const { data, error } = await this.supabase
+      .from('subscriptions')
+      .select('status')
+      .eq('brand_id', workspaceId)
+      .in('status', ['trialing', 'active', 'past_due'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error)
+      throw new Error(`Falha ao consultar assinatura: ${error.message}`)
+    return (data?.status as BillingAccessStatus | undefined) ?? 'none'
+  }
 }
 
 /** Apenas para dependências injetadas em testes; não é usado em produção. */
@@ -65,14 +80,17 @@ export class InMemoryWorkspaceAccessRepository implements WorkspaceAccessReposit
   private readonly workspaceId: string
   private readonly workspaceRole: WorkspaceRole
   private readonly platformRole: PlatformRole | null
+  private readonly billingStatus: BillingAccessStatus
   constructor(
     workspaceId = 'test-workspace',
     workspaceRole: WorkspaceRole = 'editor',
     platformRole: PlatformRole | null = null,
+    billingStatus: BillingAccessStatus = 'active',
   ) {
     this.workspaceId = workspaceId
     this.workspaceRole = workspaceRole
     this.platformRole = platformRole
+    this.billingStatus = billingStatus
   }
 
   async getMembership(userId: string, workspaceId: string) {
@@ -87,5 +105,9 @@ export class InMemoryWorkspaceAccessRepository implements WorkspaceAccessReposit
 
   async getPlatformRole() {
     return this.platformRole
+  }
+
+  async getBillingStatus() {
+    return this.billingStatus
   }
 }

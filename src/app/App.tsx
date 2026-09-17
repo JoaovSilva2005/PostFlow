@@ -19,6 +19,7 @@ export function App() {
         element={
           <ProtectedRoute
             workspaceRoles={['owner', 'admin', 'editor', 'viewer']}
+            requiresActivePlan
           >
             <BrandPage />
           </ProtectedRoute>
@@ -29,6 +30,7 @@ export function App() {
         element={
           <ProtectedRoute
             workspaceRoles={['owner', 'admin', 'editor', 'viewer']}
+            requiresActivePlan
           >
             <ChatPage />
           </ProtectedRoute>
@@ -39,6 +41,7 @@ export function App() {
         element={
           <ProtectedRoute
             workspaceRoles={['owner', 'admin', 'editor', 'viewer']}
+            requiresActivePlan
           >
             <CalendarPage />
           </ProtectedRoute>
