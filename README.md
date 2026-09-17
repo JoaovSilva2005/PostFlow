@@ -110,16 +110,18 @@ Há dois contextos independentes. `WorkspaceRole` (`owner`, `admin`, `editor`, `
 
 ## APIs de cobrança e administração
 
-| Método | Endpoint                                      | Responsabilidade                   |
-| ------ | --------------------------------------------- | ---------------------------------- |
-| `GET`  | `/api/health`                                 | Verificar se a API está disponível |
-| `GET`  | `/api/workspaces/:id/billing`                 | Plano, assinatura e consumo        |
-| `GET`  | `/api/workspaces/:id/invoices`                | Faturas da própria marca           |
-| `POST` | `/api/workspaces/:id/invoices/:invoiceId/pay` | Confirmar pagamento demonstrativo  |
-| `GET`  | `/api/admin/finance/transactions`             | Listar entradas e saídas internas  |
-| `GET`  | `/api/admin/finance/summary`                  | Calcular saldo e pendências        |
-| `POST` | `/api/admin/finance/transactions`             | Criar lançamento interno           |
-| `GET`  | `/api/admin/fiscal/report`                    | Relatório fiscal acadêmico         |
+| Método | Endpoint                                      | Responsabilidade                    |
+| ------ | --------------------------------------------- | ----------------------------------- |
+| `GET`  | `/api/health`                                 | Verificar se a API está disponível  |
+| `GET`  | `/api/workspaces/:id/billing/plans`           | Planos disponíveis para contratação |
+| `GET`  | `/api/workspaces/:id/billing`                 | Plano, assinatura e consumo         |
+| `PUT`  | `/api/workspaces/:id/billing`                 | Contratar e gerar fatura pendente   |
+| `GET`  | `/api/workspaces/:id/invoices`                | Faturas da própria marca            |
+| `POST` | `/api/workspaces/:id/invoices/:invoiceId/pay` | Confirmar pagamento demonstrativo   |
+| `GET`  | `/api/admin/finance/transactions`             | Listar entradas e saídas internas   |
+| `GET`  | `/api/admin/finance/summary`                  | Calcular saldo e pendências         |
+| `POST` | `/api/admin/finance/transactions`             | Criar lançamento interno            |
+| `GET`  | `/api/admin/fiscal/report`                    | Relatório fiscal acadêmico          |
 
 Regra do saldo: `receitas pagas - despesas pagas`. Valores pendentes são exibidos separadamente e não alteram o saldo atual.
 
@@ -255,4 +257,4 @@ Acesse `/admin/finance` com um membro interno autorizado para demonstrar os indi
 
 ## Estado do incremento
 
-As telas principais, a autenticação, cobrança, Financeiro e Fiscal estão codificados. O fluxo **Assinatura → Fatura → Receita → Fiscal → Comprovante** passa pelo backend e preserva a separação entre cliente e backoffice. O schema possui memberships, planos, assinaturas, consumo, faturas, livro financeiro e snapshots fiscais com testes automatizados.
+As telas principais, a autenticação, cobrança, Financeiro e Fiscal estão codificados. O fluxo **Escolha do plano → Fatura pendente → Confirmação do pagamento → Receita → Fiscal → Comprovante** passa pelo backend e preserva a separação entre cliente e backoffice. O schema possui memberships, planos, assinaturas, consumo, faturas, livro financeiro e snapshots fiscais com testes automatizados. O adapter atual é demonstrativo e não movimenta dinheiro real.

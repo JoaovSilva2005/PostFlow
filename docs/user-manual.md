@@ -7,9 +7,9 @@ Após entrar, o cliente trabalha dentro de uma marca (workspace):
 1. **Minha marca** — configura nome, segmento, tom de voz e identidade visual.
 2. **Criar com IA** — descreve o conteúdo, revisa o texto e prepara a publicação.
 3. **Agenda** — organiza e acompanha rascunhos por data.
-4. **Assinatura e cobrança** — consulta plano, situação, período, limites, consumo e faturas da própria marca.
+4. **Assinatura e cobrança** — compara o plano disponível, confere preço e limites, revisa o resumo, gera a fatura e confirma o pagamento demonstrativo. Depois acompanha situação, período, consumo, faturas e comprovantes da própria marca.
 
-Faturas podem estar pendentes ou pagas. Quando houver comprovante, ele aparece como **documento acadêmico sem validade fiscal**. Ele não é uma nota fiscal eletrônica.
+Faturas podem estar pendentes ou pagas. Selecionar o plano não quita a cobrança: primeiro é criada uma fatura pendente e a tela pede uma confirmação separada. Quando houver comprovante, ele aparece como **documento acadêmico sem validade fiscal**. Ele não é uma nota fiscal eletrônica e o fluxo atual não movimenta dinheiro real.
 
 O cliente nunca visualiza despesas, faturamento total, custos de APIs, margem, impostos ou cobranças de outras marcas.
 
@@ -26,7 +26,7 @@ A seção **Administração** aparece apenas para membros internos da plataforma
 ## Papéis do workspace
 
 - `owner`: controla workspace, equipe e assinatura.
-- `admin`: administra marca, equipe e conteúdo.
+- `admin`: administra marca, equipe, conteúdo e assinatura.
 - `editor`: cria e edita conteúdo.
 - `viewer`: somente leitura.
 

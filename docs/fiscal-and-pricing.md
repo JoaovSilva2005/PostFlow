@@ -29,7 +29,7 @@ APIs `/api/admin/finance` e `/api/admin/fiscal` exigem `PlatformRole`. `platform
 
 ## Proposta comercial (pesquisa em 16/09/2026)
 
-PostFlow Essencial: R$ 79,90/mês, uma marca, proposta de franquia mensal de 100 gerações de texto e 30 gerações de imagem. Cada tentativa concluída e cada regeneração consome franquia. Não é ilimitado. Ainda não há assinatura, pagamento, medição nem bloqueio por franquia implementados.
+PostFlow Profissional: R$ 79,90/mês, uma marca, franquia mensal proposta de 100 gerações de texto e 30 gerações de imagem. Cada tentativa concluída e cada regeneração deve consumir franquia; o contador já possui persistência, mas o bloqueio automático na geração ainda é uma etapa posterior. A contratação cria primeiro uma fatura pendente. Somente a confirmação separada do pagamento demonstrativo ativa a assinatura, registra a receita e produz o comprovante acadêmico.
 
 Recomendação inicial para teste de qualidade: Gemini 3.1 Flash-Lite para texto e Gemini 3.1 Flash Lite Image para imagem 1K. Mesmo fornecedor reduz operação; qualidade de anúncios em português precisa de avaliação com exemplos reais antes da contratação. Não foi realizado benchmark pago.
 
