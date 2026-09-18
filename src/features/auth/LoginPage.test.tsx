@@ -29,9 +29,15 @@ describe('LoginPage', () => {
     const { authGateway } = renderApp('/login')
 
     await user.click(screen.getByRole('button', { name: 'Criar conta' }))
-    await user.type(screen.getByLabelText('Nome'), 'Maria Silva')
+    await user.type(screen.getByLabelText('Nome completo'), 'Maria Silva')
+    await user.type(screen.getByLabelText('Marca ou empresa'), 'Studio Maria')
+    await user.selectOptions(
+      screen.getByLabelText('Segmento'),
+      'Serviços profissionais',
+    )
     await user.type(screen.getByLabelText(/^E-mail/), 'maria@postflow.com')
     await user.type(screen.getByLabelText(/^Senha/), 'senha123')
+    await user.type(screen.getByLabelText('Confirmar senha'), 'senha123')
     await user.click(screen.getByRole('button', { name: 'Criar minha conta' }))
 
     expect(
@@ -39,7 +45,40 @@ describe('LoginPage', () => {
     ).toBeInTheDocument()
     expect(authGateway.lastRegistration).toMatchObject({
       displayName: 'Maria Silva',
+      brandName: 'Studio Maria',
+      segment: 'Serviços profissionais',
       email: 'maria@postflow.com',
+      confirmPassword: 'senha123',
     })
+  })
+
+  it('exige confirmação igual e senha adequada no cadastro', async () => {
+    const user = userEvent.setup()
+    const { authGateway } = renderApp('/login')
+
+    await user.click(screen.getByRole('button', { name: 'Criar conta' }))
+    await user.type(screen.getByLabelText('Nome completo'), 'Maria Silva')
+    await user.type(screen.getByLabelText('Marca ou empresa'), 'Studio Maria')
+    await user.selectOptions(screen.getByLabelText('Segmento'), 'Tecnologia')
+    await user.type(screen.getByLabelText(/^E-mail/), 'maria@postflow.com')
+    await user.type(screen.getByLabelText(/^Senha/), 'senhafraca')
+    await user.type(screen.getByLabelText('Confirmar senha'), 'outra-senha')
+    await user.click(screen.getByRole('button', { name: 'Criar minha conta' }))
+
+    expect(screen.getByText('Inclua pelo menos um número.')).toBeInTheDocument()
+    expect(screen.getByText('As senhas não coincidem.')).toBeInTheDocument()
+    expect(authGateway.lastRegistration).toBeNull()
+  })
+
+  it('permite visualizar e ocultar a senha no login', async () => {
+    const user = userEvent.setup()
+    renderApp('/login')
+    const password = screen.getByLabelText(/^Senha/) as HTMLInputElement
+
+    expect(password.type).toBe('password')
+    await user.click(screen.getByRole('button', { name: 'Mostrar senha' }))
+    expect(password.type).toBe('text')
+    await user.click(screen.getByRole('button', { name: 'Ocultar senha' }))
+    expect(password.type).toBe('password')
   })
 })

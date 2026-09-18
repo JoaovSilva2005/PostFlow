@@ -14,7 +14,7 @@ create table if not exists public.users (
   created_at timestamptz not null default now(),
   constraint users_email_length_check check (length(trim(email)) >= 5),
   constraint users_display_name_length_check check (
-    length(trim(display_name)) >= 2
+    length(trim(display_name)) between 2 and 80
   )
 );
 
@@ -29,7 +29,12 @@ create table if not exists public.brands (
   updated_at timestamptz not null default now(),
   constraint brands_user_id_fkey
     foreign key (user_id) references public.users (id) on delete cascade,
-  constraint brands_name_length_check check (length(trim(name)) >= 2),
+  constraint brands_name_length_check check (
+    length(trim(name)) between 2 and 120
+  ),
+  constraint brands_segment_length_check check (
+    length(trim(segment)) between 2 and 80
+  ),
   constraint brands_primary_color_check check (
     primary_color ~ '^#[0-9A-Fa-f]{6}$'
   )

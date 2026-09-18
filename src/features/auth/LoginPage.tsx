@@ -1,30 +1,27 @@
 import { useState, type FormEvent } from 'react'
-import { CalendarDays, Eye, EyeOff, Sparkles } from 'lucide-react'
+import { CalendarDays, Sparkles } from 'lucide-react'
 import { Navigate, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import { Button } from '../../components/ui/Button'
-import { TextField } from '../../components/ui/FormField'
+import { SelectField, TextField } from '../../components/ui/FormField'
+import { BRAND_SEGMENT_OPTIONS } from '../../domain/brandCatalog'
 import styles from './LoginPage.module.css'
 import { EditorialSample } from './EditorialSample'
+import { PasswordField } from './PasswordField'
 
 interface FormErrors {
   displayName?: string
+  brandName?: string
+  segment?: string
   email?: string
   password?: string
+  confirmPassword?: string
 }
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
 
-function validateCredentials(
-  email: string,
-  password: string,
-  displayName?: string,
-): FormErrors {
+function validateLogin(email: string, password: string): FormErrors {
   const errors: FormErrors = {}
-
-  if (displayName !== undefined && displayName.trim().length < 2) {
-    errors.displayName = 'Informe seu nome.'
-  }
 
   if (!email.trim()) {
     errors.email = 'Informe seu e-mail.'
@@ -41,14 +38,51 @@ function validateCredentials(
   return errors
 }
 
+function validateRegistration(input: {
+  displayName: string
+  brandName: string
+  segment: string
+  email: string
+  password: string
+  confirmPassword: string
+}): FormErrors {
+  const errors = validateLogin(input.email, input.password)
+
+  if (input.displayName.trim().length < 2) {
+    errors.displayName = 'Informe seu nome completo.'
+  }
+  if (input.brandName.trim().length < 2) {
+    errors.brandName = 'Informe o nome da marca ou empresa.'
+  }
+  if (!input.segment) {
+    errors.segment = 'Selecione o segmento da marca.'
+  }
+  if (input.password.length < 8) {
+    errors.password = 'Use pelo menos 8 caracteres.'
+  } else if (!/[A-Za-zÀ-ÖØ-öø-ÿ]/.test(input.password)) {
+    errors.password = 'Inclua pelo menos uma letra.'
+  } else if (!/\d/.test(input.password)) {
+    errors.password = 'Inclua pelo menos um número.'
+  }
+  if (!input.confirmPassword) {
+    errors.confirmPassword = 'Confirme sua senha.'
+  } else if (input.password !== input.confirmPassword) {
+    errors.confirmPassword = 'As senhas não coincidem.'
+  }
+
+  return errors
+}
+
 export function LoginPage() {
   const navigate = useNavigate()
   const { isAuthenticated, login, recoverPassword, register } = useApp()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [displayName, setDisplayName] = useState('')
+  const [brandName, setBrandName] = useState('')
+  const [segment, setSegment] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [feedback, setFeedback] = useState<{
@@ -63,11 +97,17 @@ export function LoginPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    const nextErrors = validateCredentials(
-      email,
-      password,
-      mode === 'register' ? displayName : undefined,
-    )
+    const nextErrors =
+      mode === 'register'
+        ? validateRegistration({
+            displayName,
+            brandName,
+            segment,
+            email,
+            password,
+            confirmPassword,
+          })
+        : validateLogin(email, password)
 
     setErrors(nextErrors)
     setFeedback(null)
@@ -79,7 +119,14 @@ export function LoginPage() {
 
     try {
       if (mode === 'register') {
-        const result = await register({ displayName, email, password })
+        const result = await register({
+          displayName: displayName.trim(),
+          brandName: brandName.trim(),
+          segment,
+          email: email.trim(),
+          password,
+          confirmPassword,
+        })
 
         if (result.requiresEmailConfirmation) {
           setFeedback({
@@ -87,6 +134,8 @@ export function LoginPage() {
             type: 'success',
           })
           setMode('login')
+          setPassword('')
+          setConfirmPassword('')
           return
         }
       } else {
@@ -108,7 +157,7 @@ export function LoginPage() {
   }
 
   async function handlePasswordRecovery() {
-    const emailError = validateCredentials(email, '123456').email
+    const emailError = validateLogin(email, '123456').email
 
     if (emailError) {
       setErrors((current) => ({ ...current, email: emailError }))
@@ -136,6 +185,8 @@ export function LoginPage() {
 
   function toggleMode() {
     setMode((current) => (current === 'login' ? 'register' : 'login'))
+    setPassword('')
+    setConfirmPassword('')
     setErrors({})
     setFeedback(null)
   }
@@ -164,7 +215,11 @@ export function LoginPage() {
       </section>
 
       <main className={styles.loginArea}>
-        <form className={styles.card} onSubmit={handleSubmit} noValidate>
+        <form
+          className={`${styles.card} ${mode === 'register' ? styles.registrationCard : ''}`}
+          onSubmit={handleSubmit}
+          noValidate
+        >
           <div className={styles.cardHeader}>
             <span className={styles.mark}>
               <Sparkles size={18} />
@@ -179,16 +234,42 @@ export function LoginPage() {
             </div>
           </div>
 
-          <div className={styles.fields}>
+          <div
+            className={`${styles.fields} ${mode === 'register' ? styles.registrationFields : ''}`}
+          >
             {mode === 'register' && (
               <TextField
-                label="Nome"
+                label="Nome completo"
                 name="displayName"
                 autoComplete="name"
-                placeholder="Seu nome"
+                placeholder="Como devemos chamar você?"
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
                 error={errors.displayName}
+              />
+            )}
+            {mode === 'register' && (
+              <TextField
+                label="Marca ou empresa"
+                name="brandName"
+                autoComplete="organization"
+                placeholder="Ex.: Café Aurora"
+                value={brandName}
+                onChange={(event) => setBrandName(event.target.value)}
+                error={errors.brandName}
+              />
+            )}
+            {mode === 'register' && (
+              <SelectField
+                label="Segmento"
+                name="segment"
+                value={segment}
+                onChange={(event) => setSegment(event.target.value)}
+                error={errors.segment}
+                options={[
+                  { label: 'Selecione o segmento', value: '' },
+                  ...BRAND_SEGMENT_OPTIONS,
+                ]}
               />
             )}
             <TextField
@@ -201,28 +282,33 @@ export function LoginPage() {
               onChange={(event) => setEmail(event.target.value)}
               error={errors.email}
             />
-            <div className={styles.passwordField}>
-              <TextField
-                label="Senha"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete={
-                  mode === 'login' ? 'current-password' : 'new-password'
-                }
-                placeholder="••••••••"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                error={errors.password}
+            <PasswordField
+              label="Senha"
+              name="password"
+              autoComplete={
+                mode === 'login' ? 'current-password' : 'new-password'
+              }
+              placeholder="••••••••"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              error={errors.password}
+              hint={
+                mode === 'register'
+                  ? 'Use 8 ou mais caracteres, com letra e número.'
+                  : undefined
+              }
+            />
+            {mode === 'register' && (
+              <PasswordField
+                label="Confirmar senha"
+                name="confirmPassword"
+                autoComplete="new-password"
+                placeholder="Repita sua senha"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                error={errors.confirmPassword}
               />
-              <button
-                type="button"
-                className={styles.passwordToggle}
-                onClick={() => setShowPassword((visible) => !visible)}
-                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-              >
-                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-              </button>
-            </div>
+            )}
           </div>
 
           {mode === 'login' && (

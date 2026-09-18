@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 .vercel
+.playwright-cli/
+output/playwright/
+supabase/.temp/
 *.local
 .env
 .env.*

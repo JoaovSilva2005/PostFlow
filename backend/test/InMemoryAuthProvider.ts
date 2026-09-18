@@ -2,6 +2,7 @@ import type {
   AuthenticatedUser,
   AuthProvider,
   AuthSession,
+  RegistrationDetails,
 } from '../modules/auth/authTypes.js'
 
 export const TEST_ACCESS_TOKEN = 'test-access-token'
@@ -46,17 +47,19 @@ export class InMemoryAuthProvider implements AuthProvider {
     return session(user)
   }
 
-  async register(displayName: string, email: string, password: string) {
-    if (this.users.has(email) || password.length < 6) {
+  async register(input: RegistrationDetails) {
+    if (this.users.has(input.email) || input.password.length < 8) {
       throw new Error('Conta não criada.')
     }
 
     const user: AuthenticatedUser = {
       id: `user-${this.users.size + 1}`,
-      email,
-      displayName,
+      email: input.email,
+      displayName: input.displayName,
+      brandName: input.brandName,
+      segment: input.segment,
     }
-    this.users.set(email, user)
+    this.users.set(input.email, user)
 
     return { user, session: session(user) }
   }

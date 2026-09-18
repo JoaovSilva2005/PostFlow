@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
+import { BRAND_SEGMENTS } from '../../../src/domain/brandCatalog.js'
 import { environment } from '../../config/environment.js'
 import { HttpError } from '../../shared/HttpError.js'
 import {
@@ -23,13 +24,38 @@ const loginSchema = z.object({
     .max(128, 'A senha deve ter no máximo 128 caracteres.'),
 })
 
-const registerSchema = loginSchema.extend({
-  displayName: z
-    .string()
-    .trim()
-    .min(2, 'Informe seu nome.')
-    .max(80, 'O nome deve ter no máximo 80 caracteres.'),
-})
+const registerSchema = z
+  .object({
+    displayName: z
+      .string()
+      .trim()
+      .min(2, 'Informe seu nome completo.')
+      .max(80, 'O nome deve ter no máximo 80 caracteres.'),
+    brandName: z
+      .string()
+      .trim()
+      .min(2, 'Informe o nome da marca ou empresa.')
+      .max(120, 'O nome da marca deve ter no máximo 120 caracteres.'),
+    segment: z.enum(BRAND_SEGMENTS, 'Selecione um segmento válido.'),
+    email: emailSchema,
+    password: z
+      .string()
+      .min(8, 'Use pelo menos 8 caracteres.')
+      .max(128, 'A senha deve ter no máximo 128 caracteres.')
+      .regex(/[A-Za-zÀ-ÖØ-öø-ÿ]/, 'Inclua pelo menos uma letra na senha.')
+      .regex(/\d/, 'Inclua pelo menos um número na senha.'),
+    confirmPassword: z.string(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.password !== input.confirmPassword) {
+      context.addIssue({
+        code: 'custom',
+        path: ['confirmPassword'],
+        message: 'As senhas não coincidem.',
+      })
+    }
+  })
 
 const recoverSchema = z.object({ email: emailSchema })
 
@@ -84,11 +110,13 @@ export function createAuthRouter(
 
   router.post('/register', async (request, response) => {
     const input = validate(registerSchema, request.body)
-    const result = await service.register(
-      input.displayName,
-      input.email,
-      input.password,
-    )
+    const result = await service.register({
+      displayName: input.displayName,
+      brandName: input.brandName,
+      segment: input.segment,
+      email: input.email,
+      password: input.password,
+    })
 
     if (result.session) setSessionCookies(response, result.session)
     response.status(201).json({

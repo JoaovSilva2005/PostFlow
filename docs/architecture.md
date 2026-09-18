@@ -53,7 +53,7 @@ Cada pasta em `src/features` reúne a tela, o estilo, o teste e os auxiliares es
 
 | Funcionalidade | Frontend                | Backend                   | Banco                                                          |
 | -------------- | ----------------------- | ------------------------- | -------------------------------------------------------------- |
-| Login          | `src/features/auth`     | `backend/modules/auth`    | Supabase Auth                                                  |
+| Login/cadastro | `src/features/auth`     | `backend/modules/auth`    | Supabase Auth, `users`, `profiles`                             |
 | Marca          | `src/features/brand`    | BFF com contexto de marca | `brands` e `brand_members`                                     |
 | Geração        | `src/features/content`  | IA simulada               | `post_drafts` e `post_hashtags`                                |
 | Agenda         | `src/features/calendar` | Data API do Supabase      | `post_drafts`                                                  |
@@ -62,6 +62,25 @@ Cada pasta em `src/features` reúne a tela, o estilo, o teste e os auxiliares es
 | Fiscal         | `src/features/fiscal`   | `backend/modules/fiscal`  | `fiscal_documents` e receitas faturadas                        |
 
 Financeiro, Fiscal e economia do plano são backoffice do PostFlow. Eles não são produtos disponíveis a clientes comuns. A área `Assinatura e cobrança` apresenta somente o plano, consumo, faturas e comprovantes do workspace autenticado.
+
+## Persistência do cadastro
+
+O Supabase Auth é responsável por e-mail e senha. Durante o cadastro, nome da
+marca e segmento seguem como metadados de onboarding, sem participar de nenhuma
+decisão de autorização. No primeiro acesso confirmado, o backend provisiona os
+dados normalizados:
+
+| Campo do formulário | Destino persistente                            |
+| ------------------- | ---------------------------------------------- |
+| Nome completo       | `users.display_name` e `profiles.display_name` |
+| E-mail              | Supabase Auth e `users.email`                  |
+| Marca ou empresa    | `brands.name`                                  |
+| Segmento            | `brands.segment`                               |
+| Senha               | Supabase Auth, armazenada somente como hash    |
+| Confirmar senha     | Não persiste; existe apenas para validação     |
+
+O workspace inicial recebe o usuário como `owner` em `brand_members`. Contas
+anteriores sem esses metadados continuam usando os valores de fallback.
 
 ## Autorização em dois contextos
 

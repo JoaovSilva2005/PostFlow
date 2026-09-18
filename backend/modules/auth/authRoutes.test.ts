@@ -103,17 +103,50 @@ describe('autenticação', () => {
     const { app, provider } = testApp()
     const registered = await request(app).post('/api/auth/register').send({
       displayName: 'Maria Silva',
+      brandName: 'Studio Maria',
+      segment: 'Serviços profissionais',
       email: 'maria@postflow.com',
       password: 'senha123',
+      confirmPassword: 'senha123',
     })
     const recovered = await request(app).post('/api/auth/recover').send({
       email: 'maria@postflow.com',
     })
 
     expect(registered.status).toBe(201)
+    expect(registered.body.data.user).toMatchObject({
+      displayName: 'Maria Silva',
+      brandName: 'Studio Maria',
+      segment: 'Serviços profissionais',
+    })
     expect(registered.body.data.user).not.toHaveProperty('role')
     expect(recovered.status).toBe(200)
     expect(provider.recoveredEmails).toContain('maria@postflow.com')
+  })
+
+  it('rejeita cadastro com confirmação diferente ou senha fraca', async () => {
+    const { app } = testApp()
+    const mismatch = await request(app).post('/api/auth/register').send({
+      displayName: 'Maria Silva',
+      brandName: 'Studio Maria',
+      segment: 'Tecnologia',
+      email: 'maria@postflow.com',
+      password: 'senha123',
+      confirmPassword: 'outra123',
+    })
+    const weak = await request(app).post('/api/auth/register').send({
+      displayName: 'Maria Silva',
+      brandName: 'Studio Maria',
+      segment: 'Tecnologia',
+      email: 'maria@postflow.com',
+      password: 'abcdefgh',
+      confirmPassword: 'abcdefgh',
+    })
+
+    expect(mismatch.status).toBe(400)
+    expect(mismatch.body.error).toBe('As senhas não coincidem.')
+    expect(weak.status).toBe(400)
+    expect(weak.body.error).toBe('Inclua pelo menos um número na senha.')
   })
 
   it('provisiona um workspace para uma conta autenticada sem membership', async () => {

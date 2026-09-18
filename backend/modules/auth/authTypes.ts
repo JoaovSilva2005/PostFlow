@@ -2,6 +2,16 @@ export interface AuthenticatedUser {
   id: string
   email: string
   displayName: string
+  brandName?: string
+  segment?: string
+}
+
+export interface RegistrationDetails {
+  displayName: string
+  brandName: string
+  segment: string
+  email: string
+  password: string
 }
 
 export interface AuthSession {
@@ -22,9 +32,5 @@ export interface AuthProvider {
   logout(accessToken: string): Promise<void>
   recoverPassword(email: string, redirectUrl: string): Promise<void>
   refresh(refreshToken: string): Promise<AuthSession>
-  register(
-    displayName: string,
-    email: string,
-    password: string,
-  ): Promise<RegistrationResult>
+  register(input: RegistrationDetails): Promise<RegistrationResult>
 }

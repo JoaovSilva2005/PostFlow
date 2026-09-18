@@ -79,6 +79,9 @@
   margin: auto;
   padding: 32px 0;
 }
+.registrationCard {
+  width: min(560px, 100%);
+}
 .cardHeader {
   margin-bottom: 32px;
 }
@@ -108,26 +111,11 @@
   display: grid;
   gap: 20px;
 }
+.registrationFields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .fields + button {
   margin-top: 24px;
-}
-.passwordField {
-  position: relative;
-}
-.passwordField input {
-  padding-right: 48px;
-}
-.passwordToggle {
-  position: absolute;
-  top: 28px;
-  right: 3px;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 0;
-  background: transparent;
-  color: var(--color-muted);
 }
 .formMeta {
   display: flex;
@@ -199,5 +187,11 @@
   }
   .card {
     padding: 24px 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .registrationFields {
+    grid-template-columns: 1fr;
   }
 }

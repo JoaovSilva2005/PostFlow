@@ -20,6 +20,8 @@ export interface WorkspaceIdentity {
   id: string
   email: string
   displayName: string
+  brandName?: string
+  segment?: string
 }
 
 export interface WorkspaceContext {

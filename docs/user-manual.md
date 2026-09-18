@@ -1,5 +1,17 @@
 # Manual do usuário e dos módulos administrativos
 
+## Criar conta e entrar
+
+No cadastro, informe nome completo, e-mail, nome da marca, segmento, senha e
+confirmação da senha. A senha precisa ter pelo menos oito caracteres, uma letra
+e um número. O nome alimenta o perfil; nome da marca e segmento preenchem o
+workspace inicial e continuam editáveis em **Minha marca**. A confirmação é
+validada, mas nunca armazenada.
+
+No login, use e-mail e senha. O botão com ícone de olho permite visualizar ou
+ocultar a senha antes de entrar. Se esquecer a senha, informe o e-mail e use
+**Esqueceu a senha?**.
+
 ## Cliente do PostFlow
 
 Após entrar, o cliente trabalha dentro de uma marca (workspace):

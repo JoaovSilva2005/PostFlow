@@ -6,17 +6,11 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import { SelectField, TextField } from '../../components/ui/FormField'
+import { BRAND_SEGMENT_OPTIONS } from '../../domain/brandCatalog'
 import type { BrandProfile } from '../../domain/models'
 import styles from './BrandPage.module.css'
 
 const BRAND_COLORS = ['#4F46E5', '#F97316', '#16A34A', '#171720']
-
-const SEGMENT_OPTIONS = [
-  { label: 'Alimentação e bebidas', value: 'Alimentação e bebidas' },
-  { label: 'Moda e beleza', value: 'Moda e beleza' },
-  { label: 'Tecnologia', value: 'Tecnologia' },
-  { label: 'Serviços profissionais', value: 'Serviços profissionais' },
-]
 
 const TONE_OPTIONS = [
   { label: 'Próximo e acolhedor', value: 'Próximo e acolhedor' },
@@ -113,7 +107,7 @@ export function BrandPage() {
               onChange={(event) =>
                 updateFormField('segment', event.target.value)
               }
-              options={SEGMENT_OPTIONS}
+              options={BRAND_SEGMENT_OPTIONS}
             />
             <SelectField
               label="Tom de voz"

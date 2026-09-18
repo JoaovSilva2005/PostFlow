@@ -89,14 +89,17 @@ export class SupabaseWorkspaceAccessRepository implements WorkspaceAccessReposit
 
     let brandId = currentBrand?.id as string | undefined
     if (!brandId) {
-      const workspaceName = `Workspace de ${displayName}`.slice(0, 120)
+      const workspaceName =
+        user.brandName?.trim().slice(0, 120) ||
+        `Workspace de ${displayName}`.slice(0, 120)
+      const segment = user.segment?.trim().slice(0, 80) || 'A definir'
       const { data: createdBrand, error: createBrandError } =
         await this.supabase
           .from('brands')
           .insert({
             user_id: user.id,
             name: workspaceName,
-            segment: 'A definir',
+            segment,
             tone_of_voice: 'Profissional e próximo',
             primary_color: '#4F46E5',
           })

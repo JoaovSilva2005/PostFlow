@@ -3,7 +3,14 @@ import {
   type AuthenticatedUser,
   type AuthProvider,
   type AuthSession,
+  type RegistrationDetails,
 } from './authTypes.js'
+
+function metadataText(value: unknown, maxLength: number) {
+  return typeof value === 'string' && value.trim()
+    ? value.trim().slice(0, maxLength)
+    : undefined
+}
 
 function toAuthenticatedUser(user: User): AuthenticatedUser {
   const email = user.email ?? ''
@@ -15,6 +22,10 @@ function toAuthenticatedUser(user: User): AuthenticatedUser {
       typeof user.user_metadata.display_name === 'string'
         ? user.user_metadata.display_name
         : email.split('@')[0] || 'Usuário PostFlow',
+    // Estes metadados ajudam apenas no onboarding. Autorização continua no
+    // banco (memberships e platform_members), nunca em user_metadata.
+    brandName: metadataText(user.user_metadata.brand_name, 120),
+    segment: metadataText(user.user_metadata.segment, 80),
   }
 }
 
@@ -54,11 +65,17 @@ export class SupabaseAuthProvider implements AuthProvider {
     return toAuthSession(data.session)
   }
 
-  async register(displayName: string, email: string, password: string) {
+  async register(input: RegistrationDetails) {
     const { data, error } = await this.createClient().auth.signUp({
-      email,
-      password,
-      options: { data: { display_name: displayName } },
+      email: input.email,
+      password: input.password,
+      options: {
+        data: {
+          display_name: input.displayName,
+          brand_name: input.brandName,
+          segment: input.segment,
+        },
+      },
     })
 
     if (error || !data.user) {

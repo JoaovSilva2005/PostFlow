@@ -1,5 +1,5 @@
 import { HttpError } from '../../shared/HttpError.js'
-import type { AuthProvider } from './authTypes.js'
+import type { AuthProvider, RegistrationDetails } from './authTypes.js'
 
 export class AuthService {
   private readonly provider: AuthProvider
@@ -26,9 +26,9 @@ export class AuthService {
     }
   }
 
-  async register(displayName: string, email: string, password: string) {
+  async register(input: RegistrationDetails) {
     try {
-      return await this.provider.register(displayName, email, password)
+      return await this.provider.register(input)
     } catch {
       throw new HttpError(
         400,

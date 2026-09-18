@@ -28,6 +28,9 @@ export interface LoginCredentials {
 
 export interface RegistrationInput extends LoginCredentials {
   displayName: string
+  brandName: string
+  segment: string
+  confirmPassword: string
 }
 
 export interface RegistrationResponse {
