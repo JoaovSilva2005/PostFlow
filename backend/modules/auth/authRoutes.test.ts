@@ -9,19 +9,21 @@ import {
 import { InMemoryFinancialRepository } from '../../test/InMemoryFinancialRepository.js'
 import { AuthService } from './authService.js'
 import { InMemoryWorkspaceAccessRepository } from '../tenancy/workspaceRepository.js'
+import type { WorkspaceAccessRepository } from '../tenancy/workspaceTypes.js'
 
 function testApp(
   provider = new InMemoryAuthProvider(),
   workspaceRole: 'owner' | 'admin' | 'editor' | 'viewer' = 'editor',
+  workspaceAccessRepository: WorkspaceAccessRepository = new InMemoryWorkspaceAccessRepository(
+    'test-workspace',
+    workspaceRole,
+  ),
 ) {
   return {
     app: createApp({
       authService: new AuthService(provider),
       financialRepository: new InMemoryFinancialRepository(),
-      workspaceAccessRepository: new InMemoryWorkspaceAccessRepository(
-        'test-workspace',
-        workspaceRole,
-      ),
+      workspaceAccessRepository,
     }),
     provider,
   }
@@ -112,6 +114,34 @@ describe('autenticação', () => {
     expect(registered.body.data.user).not.toHaveProperty('role')
     expect(recovered.status).toBe(200)
     expect(provider.recoveredEmails).toContain('maria@postflow.com')
+  })
+
+  it('provisiona um workspace para uma conta autenticada sem membership', async () => {
+    const repository = new InMemoryWorkspaceAccessRepository(
+      null,
+      'owner',
+      null,
+      'none',
+    )
+    const { app } = testApp(new InMemoryAuthProvider(), 'owner', repository)
+    const agent = request.agent(app)
+    await agent.post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    const before = await agent.get('/api/auth/me')
+    const provisioned = await agent.post('/api/auth/workspace')
+    const after = await agent.get('/api/auth/me')
+
+    expect(before.body.data.workspace).toBeNull()
+    expect(provisioned.status).toBe(200)
+    expect(provisioned.body.data.workspace).toEqual({
+      id: 'workspace-00000000-0000-0000-0000-000000000001',
+      role: 'owner',
+    })
+    expect(provisioned.body.data.billingStatus).toBe('none')
+    expect(after.body.data.workspace).toEqual(provisioned.body.data.workspace)
   })
 
   it('protege a API financeira e aceita Bearer token', async () => {

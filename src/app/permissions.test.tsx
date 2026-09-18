@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { authenticateDemo, renderApp } from '../test/testUtils'
 import { createTestAuthGateway } from '../test/testAuthGateway'
 
@@ -85,6 +86,36 @@ describe('limites de autorização da interface', () => {
     expect(screen.getByRole('link', { name: 'Financeiro' })).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'Criar com IA' }),
+    ).toBeInTheDocument()
+  })
+
+  it('permite preparar o workspace quando a conta ainda não possui membership', async () => {
+    const user = userEvent.setup()
+    const withoutWorkspace = {
+      ...clientSession,
+      workspace: null,
+      billingStatus: 'none' as const,
+    }
+    const provisioned = {
+      ...withoutWorkspace,
+      workspace: { id: 'brand-new', role: 'owner' as const },
+    }
+    const authGateway = createTestAuthGateway(withoutWorkspace)
+    let currentUserCalls = 0
+    authGateway.currentUser = async () => {
+      currentUserCalls += 1
+      return currentUserCalls === 1 ? withoutWorkspace : provisioned
+    }
+
+    authenticateDemo()
+    renderApp('/brand', undefined, authGateway)
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Preparar meu workspace' }),
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Assinatura e cobrança' }),
     ).toBeInTheDocument()
   })
 })

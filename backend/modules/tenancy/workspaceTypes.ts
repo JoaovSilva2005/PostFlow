@@ -16,6 +16,12 @@ export interface WorkspaceMembership {
   role: WorkspaceRole
 }
 
+export interface WorkspaceIdentity {
+  id: string
+  email: string
+  displayName: string
+}
+
 export interface WorkspaceContext {
   workspaceId: string
   role: WorkspaceRole
@@ -27,6 +33,7 @@ export interface WorkspaceAccessRepository {
     workspaceId: string,
   ): Promise<WorkspaceMembership | null>
   getDefaultWorkspace(userId: string): Promise<WorkspaceMembership | null>
+  ensureDefaultWorkspace(user: WorkspaceIdentity): Promise<WorkspaceMembership>
   getPlatformRole(userId: string): Promise<PlatformRole | null>
   getBillingStatus(workspaceId: string): Promise<BillingAccessStatus>
 }

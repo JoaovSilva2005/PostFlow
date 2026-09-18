@@ -39,17 +39,29 @@ async function readCurrentSession() {
   return toSession(await apiRequest<UserResponse>('/auth/me'))
 }
 
+async function ensureWorkspace(session: AuthSession) {
+  if (session.workspace || session.platformRole) return session
+
+  return toSession(
+    await apiRequest<UserResponse>('/auth/workspace', { method: 'POST' }),
+  )
+}
+
+async function readUsableSession() {
+  return ensureWorkspace(await readCurrentSession())
+}
+
 export const authApi: AuthGateway = {
   async currentUser() {
     try {
-      return await readCurrentSession()
+      return await readUsableSession()
     } catch (error) {
       if (!(error instanceof ApiError) || error.status !== 401) throw error
     }
 
     try {
       await apiRequest<UserResponse>('/auth/refresh', { method: 'POST' })
-      return await readCurrentSession()
+      return await readUsableSession()
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) return null
       throw error
@@ -61,7 +73,7 @@ export const authApi: AuthGateway = {
       method: 'POST',
       body: JSON.stringify(credentials),
     })
-    return readCurrentSession()
+    return readUsableSession()
   },
 
   register: (input) =>

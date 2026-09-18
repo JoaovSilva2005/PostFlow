@@ -10,6 +10,7 @@ import {
 } from './authCookies.js'
 import { requireAuthentication } from './authMiddleware.js'
 import type { AuthService } from './authService.js'
+import type { AuthenticatedUser } from './authTypes.js'
 import type { WorkspaceAccessRepository } from '../tenancy/workspaceTypes.js'
 
 const emailSchema = z.email('Digite um e-mail válido.').trim().toLowerCase()
@@ -50,6 +51,28 @@ export function createAuthRouter(
   workspaceAccess?: WorkspaceAccessRepository,
 ) {
   const router = Router()
+
+  async function authorizationData(user: AuthenticatedUser) {
+    const workspace = workspaceAccess
+      ? await workspaceAccess.getDefaultWorkspace(user.id)
+      : null
+    const platformRole = workspaceAccess
+      ? await workspaceAccess.getPlatformRole(user.id)
+      : null
+    const billingStatus =
+      workspace && workspaceAccess
+        ? await workspaceAccess.getBillingStatus(workspace.workspaceId)
+        : 'none'
+
+    return {
+      user,
+      workspace: workspace
+        ? { id: workspace.workspaceId, role: workspace.role }
+        : null,
+      platformRole,
+      billingStatus,
+    }
+  }
 
   router.post('/login', async (request, response) => {
     const input = validate(loginSchema, request.body)
@@ -110,26 +133,21 @@ export function createAuthRouter(
     requireAuthentication(service),
     async (request, response) => {
       const user = request.authUser!
-      const workspace = workspaceAccess
-        ? await workspaceAccess.getDefaultWorkspace(user.id)
-        : null
-      const platformRole = workspaceAccess
-        ? await workspaceAccess.getPlatformRole(user.id)
-        : null
-      const billingStatus =
-        workspace && workspaceAccess
-          ? await workspaceAccess.getBillingStatus(workspace.workspaceId)
-          : 'none'
-      response.json({
-        data: {
-          user,
-          workspace: workspace
-            ? { id: workspace.workspaceId, role: workspace.role }
-            : null,
-          platformRole,
-          billingStatus,
-        },
-      })
+      response.json({ data: await authorizationData(user) })
+    },
+  )
+
+  router.post(
+    '/workspace',
+    requireAuthentication(service),
+    async (request, response) => {
+      if (!workspaceAccess) {
+        throw new HttpError(503, 'Provisionamento de workspace indisponível.')
+      }
+
+      const user = request.authUser!
+      await workspaceAccess.ensureDefaultWorkspace(user)
+      response.json({ data: await authorizationData(user) })
     },
   )
 

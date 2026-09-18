@@ -4,6 +4,7 @@ import type {
   BillingAccessStatus,
   WorkspaceAccessRepository,
   WorkspaceMembership,
+  WorkspaceIdentity,
   WorkspaceRole,
 } from './workspaceTypes.js'
 
@@ -47,6 +48,94 @@ export class SupabaseWorkspaceAccessRepository implements WorkspaceAccessReposit
       : null
   }
 
+  async ensureDefaultWorkspace(user: WorkspaceIdentity) {
+    const existing = await this.getDefaultWorkspace(user.id)
+    if (existing) return existing
+
+    const displayName =
+      user.displayName.trim() || user.email.split('@')[0] || 'Usuário PostFlow'
+
+    const { error: legacyUserError } = await this.supabase.from('users').upsert(
+      {
+        id: user.id,
+        email: user.email,
+        display_name: displayName,
+      },
+      { onConflict: 'id' },
+    )
+    if (legacyUserError) {
+      throw new Error(`Falha ao preparar usuário: ${legacyUserError.message}`)
+    }
+
+    const { error: profileError } = await this.supabase
+      .from('profiles')
+      .upsert({ id: user.id, display_name: displayName }, { onConflict: 'id' })
+    if (profileError) {
+      throw new Error(`Falha ao preparar perfil: ${profileError.message}`)
+    }
+
+    const { data: currentBrand, error: currentBrandError } = await this.supabase
+      .from('brands')
+      .select('id')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (currentBrandError) {
+      throw new Error(
+        `Falha ao consultar marca inicial: ${currentBrandError.message}`,
+      )
+    }
+
+    let brandId = currentBrand?.id as string | undefined
+    if (!brandId) {
+      const workspaceName = `Workspace de ${displayName}`.slice(0, 120)
+      const { data: createdBrand, error: createBrandError } =
+        await this.supabase
+          .from('brands')
+          .insert({
+            user_id: user.id,
+            name: workspaceName,
+            segment: 'A definir',
+            tone_of_voice: 'Profissional e próximo',
+            primary_color: '#4F46E5',
+          })
+          .select('id')
+          .single()
+      if (createBrandError || !createdBrand) {
+        throw new Error(
+          `Falha ao criar workspace: ${createBrandError?.message ?? 'marca não retornada'}`,
+        )
+      }
+      brandId = createdBrand.id
+    }
+
+    if (!brandId) {
+      throw new Error('Falha ao preparar o identificador do workspace.')
+    }
+
+    const membership: WorkspaceMembership = {
+      workspaceId: brandId,
+      userId: user.id,
+      role: 'owner',
+    }
+    const { error: membershipError } = await this.supabase
+      .from('brand_members')
+      .upsert(
+        {
+          brand_id: membership.workspaceId,
+          user_id: membership.userId,
+          role: membership.role,
+        },
+        { onConflict: 'brand_id,user_id' },
+      )
+    if (membershipError) {
+      throw new Error(`Falha ao vincular workspace: ${membershipError.message}`)
+    }
+
+    return membership
+  }
+
   async getPlatformRole(userId: string) {
     const { data, error } = await this.supabase
       .from('platform_members')
@@ -77,12 +166,12 @@ export class SupabaseWorkspaceAccessRepository implements WorkspaceAccessReposit
 
 /** Apenas para dependências injetadas em testes; não é usado em produção. */
 export class InMemoryWorkspaceAccessRepository implements WorkspaceAccessRepository {
-  private readonly workspaceId: string
+  private workspaceId: string | null
   private readonly workspaceRole: WorkspaceRole
   private readonly platformRole: PlatformRole | null
   private readonly billingStatus: BillingAccessStatus
   constructor(
-    workspaceId = 'test-workspace',
+    workspaceId: string | null = 'test-workspace',
     workspaceRole: WorkspaceRole = 'editor',
     platformRole: PlatformRole | null = null,
     billingStatus: BillingAccessStatus = 'active',
@@ -100,7 +189,18 @@ export class InMemoryWorkspaceAccessRepository implements WorkspaceAccessReposit
   }
 
   async getDefaultWorkspace(userId: string) {
-    return { workspaceId: this.workspaceId, userId, role: this.workspaceRole }
+    return this.workspaceId
+      ? { workspaceId: this.workspaceId, userId, role: this.workspaceRole }
+      : null
+  }
+
+  async ensureDefaultWorkspace(user: WorkspaceIdentity) {
+    this.workspaceId ??= `workspace-${user.id}`
+    return {
+      workspaceId: this.workspaceId,
+      userId: user.id,
+      role: this.workspaceRole,
+    }
   }
 
   async getPlatformRole() {
