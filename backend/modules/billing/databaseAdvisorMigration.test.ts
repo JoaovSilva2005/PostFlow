@@ -11,6 +11,14 @@ const migration = readFileSync(
   'utf8',
 )
 
+const bffGrantMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    'database/migrations/20260917_grant_bff_service_role_access.sql',
+  ),
+  'utf8',
+)
+
 describe('migração de recomendações dos advisors', () => {
   it('remove execução pública da função privilegiada automática', () => {
     expect(migration).toContain(
@@ -34,5 +42,12 @@ describe('migração de recomendações dos advisors', () => {
     ]) {
       expect(migration).toContain(index)
     }
+  })
+
+  it('concede acesso explícito ao BFF sem reabrir tabelas ao navegador', () => {
+    expect(bffGrantMigration).toContain('to service_role;')
+    expect(bffGrantMigration).toContain('from anon, authenticated;')
+    expect(bffGrantMigration).toContain('public.brand_members')
+    expect(bffGrantMigration).toContain('public.financial_transactions')
   })
 })
