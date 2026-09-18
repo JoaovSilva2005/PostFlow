@@ -158,8 +158,7 @@
   margin-bottom: 16px;
 }
 .summary article,
-.panel,
-.receipt {
+.panel {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-elevated);
@@ -183,8 +182,7 @@
 .summary strong {
   font-size: 18px;
 }
-.panel,
-.receipt {
+.panel {
   padding: 22px;
   margin-top: 16px;
 }
@@ -271,30 +269,6 @@
 .invoice button:disabled {
   opacity: 0.45;
 }
-.receipt {
-  max-width: 720px;
-}
-.receipt p {
-  color: #e9c77d;
-}
-.receipt dl {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-}
-.receipt dl div {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--color-border);
-}
-.receipt dt {
-  color: var(--color-muted);
-}
-.receipt dd {
-  margin: 0;
-}
 @media (max-width: 900px) {
   .offer {
     grid-template-columns: 1fr;
@@ -334,8 +308,7 @@
   .successState button {
     width: 100%;
   }
-  .panel,
-  .receipt {
+  .panel {
     padding: 16px;
   }
   .invoice {
@@ -346,8 +319,5 @@
   }
   .invoiceActions {
     justify-content: flex-start;
-  }
-  .receipt dl {
-    grid-template-columns: 1fr;
   }
 }

@@ -7,7 +7,7 @@ import type {
 } from './billingTypes.js'
 
 const invoiceSelection =
-  'id,invoice_number,amount_cents,status,due_date,paid_at,fiscal_documents!fiscal_documents_billing_invoice_id_fkey(external_reference,tax_rate,tax_cents,net_cents,issued_at)'
+  'id,invoice_number,amount_cents,status,due_date,paid_at,fiscal_documents!fiscal_documents_billing_invoice_id_fkey(external_reference,document_number,verification_code,environment,issuer_name,issuer_document,issuer_municipal_registration,issuer_city,recipient_name,recipient_document,recipient_email,service_code,service_description,service_municipality,tax_rate,tax_cents,net_cents,issued_at)'
 
 const cents = (value: number | string) => Number(value) / 100
 
@@ -32,6 +32,25 @@ function invoice(row: any, fiscal?: any): BillingInvoice {
     receipt: fiscal
       ? {
           reference: fiscal.external_reference,
+          documentNumber: fiscal.document_number,
+          verificationCode: fiscal.verification_code,
+          environment: fiscal.environment,
+          issuer: {
+            legalName: fiscal.issuer_name,
+            document: fiscal.issuer_document,
+            municipalRegistration: fiscal.issuer_municipal_registration,
+            city: fiscal.issuer_city,
+          },
+          recipient: {
+            name: fiscal.recipient_name,
+            document: fiscal.recipient_document,
+            email: fiscal.recipient_email,
+          },
+          service: {
+            code: fiscal.service_code,
+            description: fiscal.service_description,
+            municipality: fiscal.service_municipality,
+          },
           taxRate: Number(fiscal.tax_rate) * 100,
           taxAmount: cents(fiscal.tax_cents),
           netAmount: cents(fiscal.net_cents),
@@ -176,6 +195,23 @@ export class SupabaseBillingRepository implements BillingRepository {
       row.fiscal_reference
         ? {
             external_reference: row.fiscal_reference,
+            document_number: `SIM-${String(row.id).slice(0, 8).toUpperCase()}`,
+            verification_code: String(row.fiscal_reference)
+              .replace(/[^a-zA-Z0-9]/g, '')
+              .slice(-16)
+              .toUpperCase(),
+            environment: 'simulation',
+            issuer_name: 'PostFlow Tecnologia Ltda. — emissor simulado',
+            issuer_document: '00.000.000/0001-00',
+            issuer_municipal_registration: '00000000',
+            issuer_city: 'Curitiba/PR',
+            recipient_name: 'Cliente PostFlow',
+            recipient_document: 'Não informado',
+            recipient_email: 'Não informado',
+            service_code: '01.03',
+            service_description:
+              'Licenciamento mensal de plataforma SaaS para planejamento e geração assistida de conteúdo digital.',
+            service_municipality: 'Curitiba/PR',
             tax_rate: 0.06,
             tax_cents: row.tax_cents,
             net_cents: row.net_cents,
@@ -197,20 +233,24 @@ export class SupabaseBillingRepository implements BillingRepository {
     })
   }
 
-  payInvoiceWorkflow(input: {
+  async payInvoiceWorkflow(input: {
     workspaceId: string
     invoiceId: string
     idempotencyKey: string
     paymentReference: string
     fiscalReference: string
   }) {
-    return this.workflow('pay_billing_invoice_workflow', {
+    const completed = await this.workflow('pay_billing_invoice_workflow', {
       p_workspace_id: input.workspaceId,
       p_invoice_id: input.invoiceId,
       p_idempotency_key: input.idempotencyKey,
       p_payment_reference: input.paymentReference,
       p_fiscal_reference: input.fiscalReference,
     })
+    const persisted = (await this.listInvoices(input.workspaceId)).find(
+      (candidate) => candidate.id === completed.id,
+    )
+    return persisted ?? completed
   }
 
   async listPlans() {

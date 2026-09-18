@@ -30,6 +30,25 @@ export interface UsageSummary {
 
 export interface AcademicReceipt {
   reference: string
+  documentNumber: string
+  verificationCode: string
+  environment: 'simulation'
+  issuer: {
+    legalName: string
+    document: string
+    municipalRegistration: string
+    city: string
+  }
+  recipient: {
+    name: string
+    document: string
+    email: string
+  }
+  service: {
+    code: string
+    description: string
+    municipality: string
+  }
   taxRate: number
   taxAmount: number
   netAmount: number

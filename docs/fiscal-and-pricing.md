@@ -17,7 +17,7 @@ Alternativa descartada: um dashboard de cartões com gráficos sem dados suficie
 [receitas e comprovante | registrar venda]
 ```
 
-No celular, lista em cartões descritivos e formulário abaixo, sem colunas comprimidas. Princípio: cada valor deve explicar sua origem. Comprovante é a única área imprimível. Sem ornamentos que sugiram validade fiscal oficial.
+No celular, lista em cartões descritivos e formulário abaixo, sem colunas comprimidas. Princípio: cada valor deve explicar sua origem. A NFS-e simulada é a única área imprimível: usa uma folha branca inspirada no DANFSe, blocos com linhas finas e aviso vermelho permanente de ausência de validade jurídica. Não há QR Code falso nem ornamento que sugira emissão oficial.
 
 ## Decisão de integração
 
@@ -25,7 +25,7 @@ A fatura de assinatura é a origem da cobrança. Sua confirmação de pagamento 
 
 Alíquota didática configurada inicialmente em 6%, não informada pela professora e não representativa de um enquadramento legal. Imposto calculado no backend, em centavos, incluído no preço bruto. Valor após imposto = bruto − imposto; não é lucro. Imposto calculado não significa imposto recolhido e não altera o saldo de caixa. O comprovante guarda um snapshot de alíquota, bruto, imposto e líquido para que documentos antigos não mudem quando a configuração mudar.
 
-APIs `/api/admin/finance` e `/api/admin/fiscal` exigem `PlatformRole`. `platform_owner` e `finance_admin` escrevem; `support` recebe somente leitura. Clientes consultam exclusivamente `/api/workspaces/:workspaceId/billing` e `/invoices`, depois de o backend validar `brand_members`. O modo demonstrativo é identificado na interface. Não há emissão de NFS-e nem promessa de validade legal.
+APIs `/api/admin/finance` e `/api/admin/fiscal` exigem `PlatformRole`. `platform_owner` e `finance_admin` escrevem; `support` recebe somente leitura. Clientes consultam exclusivamente `/api/workspaces/:workspaceId/billing` e `/invoices`, depois de o backend validar `brand_members`. O modo demonstrativo é identificado na interface. Após o pagamento simulado, o sistema persiste e apresenta uma NFS-e simulada com emitente, tomador, serviço, valores e código de verificação fictícios. Não existe transmissão a órgão público, autorização municipal ou validade legal.
 
 ## Proposta comercial (pesquisa em 16/09/2026)
 

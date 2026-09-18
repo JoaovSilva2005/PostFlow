@@ -9,7 +9,7 @@ Após entrar, o cliente trabalha dentro de uma marca (workspace):
 3. **Agenda** — organiza e acompanha rascunhos por data.
 4. **Assinatura e cobrança** — compara o plano disponível, confere preço e limites, revisa o resumo, gera a fatura e confirma o pagamento demonstrativo. Depois acompanha situação, período, consumo, faturas e comprovantes da própria marca.
 
-Faturas podem estar pendentes ou pagas. Selecionar o plano não quita a cobrança: primeiro é criada uma fatura pendente e a tela pede uma confirmação separada. Quando houver comprovante, ele aparece como **documento acadêmico sem validade fiscal**. Ele não é uma nota fiscal eletrônica e o fluxo atual não movimenta dinheiro real.
+Faturas podem estar pendentes ou pagas. Selecionar o plano não quita a cobrança: primeiro é criada uma fatura pendente e a tela pede uma confirmação separada. Ao confirmar o pagamento demonstrativo, o sistema gera uma **NFS-e simulada sem validade jurídica**, vinculada à fatura. A nota pode ser impressa ou salva em PDF pelo navegador, mas não é transmitida a nenhum órgão público e o fluxo não movimenta dinheiro real.
 
 O cliente nunca visualiza despesas, faturamento total, custos de APIs, margem, impostos ou cobranças de outras marcas.
 
@@ -43,5 +43,5 @@ Esses papéis não concedem acesso à Administração do PostFlow.
 
 - Alíquota padrão de 6% usada apenas para demonstração.
 - Pagamento confirmado por adapter demonstrativo; nenhum provedor real está ativo sem credencial server-side.
-- Comprovantes não possuem validade fiscal e não substituem NFS-e.
+- A NFS-e simulada não possui validade fiscal, não contém QR Code consultável e não substitui uma NFS-e autorizada pela prefeitura ou pelo ambiente nacional.
 - Regras tributárias brasileiras reais dependem de especificação fiscal e validação contábil.

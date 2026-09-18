@@ -22,6 +22,7 @@ import type {
 } from '../../domain/billing'
 import { ApiError } from '../../services/apiClient'
 import { billingApi } from './billingApi'
+import { SimulatedServiceInvoice } from './SimulatedServiceInvoice'
 import styles from './BillingPage.module.css'
 
 const currency = (value: number) =>
@@ -540,7 +541,7 @@ export function BillingPage() {
                         onClick={() => setSelectedInvoice(invoice)}
                         disabled={!invoice.receipt}
                       >
-                        Ver comprovante
+                        Ver nota simulada
                       </button>
                     </div>
                   </article>
@@ -557,53 +558,10 @@ export function BillingPage() {
       ) : null}
 
       {selectedInvoice?.receipt ? (
-        <section
-          className={styles.receipt}
-          aria-labelledby="billing-receipt-title"
-        >
-          <div className={styles.sectionHeader}>
-            <div>
-              <span>PostFlow</span>
-              <h2 id="billing-receipt-title">Comprovante acadêmico</h2>
-            </div>
-            <button type="button" onClick={() => setSelectedInvoice(null)}>
-              Fechar
-            </button>
-          </div>
-          <p>
-            <strong>
-              Documento demonstrativo acadêmico sem validade fiscal. Não é
-              NFS-e.
-            </strong>
-          </p>
-          <dl>
-            <div>
-              <dt>Referência</dt>
-              <dd>{selectedInvoice.receipt.reference}</dd>
-            </div>
-            <div>
-              <dt>Valor bruto</dt>
-              <dd>{currency(selectedInvoice.amount)}</dd>
-            </div>
-            <div>
-              <dt>Alíquota didática</dt>
-              <dd>
-                {selectedInvoice.receipt.taxRate <= 1
-                  ? selectedInvoice.receipt.taxRate * 100
-                  : selectedInvoice.receipt.taxRate}
-                %
-              </dd>
-            </div>
-            <div>
-              <dt>Imposto estimado</dt>
-              <dd>{currency(selectedInvoice.receipt.taxAmount)}</dd>
-            </div>
-            <div>
-              <dt>Após imposto</dt>
-              <dd>{currency(selectedInvoice.receipt.netAmount)}</dd>
-            </div>
-          </dl>
-        </section>
+        <SimulatedServiceInvoice
+          invoice={selectedInvoice}
+          onClose={() => setSelectedInvoice(null)}
+        />
       ) : null}
     </AppShell>
   )

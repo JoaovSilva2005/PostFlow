@@ -48,7 +48,8 @@ Accepted — 2026-09-17
 
 - `PaymentProvider` isola um futuro Stripe, Mercado Pago ou outro provedor.
 - `FiscalProvider` isola uma futura emissão fiscal real.
-- Os adapters demonstrativos não confirmam pagamento externo nem emitem NFS-e.
+- O adapter demonstrativo gera uma representação visual de NFS-e marcada como
+  simulação, sem transmissão municipal, QR Code consultável ou validade jurídica.
 - Fatura paga gera ou atualiza uma única receita por chave idempotente.
 - Apenas venda ou serviço faturado entra na projeção fiscal.
 - A alíquota e os valores são gravados como snapshot no comprovante acadêmico.
@@ -61,6 +62,8 @@ Accepted — 2026-09-17
 - Processar duas vezes a mesma fatura paga não duplica receita.
 - Despesa e receita não tributável não geram documento fiscal.
 - Alterar a alíquota padrão não muda documentos existentes.
+- A representação simulada preserva emitente, tomador, serviço, valores, número
+  e código de verificação como snapshot imutável do momento do pagamento.
 - Nenhum caminho de produção contém `DEMO_BRAND_ID` ou segredo administrativo no bundle.
 
 ## Relationship to Previous Decisions

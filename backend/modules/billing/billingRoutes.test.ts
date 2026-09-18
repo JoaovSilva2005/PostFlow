@@ -47,6 +47,25 @@ function billingRepository(): BillingRepository {
         paidAt: '2026-09-17T18:00:00Z',
         receipt: {
           reference: 'PF-DEMO-0001',
+          documentNumber: 'SIM-20260917-0001',
+          verificationCode: 'ABC123SIMULADO',
+          environment: 'simulation',
+          issuer: {
+            legalName: 'PostFlow Tecnologia Ltda. — emissor simulado',
+            document: '00.000.000/0001-00',
+            municipalRegistration: '00000000',
+            city: 'Curitiba/PR',
+          },
+          recipient: {
+            name: 'Cliente de teste',
+            document: 'Não informado — simulação acadêmica',
+            email: 'cliente@postflow.test',
+          },
+          service: {
+            code: '01.03',
+            description: 'Licenciamento mensal de plataforma SaaS.',
+            municipality: 'Curitiba/PR',
+          },
           taxRate: 6,
           taxAmount: 4.79,
           netAmount: 75.11,
@@ -137,5 +156,6 @@ describe('jornada de cobrança do workspace', () => {
     expect(paid.status).toBe(200)
     expect(paid.body.data.status).toBe('paid')
     expect(paid.body.data.receipt.legalValidity).toBe('academic_only')
+    expect(paid.body.data.receipt.documentNumber).toBe('SIM-20260917-0001')
   })
 })

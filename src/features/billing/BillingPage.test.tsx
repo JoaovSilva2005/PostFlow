@@ -55,6 +55,26 @@ describe('BillingPage', () => {
         paidAt: '2026-09-08T12:00:00Z',
         receipt: {
           reference: 'PF-REC-0001',
+          documentNumber: 'SIM-20260908-0001',
+          verificationCode: 'ABC123SIMULADO',
+          environment: 'simulation',
+          issuer: {
+            legalName: 'PostFlow Tecnologia Ltda. — emissor simulado',
+            document: '00.000.000/0001-00',
+            municipalRegistration: '00000000',
+            city: 'Curitiba/PR',
+          },
+          recipient: {
+            name: 'Aurora Conteúdo',
+            document: 'Não informado — simulação acadêmica',
+            email: 'cliente@postflow.test',
+          },
+          service: {
+            code: '01.03',
+            description:
+              'Licenciamento mensal de plataforma SaaS para planejamento e geração assistida de conteúdo digital.',
+            municipality: 'Curitiba/PR',
+          },
           taxRate: 6,
           taxAmount: 4.79,
           netAmount: 75.11,
@@ -76,16 +96,16 @@ describe('BillingPage', () => {
       expect.any(AbortSignal),
     )
     expect(screen.getByText('18 de 100')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Ver comprovante' }))
+    await user.click(screen.getByRole('button', { name: 'Ver nota simulada' }))
 
     const receipt = screen.getByRole('region', {
-      name: 'Comprovante acadêmico',
+      name: 'Nota Fiscal de Serviço eletrônica simulada',
     })
     expect(
-      within(receipt).getByText(
-        /Documento demonstrativo acadêmico sem validade fiscal/,
-      ),
+      within(receipt).getByText(/NFS-e sem validade jurídica/),
     ).toBeInTheDocument()
+    expect(within(receipt).getByText('Aurora Conteúdo')).toBeInTheDocument()
+    expect(within(receipt).getByText('ABC123SIMULADO')).toBeInTheDocument()
     expect(within(receipt).getByText('R$ 4,79')).toBeInTheDocument()
   })
 
@@ -156,7 +176,33 @@ describe('BillingPage', () => {
       status: 'paid' as const,
       dueDate: '2026-09-20',
       paidAt: '2026-09-17T12:00:00Z',
-      receipt: null,
+      receipt: {
+        reference: 'PF-REC-0003',
+        documentNumber: 'SIM-20260917-0003',
+        verificationCode: 'PAYMENTSIMULATED',
+        environment: 'simulation' as const,
+        issuer: {
+          legalName: 'PostFlow Tecnologia Ltda. — emissor simulado',
+          document: '00.000.000/0001-00',
+          municipalRegistration: '00000000',
+          city: 'Curitiba/PR',
+        },
+        recipient: {
+          name: 'Aurora Conteúdo',
+          document: 'Não informado — simulação acadêmica',
+          email: 'cliente@postflow.test',
+        },
+        service: {
+          code: '01.03',
+          description: 'Licenciamento mensal de plataforma SaaS.',
+          municipality: 'Curitiba/PR',
+        },
+        taxRate: 6,
+        taxAmount: 4.79,
+        netAmount: 75.11,
+        issuedAt: '2026-09-17T12:00:00Z',
+        legalValidity: 'academic_only' as const,
+      },
     }
     vi.mocked(billingApi.invoices)
       .mockResolvedValueOnce([pendingInvoice])
@@ -176,6 +222,11 @@ describe('BillingPage', () => {
       expect.any(String),
     )
     expect(await screen.findByText('Paga')).toBeInTheDocument()
+    expect(
+      screen.getByRole('region', {
+        name: 'Nota Fiscal de Serviço eletrônica simulada',
+      }),
+    ).toBeInTheDocument()
   })
 
   it('mantém editor e viewer em modo somente leitura', async () => {
