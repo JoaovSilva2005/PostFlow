@@ -165,7 +165,7 @@ async function mockNetwork(page, name) {
         page.on('pageerror', (error) => errors.push(error.message))
         await mockNetwork(page, name)
         await page.goto('http://127.0.0.1:5173/' + name)
-        await page.locator(name === 'login' ? 'h2' : 'h1').waitFor()
+        await page.locator('h1').waitFor()
         await page.evaluate(() => document.fonts.ready)
         if (name === 'finance')
           await page

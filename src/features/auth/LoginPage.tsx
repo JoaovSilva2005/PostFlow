@@ -1,12 +1,24 @@
 import { useState, type FormEvent } from 'react'
-import { CalendarDays, Sparkles } from 'lucide-react'
+import {
+  BarChart3,
+  Bell,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  LayoutDashboard,
+  MessageSquareText,
+  Plus,
+  Search,
+  Settings,
+  Sparkles,
+} from 'lucide-react'
 import { Navigate, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import { Button } from '../../components/ui/Button'
 import { SelectField, TextField } from '../../components/ui/FormField'
 import { BRAND_SEGMENT_OPTIONS } from '../../domain/brandCatalog'
 import styles from './LoginPage.module.css'
-import { EditorialSample } from './EditorialSample'
 import { PasswordField } from './PasswordField'
 
 interface FormErrors {
@@ -19,6 +31,103 @@ interface FormErrors {
 }
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
+
+const calendarDays = Array.from({ length: 35 }, (_, index) => index + 1)
+
+function WorkspaceBackdrop() {
+  return (
+    <div className={styles.workspace} aria-hidden="true">
+      <aside className={styles.workspaceSidebar}>
+        <div className={styles.workspaceLogo}>
+          <span className={styles.workspaceMark}>
+            <Sparkles size={16} />
+          </span>
+          <strong>PostFlow</strong>
+        </div>
+        <nav className={styles.workspaceNav}>
+          <span>
+            <LayoutDashboard size={17} /> Visão geral
+          </span>
+          <span className={styles.workspaceNavActive}>
+            <CalendarDays size={17} /> Calendário
+          </span>
+          <span>
+            <MessageSquareText size={17} /> Criar com IA
+          </span>
+          <span>
+            <FileText size={17} /> Conteúdos
+          </span>
+          <span>
+            <BarChart3 size={17} /> Resultados
+          </span>
+        </nav>
+        <span className={styles.workspaceSettings}>
+          <Settings size={17} /> Configurações
+        </span>
+      </aside>
+
+      <section className={styles.workspaceContent}>
+        <header className={styles.workspaceTopbar}>
+          <div>
+            <small>Workspace</small>
+            <strong>Studio Aurora</strong>
+          </div>
+          <div className={styles.workspaceActions}>
+            <span className={styles.workspaceSearch}>
+              <Search size={15} /> Buscar
+            </span>
+            <span className={styles.iconButton}>
+              <Bell size={16} />
+            </span>
+          </div>
+        </header>
+
+        <main className={styles.workspaceMain}>
+          <div className={styles.workspaceHeading}>
+            <div>
+              <p>Planejamento editorial</p>
+              <h2>Calendário de conteúdo</h2>
+            </div>
+            <span className={styles.workspaceCta}>
+              <Plus size={16} /> Criar conteúdo
+            </span>
+          </div>
+
+          <div className={styles.workspaceCalendar}>
+            <header className={styles.calendarHeader}>
+              <div>
+                <span className={styles.iconButton}>
+                  <ChevronLeft size={16} />
+                </span>
+                <strong>Setembro 2026</strong>
+                <span className={styles.iconButton}>
+                  <ChevronRight size={16} />
+                </span>
+              </div>
+              <span>Hoje</span>
+            </header>
+            <div className={styles.weekdays}>
+              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
+                <span key={day}>{day}</span>
+              ))}
+            </div>
+            <div className={styles.calendarGrid}>
+              {calendarDays.map((day) => (
+                <div key={day} className={styles.calendarCell}>
+                  <span>{day}</span>
+                  {[5, 10, 17, 24, 31].includes(day) && (
+                    <small>Post da semana</small>
+                  )}
+                  {[13, 27].includes(day) && <small>Dica para o público</small>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+      </section>
+    </div>
+  )
+}
 
 function validateLogin(email: string, password: string): FormErrors {
   const errors: FormErrors = {}
@@ -193,45 +302,28 @@ export function LoginPage() {
 
   return (
     <div className={styles.page}>
-      <section className={styles.hero} aria-label="Apresentação do PostFlow">
-        <div className={styles.logo}>
-          PostFlow<span>.</span>
-        </div>
-        <div className={styles.heroContent}>
-          <h1>
-            Seu conteúdo,
-            <br />
-            no ritmo certo.
-          </h1>
-          <p>
-            Transforme ideias em posts e organize a semana da sua marca, com
-            espaço para revisar cada detalhe.
-          </p>
-          <EditorialSample />
-        </div>
-        <p className={styles.heroFooter}>
-          <CalendarDays size={16} /> Projeto acadêmico · Multidisciplinar VI
-        </p>
-      </section>
+      <WorkspaceBackdrop />
+      <div className={styles.backdrop} />
 
-      <main className={styles.loginArea}>
+      <main className={styles.loginArea} aria-label="Acesso ao PostFlow">
         <form
           className={`${styles.card} ${mode === 'register' ? styles.registrationCard : ''}`}
           onSubmit={handleSubmit}
           noValidate
         >
-          <div className={styles.cardHeader}>
-            <span className={styles.mark}>
-              <Sparkles size={18} />
+          <div className={styles.logo}>
+            <span className={styles.logoMark}>
+              <Sparkles size={17} aria-hidden="true" />
             </span>
-            <div>
-              <h2>{mode === 'login' ? 'Bem-vindo' : 'Criar conta'}</h2>
-              <p>
-                {mode === 'login'
-                  ? 'Entre para continuar no PostFlow'
-                  : 'Cadastre-se para começar no PostFlow'}
-              </p>
-            </div>
+            PostFlow
+          </div>
+          <div className={styles.cardHeader}>
+            <h1>{mode === 'login' ? 'Bem-vindo de volta' : 'Criar conta'}</h1>
+            <p>
+              {mode === 'login'
+                ? 'Entre com seu e-mail e senha para acessar seu workspace.'
+                : 'Preencha seus dados para começar a organizar seus conteúdos.'}
+            </p>
           </div>
 
           <div
@@ -342,10 +434,11 @@ export function LoginPage() {
               {mode === 'login' ? 'Criar conta' : 'Entrar'}
             </button>
           </p>
+          <p className={styles.legal}>
+            Ao continuar, você concorda com os Termos de uso e a Política de
+            privacidade.
+          </p>
         </form>
-        <p className={styles.areaFooter}>
-          © 2026 PostFlow · Ambiente de demonstração
-        </p>
       </main>
     </div>
   )
