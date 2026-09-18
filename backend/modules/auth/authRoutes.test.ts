@@ -1,6 +1,6 @@
 // @vitest-environment node
 import request from 'supertest'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../../app.js'
 import {
   InMemoryAuthProvider,
@@ -147,6 +147,30 @@ describe('autenticação', () => {
     expect(mismatch.body.error).toBe('As senhas não coincidem.')
     expect(weak.status).toBe(400)
     expect(weak.body.error).toBe('Inclua pelo menos um número na senha.')
+  })
+
+  it('explica quando o limite de e-mails do provedor bloqueia o cadastro', async () => {
+    const provider = new InMemoryAuthProvider()
+    vi.spyOn(provider, 'register').mockRejectedValue({
+      code: 'over_email_send_rate_limit',
+      message: 'email rate limit exceeded',
+      status: 429,
+    })
+    const { app } = testApp(provider)
+
+    const response = await request(app).post('/api/auth/register').send({
+      displayName: 'Maria Silva',
+      brandName: 'Studio Maria',
+      segment: 'Tecnologia',
+      email: 'maria@postflow.com',
+      password: 'senha123',
+      confirmPassword: 'senha123',
+    })
+
+    expect(response.status).toBe(429)
+    expect(response.body.error).toBe(
+      'O limite temporário de e-mails de confirmação foi atingido. Aguarde e tente novamente mais tarde.',
+    )
   })
 
   it('provisiona um workspace para uma conta autenticada sem membership', async () => {

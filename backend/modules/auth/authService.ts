@@ -1,6 +1,86 @@
 import { HttpError } from '../../shared/HttpError.js'
 import type { AuthProvider, RegistrationDetails } from './authTypes.js'
 
+interface AuthProviderError {
+  code?: unknown
+  message?: unknown
+  status?: unknown
+}
+
+function readProviderError(error: unknown): {
+  code: string
+  message: string
+  status?: number
+} {
+  if (!error || typeof error !== 'object') {
+    return { code: '', message: '' }
+  }
+
+  const providerError = error as AuthProviderError
+
+  return {
+    code: typeof providerError.code === 'string' ? providerError.code : '',
+    message:
+      typeof providerError.message === 'string' ? providerError.message : '',
+    status:
+      typeof providerError.status === 'number' ? providerError.status : undefined,
+  }
+}
+
+function registrationError(error: unknown) {
+  const providerError = readProviderError(error)
+  const searchableError = `${providerError.code} ${providerError.message}`.toLowerCase()
+
+  // O SMTP padrão do Supabase tem uma cota pequena. Esta resposta informa a
+  // indisponibilidade temporária sem expor dados internos do provedor.
+  if (
+    providerError.status === 429 ||
+    searchableError.includes('over_email_send_rate_limit') ||
+    searchableError.includes('email rate limit')
+  ) {
+    return new HttpError(
+      429,
+      'O limite temporário de e-mails de confirmação foi atingido. Aguarde e tente novamente mais tarde.',
+    )
+  }
+
+  if (
+    searchableError.includes('user_already_exists') ||
+    searchableError.includes('email_exists') ||
+    searchableError.includes('already registered')
+  ) {
+    return new HttpError(
+      409,
+      'Já existe uma conta com este e-mail. Entre ou recupere sua senha.',
+    )
+  }
+
+  if (
+    searchableError.includes('weak_password') ||
+    searchableError.includes('password should')
+  ) {
+    return new HttpError(
+      400,
+      'A senha não atende aos requisitos de segurança. Escolha uma senha mais forte.',
+    )
+  }
+
+  if (
+    searchableError.includes('signup_disabled') ||
+    searchableError.includes('signups not allowed')
+  ) {
+    return new HttpError(
+      503,
+      'Novos cadastros estão temporariamente indisponíveis.',
+    )
+  }
+
+  return new HttpError(
+    400,
+    'Não foi possível criar a conta. Confira os dados informados.',
+  )
+}
+
 export class AuthService {
   private readonly provider: AuthProvider
 
@@ -29,11 +109,15 @@ export class AuthService {
   async register(input: RegistrationDetails) {
     try {
       return await this.provider.register(input)
-    } catch {
-      throw new HttpError(
-        400,
-        'Não foi possível criar a conta. Confira os dados informados.',
-      )
+    } catch (error) {
+      const providerError = readProviderError(error)
+
+      console.warn('Falha no cadastro pelo provedor de autenticação.', {
+        code: providerError.code || 'unknown',
+        status: providerError.status ?? 'unknown',
+      })
+
+      throw registrationError(error)
     }
   }
 

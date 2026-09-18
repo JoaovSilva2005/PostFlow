@@ -33,6 +33,8 @@ O backend mantém dois clientes com responsabilidades diferentes:
 - `createSupabaseAuthClient` usa `SUPABASE_PUBLISHABLE_KEY` (ou `VITE_SUPABASE_PUBLISHABLE_KEY`) para login, renovação e validação de sessões;
 - `createSupabaseAdminDataClient` usa `SUPABASE_SERVICE_ROLE_KEY` (ou `SUPABASE_SECRET_KEY`) exclusivamente no repositório financeiro, que também abastece as consultas fiscais.
 
+Em produção, configure um SMTP próprio em **Supabase > Authentication > Emails > SMTP Settings**. O SMTP padrão do Supabase é destinado a testes e possui uma cota pequena; quando ela é atingida, a API responde `429` e o PostFlow orienta o usuário a tentar novamente mais tarde.
+
 As chaves privilegiadas não podem ter prefixo `VITE_`, não devem aparecer no frontend e nunca devem ser versionadas. A API falha ao iniciar o acesso a dados sem a chave privilegiada; ela nunca degrada para a chave pública.
 
 ## Módulo financeiro
