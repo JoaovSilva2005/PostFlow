@@ -6,6 +6,9 @@ import type {
   BillingRepository,
 } from './billingTypes.js'
 
+const invoiceSelection =
+  'id,invoice_number,amount_cents,status,due_date,paid_at,fiscal_documents!fiscal_documents_billing_invoice_id_fkey(external_reference,tax_rate,tax_cents,net_cents,issued_at)'
+
 const cents = (value: number | string) => Number(value) / 100
 
 function plan(row: any): BillingPlan {
@@ -96,9 +99,7 @@ export class SupabaseBillingRepository implements BillingRepository {
   async listInvoices(workspaceId: string) {
     const { data, error } = await this.supabase
       .from('billing_invoices')
-      .select(
-        'id,invoice_number,amount_cents,status,due_date,paid_at,fiscal_documents(external_reference,tax_rate,tax_cents,net_cents,issued_at)',
-      )
+      .select(invoiceSelection)
       .eq('brand_id', workspaceId)
       .order('created_at', { ascending: false })
     if (error) throw new Error(`Falha ao listar faturas: ${error.message}`)
@@ -115,9 +116,7 @@ export class SupabaseBillingRepository implements BillingRepository {
   async findInvoiceByIdempotency(workspaceId: string, idempotencyKey: string) {
     const { data, error } = await this.supabase
       .from('billing_invoices')
-      .select(
-        'id,invoice_number,amount_cents,status,due_date,paid_at,fiscal_documents(external_reference,tax_rate,tax_cents,net_cents,issued_at)',
-      )
+      .select(invoiceSelection)
       .eq('brand_id', workspaceId)
       .eq('idempotency_key', idempotencyKey)
       .maybeSingle()
