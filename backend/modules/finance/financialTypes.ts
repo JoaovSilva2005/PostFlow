@@ -1,22 +1,16 @@
-export type FinancialTransactionType = 'income' | 'expense'
-export type FinancialTransactionStatus = 'pending' | 'paid'
-export type FinancialTransactionSource =
-  'manual' | 'sale_service' | 'subscription_revenue'
+import type {
+  FinancialTransactionSource,
+  FinancialTransactionStatus,
+  FinancialTransactionType,
+} from '../../../shared/domain/financial.js'
 
-export interface FinancialTransaction {
-  id: string
-  brandId: string | null
-  sourceType?: FinancialTransactionSource
-  type: FinancialTransactionType
-  category: string
-  description: string
-  amount: number
-  dueDate: string
-  status: FinancialTransactionStatus
-  paidAt: string | null
-  createdAt: string
-  updatedAt: string
-}
+export type {
+  FinancialTransaction,
+  FinancialTransactionInput,
+  FinancialTransactionSource,
+  FinancialTransactionStatus,
+  FinancialTransactionType,
+} from '../../../shared/domain/financial.js'
 
 export interface CreateFinancialTransactionInput {
   type: FinancialTransactionType

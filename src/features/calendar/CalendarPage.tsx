@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import type { PostDraft } from '../../domain/models'
+import { generationError, generationService } from '../content/generationService'
 import {
   buildCalendar,
   INITIAL_VISIBLE_MONTH,
@@ -14,6 +15,10 @@ import {
   WEEK_DAYS,
 } from './calendarUtils'
 import { EditDraftDialog } from './EditDraftDialog'
+import {
+  GenerateContentSidebar,
+  type GenerateContentValues,
+} from './GenerateContentSidebar'
 import styles from './CalendarPage.module.css'
 
 const STATUS_LABELS: Record<PostDraft['status'], string> = {
@@ -25,7 +30,8 @@ const STATUS_LABELS: Record<PostDraft['status'], string> = {
 export function CalendarPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { drafts, updateDraft, removeDraft } = useApp()
+  const { brand, currentWorkspace, drafts, updateDraft, removeDraft, addDraft } =
+    useApp()
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const draftDate = location.state?.draftDate
     if (
@@ -42,6 +48,12 @@ export function CalendarPage() {
   const [view, setView] = useState<'month' | 'list'>(() =>
     window.matchMedia?.('(max-width: 560px)').matches ? 'list' : 'month',
   )
+  const [isGeneratorOpen, setIsGeneratorOpen] = useState(false)
+  const [generatorPrompt, setGeneratorPrompt] = useState('')
+  const [generatorError, setGeneratorError] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generationNotice, setGenerationNotice] = useState('')
+  const generationController = useRef<AbortController | null>(null)
   const monthDrafts = drafts
     .filter((draft) =>
       draft.date.startsWith(toDateKey(visibleMonth).slice(0, 7)),
@@ -83,6 +95,59 @@ export function CalendarPage() {
     setSelectedDraft(null)
   }
 
+  useEffect(() => {
+    return () => generationController.current?.abort()
+  }, [])
+
+  async function handleGenerate(values: GenerateContentValues) {
+    if (isGenerating) return
+    const controller = new AbortController()
+    generationController.current = controller
+    setIsGenerating(true)
+    setGeneratorError('')
+    setGenerationNotice('')
+
+    try {
+      const generated = await generationService.generate(
+        {
+          workspaceId: currentWorkspace?.id,
+          prompt: `Formato solicitado: ${values.format}. Horário sugerido: ${values.time}.\n\n${values.prompt}`,
+          platform: values.platform,
+          date: values.date,
+          brand,
+          history: [],
+          previousDraft: null,
+        },
+        controller.signal,
+      )
+      await addDraft(generated)
+      const generatedDate = new Date(`${generated.date}T12:00:00`)
+      if (!Number.isNaN(generatedDate.getTime())) {
+        setVisibleMonth(
+          new Date(generatedDate.getFullYear(), generatedDate.getMonth(), 1),
+        )
+      }
+      setGeneratorPrompt('')
+      setGenerationNotice('Conteúdo gerado e adicionado à agenda.')
+      setIsGeneratorOpen(false)
+    } catch (error) {
+      if (controller.signal.aborted) {
+        setGeneratorError('Geração cancelada. Sua agenda não foi alterada.')
+      } else {
+        setGeneratorError(generationError(error))
+      }
+    } finally {
+      if (generationController.current === controller) {
+        generationController.current = null
+      }
+      setIsGenerating(false)
+    }
+  }
+
+  function cancelGeneration() {
+    generationController.current?.abort()
+  }
+
   return (
     <AppShell>
       <PageHeader
@@ -93,6 +158,32 @@ export function CalendarPage() {
           <Plus size={17} /> Novo post
         </Button>
       </PageHeader>
+
+      <section className={styles.creationStudio} aria-labelledby="creation-title">
+        <div className={styles.creationIntro}>
+          <span className={styles.creationKicker}><Sparkles size={14} /> Criação guiada</span>
+          <h2 id="creation-title">Planeje seu conteúdo social</h2>
+          <p>Descreva uma ideia e configure a publicação antes de gerar um rascunho.</p>
+        </div>
+        <div className={styles.creationComposer}>
+          <label htmlFor="calendar-content-prompt">O que você gostaria de criar?</label>
+          <textarea
+            id="calendar-content-prompt"
+            aria-label="Ideia do conteúdo na agenda"
+            value={generatorPrompt}
+            onChange={(event) => setGeneratorPrompt(event.target.value)}
+            placeholder="Ex.: apresente nosso novo serviço para pequenos negócios..."
+            rows={2}
+            maxLength={2000}
+          />
+          <div className={styles.creationActions}>
+            <small>{generatorPrompt.length}/2000</small>
+            <Button type="button" onClick={() => { setGeneratorError(''); setIsGeneratorOpen(true) }}>
+              <Sparkles size={16} /> Gerar conteúdo
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {location.state?.createdDraft ? (
         <p className={styles.savedNotice} role="status">
@@ -239,6 +330,25 @@ export function CalendarPage() {
           onClose={() => setSelectedDraft(null)}
           onSave={handleSaveDraft}
           onDelete={handleDeleteDraft}
+        />
+      ) : null}
+      {generationNotice ? (
+        <p className={styles.savedNotice} role="status">
+          {generationNotice}
+        </p>
+      ) : null}
+      {isGeneratorOpen ? (
+        <GenerateContentSidebar
+          brand={brand}
+          initialDate={toDateKey(new Date())}
+          initialPrompt={generatorPrompt}
+          isGenerating={isGenerating}
+          error={generatorError}
+          onClose={() => {
+            if (!isGenerating) setIsGeneratorOpen(false)
+          }}
+          onCancel={cancelGeneration}
+          onGenerate={handleGenerate}
         />
       ) : null}
     </AppShell>

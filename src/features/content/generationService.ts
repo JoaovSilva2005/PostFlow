@@ -44,6 +44,16 @@ export const draftSchema = z.object({
   status: z.literal('draft'),
   visualText: z.string().trim().min(1).max(160),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  imageUrl: z
+    .string()
+    .max(6_000_000)
+    .refine(
+      (value) =>
+        /^https?:\/\//.test(value) ||
+        /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value),
+      'A imagem gerada possui um formato inválido.',
+    )
+    .optional(),
 })
 
 export function generationError(error: unknown): string {
@@ -107,6 +117,7 @@ export const demoGenerationService: GenerationService = {
       status: 'draft',
       visualText: previousDraft?.visualText || subject.slice(0, 65),
       color: brand?.primaryColor || '#4F46E5',
+      imageUrl: previousDraft?.imageUrl,
     })
   },
 }
@@ -114,7 +125,13 @@ export const demoGenerationService: GenerationService = {
 export const apiGenerationService: GenerationService = {
   mode: 'api',
   async generate(request, signal) {
-    const { workspaceId, ...contentRequest } = request
+    const { workspaceId, previousDraft, ...requestWithoutWorkspace } = request
+    const contentRequest = {
+      ...requestWithoutWorkspace,
+      previousDraft: previousDraft
+        ? (({ imageUrl: _imageUrl, ...draft }) => draft)(previousDraft)
+        : null,
+    }
     const result = await apiRequest<unknown>('/content/generate', {
       method: 'POST',
       body: JSON.stringify(contentRequest),

@@ -78,7 +78,7 @@ describe('Estúdio de criação', () => {
     act(() => {
       void result.current.generate(request)
     })
-    await act(() => vi.advanceTimersByTimeAsync(45001))
+    await act(() => vi.advanceTimersByTimeAsync(90001))
     expect(result.current.isGenerating).toBe(false)
     expect(result.current.error).toContain('demorou demais')
   })

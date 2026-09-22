@@ -26,6 +26,7 @@ export interface GeneratedDraft {
   status: 'draft'
   visualText: string
   color: string
+  imageUrl?: string
 }
 
 export interface ContentProvider {

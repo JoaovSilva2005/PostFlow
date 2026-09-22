@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { PostDraft } from '../../domain/models'
 import { createTestRepository } from '../../test/testRepository'
@@ -30,6 +30,46 @@ const drafts: PostDraft[] = [
 ]
 
 describe('CalendarPage', () => {
+  it('abre a sidebar de geração e fecha com Escape e backdrop', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    renderApp('/calendar', createTestRepository({ drafts }))
+
+    await user.click(await screen.findByRole('button', { name: 'Gerar conteúdo' }))
+    expect(screen.getByRole('dialog', { name: 'Gerar conteúdo' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fechar geração de conteúdo' })).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Gerar conteúdo' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Gerar conteúdo' }))
+    const dialog = screen.getByRole('dialog', { name: 'Gerar conteúdo' })
+    await user.click(dialog.parentElement as HTMLElement)
+    expect(screen.queryByRole('dialog', { name: 'Gerar conteúdo' })).not.toBeInTheDocument()
+  })
+
+  it('configura formato e plataforma, gera conteúdo e salva na agenda', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const repository = createTestRepository({ drafts })
+    renderApp('/calendar', repository)
+
+    await user.click(await screen.findByRole('button', { name: 'Gerar conteúdo' }))
+    const dialog = screen.getByRole('dialog', { name: 'Gerar conteúdo' })
+    await user.type(screen.getByLabelText('Ideia do conteúdo'), 'Lançamento de uma novidade')
+    await user.click(within(dialog).getByRole('button', { name: /^Estático/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Facebook' }))
+    expect(within(dialog).getByRole('button', { name: /^Estático/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(dialog).getByRole('button', { name: 'Facebook' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(within(dialog).getByRole('button', { name: 'Gerar conteúdo' }))
+    expect(await screen.findByText('Gerando conteúdo...')).toBeInTheDocument()
+    expect(await screen.findByText('Conteúdo gerado e adicionado à agenda.')).toBeInTheDocument()
+    expect(repository.snapshot().drafts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ platform: 'Facebook' }),
+    ]))
+  }, 10_000)
+
   it('permite alternar para lista e mantém o rascunho editável por teclado', async () => {
     authenticateDemo()
     const user = userEvent.setup()

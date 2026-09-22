@@ -21,7 +21,7 @@ console.log('\nPostFlow API: OK')
 console.table(health)
 
 if (!email || !password) {
-  const protectedResponse = await fetch(`${apiUrl}/finance/summary`)
+  const protectedResponse = await fetch(`${apiUrl}/admin/finance/summary`)
 
   if (protectedResponse.status !== 401) {
     throw new Error('A rota financeira deveria rejeitar acesso anônimo.')
@@ -46,8 +46,8 @@ if (!email || !password) {
     .getSetCookie()
     .map((value) => value.split(';')[0])
     .join('; ')
-  const transactions = await read('/finance/transactions', cookie)
-  const summary = await read('/finance/summary', cookie)
+  const transactions = await read('/admin/finance/transactions', cookie)
+  const summary = await read('/admin/finance/summary', cookie)
 
   console.log('Login e rotas protegidas: OK')
   console.log('Resumo financeiro calculado pela API')

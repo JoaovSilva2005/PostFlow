@@ -61,4 +61,8 @@ export const environment = {
   },
   openAiApiKey: () => requiredEnvironmentVariable('OPENAI_API_KEY'),
   openAiTextModel: process.env.OPENAI_TEXT_MODEL?.trim() || 'gpt-5.6-luna',
+  openAiImageModel:
+    process.env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-1-mini',
+  openAiImageQuality: process.env.OPENAI_IMAGE_QUALITY?.trim() || 'medium',
+  openAiImageSize: process.env.OPENAI_IMAGE_SIZE?.trim() || '1024x1024',
 }

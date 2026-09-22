@@ -1,6 +1,6 @@
 import { Router, type RequestHandler } from 'express'
 import { z } from 'zod'
-import { buildFiscalReport, toFiscalSale } from '../../../src/domain/fiscal.js'
+import { buildFiscalReport, toFiscalSale } from '../../../shared/domain/fiscal.js'
 import { HttpError } from '../../shared/HttpError.js'
 import type { FinancialService } from '../finance/financialService.js'
 

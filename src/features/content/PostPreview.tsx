@@ -74,15 +74,25 @@ export function PostPreview({
                   </div>
                   <MoreHorizontal size={18} aria-hidden="true" />
                 </div>
-                <div
-                  className={styles.artwork}
-                  style={{ backgroundColor: draft.color }}
-                >
-                  <div className={styles.artworkShade} />
-                  <span>{brandName || 'Sua marca'}</span>
-                  <strong>{draft.visualText}</strong>
-                  <small>Composição ilustrativa</small>
-                </div>
+                {draft.imageUrl ? (
+                  <div className={styles.generatedArtwork}>
+                    <img
+                      src={draft.imageUrl}
+                      alt={`Arte gerada para ${draft.title}`}
+                    />
+                    <span>Arte gerada por IA</span>
+                  </div>
+                ) : (
+                  <div
+                    className={styles.artwork}
+                    style={{ backgroundColor: draft.color }}
+                  >
+                    <div className={styles.artworkShade} />
+                    <span>{brandName || 'Sua marca'}</span>
+                    <strong>{draft.visualText}</strong>
+                    <small>Composição ilustrativa</small>
+                  </div>
+                )}
                 <div className={styles.postCopy}>
                   <h3>{draft.title}</h3>
                   <p>{draft.caption}</p>
@@ -104,6 +114,12 @@ export function PostPreview({
                     onChange({ ...draft, title: e.target.value })
                   }
                 />
+                {draft.imageUrl ? (
+                  <p className={styles.previewHint}>
+                    A arte foi gerada junto com o rascunho. A legenda continua
+                    editável e a imagem permanece disponível nesta revisão.
+                  </p>
+                ) : null}
                 <label>
                   Legenda do post
                   <textarea

@@ -11,7 +11,7 @@ O PostFlow utiliza **Supabase com PostgreSQL**. O módulo financeiro é acessado
 | `migrations/20260915_financial_module.sql`          | Cria o incremento financeiro em um banco já existente             |
 | `../backend/modules/finance/financialRepository.ts` | Implementa a persistência financeira usada pela API               |
 | `../backend/modules/finance/financialService.ts`    | Calcula saldo, receitas, despesas e pendências                    |
-| `../src/services/supabaseClient.ts`                 | Cria a conexão a partir das variáveis de ambiente                 |
+| `../backend/config/supabaseServer.ts`              | Cria os clientes server-side usados pela API                       |
 | `../src/services/postFlowRepository.ts`             | Implementa o CRUD usado pelas telas                               |
 | `../scripts/database/verifyConnection.mjs`          | Confirma a conexão e consulta os relacionamentos                  |
 | `../scripts/database/testCrud.mjs`                  | Executa CREATE, READ, UPDATE e DELETE reais                       |
@@ -31,7 +31,7 @@ VITE_API_URL=http://localhost:3001/api
 API_PORT=3001
 ```
 
-O `.env` é ignorado pelo Git para evitar o versionamento de configurações locais. A chave utilizada no navegador deve ser apenas a **publishable/anon key**. O backend usa `SUPABASE_SERVICE_ROLE_KEY` (ou `SUPABASE_SECRET_KEY`) somente no ambiente server-side para acessar os repositórios; nunca utilize essa chave no frontend.
+O `.env` é ignorado pelo Git para evitar o versionamento de configurações locais. A chave utilizada no navegador deve ser apenas a **publishable/anon key**. O backend usa `SUPABASE_SERVICE_ROLE_KEY` (ou `SUPABASE_SECRET_KEY`) somente no ambiente server-side para acessar os repositórios; nunca utilize essa chave no frontend. O frontend usa a API Express como BFF e não acessa as tabelas diretamente no fluxo atual.
 
 Quando o projeto remoto não responde, somente o módulo financeiro usa uma massa temporária em memória para permitir a apresentação. A interface sinaliza **API demonstração**; esse modo não substitui a aplicação da migração no Supabase.
 

@@ -414,6 +414,30 @@
   font-size: 10px;
   opacity: 0.8;
 }
+.generatedArtwork {
+  position: relative;
+  aspect-ratio: 1;
+  width: 100%;
+  overflow: hidden;
+  background: #202426;
+}
+.generatedArtwork img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.generatedArtwork span {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 6px 8px;
+  border: 1px solid #ffffff3a;
+  border-radius: 5px;
+  background: #101112b8;
+  color: #f5f6f6;
+  font-size: 10px;
+}
 .postCopy {
   padding: 18px;
   overflow-wrap: anywhere;

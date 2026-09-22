@@ -16,5 +16,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["backend", "api"]
+  "include": ["backend", "api", "shared"]
 }

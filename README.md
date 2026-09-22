@@ -13,7 +13,7 @@ O PostFlow reúne autenticação, configuração da marca, geração de textos, 
 - cadastro, confirmação de e-mail, login e recuperação de senha;
 - separação dos dados por workspace e níveis de acesso;
 - configuração da identidade da marca;
-- geração de título, legenda, hashtags e texto visual por IA;
+- geração de título, legenda, hashtags, texto visual e arte quadrada por IA;
 - revisão do conteúdo antes de salvar;
 - agenda com criação, edição e exclusão de rascunhos;
 - consulta de plano, consumo, faturas e comprovantes;
@@ -45,7 +45,7 @@ Contas sem plano são direcionadas para a página de assinatura. Os papéis do w
 | Frontend                | React 19, TypeScript 6, Vite 8, React Router e CSS Modules |
 | Backend                 | Node.js 22, Express 5 e Zod 4                              |
 | Banco e autenticação    | Supabase Auth e PostgreSQL                                 |
-| Inteligência artificial | OpenAI Responses API                                       |
+| Inteligência artificial | OpenAI Responses API e Image Generation API                |
 | Testes                  | Vitest, React Testing Library, Supertest e Playwright      |
 | Hospedagem              | Vercel                                                     |
 
@@ -86,7 +86,10 @@ O comando inicia:
 | `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_SECRET_KEY` | Acesso administrativo usado somente pelo backend    |
 | `VITE_API_URL`                                       | URL local da API; use `http://localhost:3001/api`   |
 | `OPENAI_API_KEY`                                     | Credencial server-side para geração de conteúdo     |
-| `OPENAI_TEXT_MODEL`                                  | Modelo compatível com a Responses API               |
+  | `OPENAI_TEXT_MODEL`                                  | Modelo compatível com a Responses API               |
+  | `OPENAI_IMAGE_MODEL`                                 | Modelo compatível com a Image Generation API        |
+  | `OPENAI_IMAGE_QUALITY`                               | Qualidade da imagem: `low`, `medium` ou `high`     |
+  | `OPENAI_IMAGE_SIZE`                                  | Tamanho da imagem, por padrão `1024x1024`          |
 | `APP_URL`                                            | Origem autorizada e retorno da recuperação de senha |
 
 Nunca use uma chave administrativa do Supabase ou uma chave de IA em variável iniciada com `VITE_`. Em produção, configure também um SMTP próprio no Supabase para evitar o limite reduzido do serviço de e-mail de teste.
@@ -129,6 +132,7 @@ npm run test:responsive
 
 ```text
 api/             # entrada serverless da API na Vercel
+shared/          # contratos e regras puras compartilhados pelos runtimes
 backend/         # API, autenticação, autorização e regras de negócio
 database/        # schema, seed e documentação do banco
 docs/            # arquitetura, auditoria e manuais
@@ -136,14 +140,14 @@ scripts/         # verificações do banco, API e responsividade
 src/
 ├── app/         # rotas, sessão e proteção de acesso
 ├── components/  # componentes reutilizáveis
-├── domain/      # tipos e regras do domínio
+├── domain/      # fachadas de domínio usadas pelo frontend
 ├── features/    # telas e serviços organizados por funcionalidade
 ├── services/    # cliente HTTP e repositórios
 └── styles/      # tokens e estilos globais
 supabase/        # migrations aplicadas ao Supabase hospedado
 ```
 
-O frontend acessa os dados pela API Express. A API valida a sessão, o workspace, o plano e as permissões antes de utilizar a chave administrativa do Supabase no servidor.
+O frontend acessa os dados pela API Express. A API valida a sessão, o workspace, o plano e as permissões antes de utilizar a chave administrativa do Supabase no servidor. `shared/` não pode depender de React, Express, Supabase ou APIs de ambiente.
 
 ## Publicação na Vercel
 
@@ -166,7 +170,7 @@ Depois do deploy, valide:
 
 ## Limitações atuais
 
-- a IA gera conteúdo textual; geração de imagem ainda não está integrada;
+- a imagem gerada fica disponível na revisão atual, mas ainda não é persistida no Storage;
 - pagamento e emissão fiscal usam adapters demonstrativos e não movimentam dinheiro real;
 - o comprovante fiscal é acadêmico e não substitui NFS-e;
 - publicação automática em redes sociais ainda não foi implementada.

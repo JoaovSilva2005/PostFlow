@@ -19,6 +19,7 @@ const provider: ContentProvider = {
       caption: 'Uma legenda gerada com segurança.',
       hashtags: ['#PostFlow'],
       visualText: 'Planeje melhor',
+      imageUrl: 'data:image/webp;base64,aW1hZ2U=',
     }
   },
 }
@@ -86,6 +87,7 @@ describe('geração de conteúdo', () => {
       date: '2026-09-18',
       status: 'draft',
       color: '#4F46E5',
+      imageUrl: 'data:image/webp;base64,aW1hZ2U=',
     })
   })
 

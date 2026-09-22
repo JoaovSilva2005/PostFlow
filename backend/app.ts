@@ -95,6 +95,9 @@ export function createApp(options: AppOptions = {}) {
       new OpenAiContentProvider(
         environment.openAiApiKey,
         environment.openAiTextModel,
+        environment.openAiImageModel,
+        environment.openAiImageQuality,
+        environment.openAiImageSize,
       ),
     )
 

@@ -34,16 +34,22 @@ export const ApiPostFlowRepository: PostFlowDataRepository = {
     }),
 
   createDraft: (workspaceId, draft) =>
-    apiRequest<PostDraft>(workspacePath(workspaceId, 'drafts'), {
-      method: 'POST',
-      body: JSON.stringify(draft),
-    }),
+    (() => {
+      const { imageUrl: _imageUrl, ...persistedDraft } = draft
+      return apiRequest<PostDraft>(workspacePath(workspaceId, 'drafts'), {
+        method: 'POST',
+        body: JSON.stringify(persistedDraft),
+      })
+    })(),
 
   updateDraft: (workspaceId, draft) =>
-    apiRequest<PostDraft>(
-      workspacePath(workspaceId, `drafts/${encodeURIComponent(draft.id)}`),
-      { method: 'PATCH', body: JSON.stringify(draft) },
-    ),
+    (() => {
+      const { imageUrl: _imageUrl, ...persistedDraft } = draft
+      return apiRequest<PostDraft>(
+        workspacePath(workspaceId, `drafts/${encodeURIComponent(draft.id)}`),
+        { method: 'PATCH', body: JSON.stringify(persistedDraft) },
+      )
+    })(),
 
   deleteDraft: (workspaceId, id) =>
     apiRequest<void>(

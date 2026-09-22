@@ -17,6 +17,16 @@ const generatedDraftSchema = z.object({
   status: z.literal('draft'),
   visualText: z.string().trim().min(1).max(160),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  imageUrl: z
+    .string()
+    .max(6_000_000)
+    .refine(
+      (value) =>
+        /^https?:\/\//.test(value) ||
+        /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value),
+      'A imagem gerada possui um formato inválido.',
+    )
+    .optional(),
 })
 
 const requestSchema = z
@@ -61,9 +71,30 @@ export function createContentRouter(
       )
     }
 
-    response.json({
-      data: await service.generate(parsed.data as ContentGenerationInput),
-    })
+    const abortController = new AbortController()
+    const abortIfDisconnected = () => {
+      if (!response.writableEnded) abortController.abort()
+    }
+    const onRequestClose = () => {
+      if (!request.complete) abortIfDisconnected()
+    }
+
+    request.once('aborted', abortIfDisconnected)
+    request.once('close', onRequestClose)
+    response.once('close', abortIfDisconnected)
+
+    try {
+      response.json({
+        data: await service.generate(
+          parsed.data as ContentGenerationInput,
+          abortController.signal,
+        ),
+      })
+    } finally {
+      request.off('aborted', abortIfDisconnected)
+      request.off('close', onRequestClose)
+      response.off('close', abortIfDisconnected)
+    }
   })
 
   return router

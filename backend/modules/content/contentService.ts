@@ -4,6 +4,13 @@ import type {
   GeneratedDraft,
 } from './contentTypes.js'
 
+type AbortableContentProvider = {
+  generate: (
+    input: ContentGenerationInput,
+    signal?: AbortSignal,
+  ) => ReturnType<ContentProvider['generate']>
+}
+
 export class ContentService {
   private readonly provider: ContentProvider
 
@@ -11,8 +18,12 @@ export class ContentService {
     this.provider = provider
   }
 
-  async generate(input: ContentGenerationInput): Promise<GeneratedDraft> {
-    const generated = await this.provider.generate(input)
+  async generate(
+    input: ContentGenerationInput,
+    signal?: AbortSignal,
+  ): Promise<GeneratedDraft> {
+    const provider = this.provider as AbortableContentProvider
+    const generated = await provider.generate.call(this.provider, input, signal)
 
     return {
       id: input.previousDraft?.id ?? crypto.randomUUID(),

@@ -17,6 +17,8 @@ export interface PostDraft {
   status: PostStatus
   visualText: string
   color: string
+  /** Imagem gerada para a revisão atual; a agenda persiste o conteúdo textual. */
+  imageUrl?: string
 }
 
 export interface AppState {

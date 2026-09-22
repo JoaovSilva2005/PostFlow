@@ -39,7 +39,7 @@ export function useContentStudio(service: GenerationService) {
     const timeout = setTimeout(() => {
       timedOut = true
       controller.abort()
-    }, 45000)
+    }, 90000)
     let rejectAbort: () => void = () => {}
     const aborted = new Promise<never>((_resolve, reject) => {
       rejectAbort = () => reject(new DOMException('Cancelado', 'AbortError'))

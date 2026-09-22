@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { BRAND_SEGMENTS } from '../../../src/domain/brandCatalog.js'
+import { BRAND_SEGMENTS } from '../../../shared/domain/brandCatalog.js'
 import { environment } from '../../config/environment.js'
 import { HttpError } from '../../shared/HttpError.js'
 import {

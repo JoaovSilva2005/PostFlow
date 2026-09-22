@@ -5,6 +5,8 @@ O projeto é um monorepositório simples: frontend, backend e banco de dados fic
 ```text
 PostFlow/
 ├── api/                       # adaptador serverless usado pela Vercel
+├── shared/                    # contratos e regras puras entre os runtimes
+│   └── domain/                # financeiro, fiscal e catálogo de segmentos
 ├── backend/                   # API, regras de negócio e acesso ao banco
 │   ├── config/                # ambiente e cliente Supabase do servidor
 │   ├── modules/auth/          # autenticação, cookies e autorização
@@ -28,6 +30,21 @@ PostFlow/
 │   └── test/                  # configuração e utilitários dos testes
 └── docs/                      # documentação e evidências visuais
 ```
+
+## Direção das dependências
+
+```text
+Frontend (src) ───────┐
+                      ├──> shared (contratos e regras puras)
+Backend (backend) ────┘
+
+Frontend ───> API Express ───> módulos backend ───> Supabase/PostgreSQL
+```
+
+`shared/` não conhece React, Express, Supabase, Node ou variáveis de ambiente.
+O backend não importa `src/`. As fachadas em `src/domain` existem apenas para
+preservar os imports atuais do frontend enquanto os contratos comuns são
+centralizados.
 
 ## Fluxo de uma requisição
 
@@ -62,6 +79,16 @@ Cada pasta em `src/features` reúne a tela, o estilo, o teste e os auxiliares es
 | Fiscal         | `src/features/fiscal`   | `backend/modules/fiscal`  | `fiscal_documents` e receitas faturadas                        |
 
 Financeiro, Fiscal e economia do plano são backoffice do PostFlow. Eles não são produtos disponíveis a clientes comuns. A área `Assinatura e cobrança` apresenta somente o plano, consumo, faturas e comprovantes do workspace autenticado.
+
+## Convenção de banco
+
+`database/schema.sql` e `database/seed.sql` formam a base manual da entrega
+acadêmica. As migrações incrementais historicamente usadas nessa entrega ficam
+em `database/migrations`. As migrações mais recentes gerenciadas pelo fluxo do
+Supabase ficam em `supabase/migrations`. Novas migrações devem seguir a trilha
+do Supabase; a trilha antiga deve ser mantida somente para reprodução histórica
+até ser consolidada em uma janela própria, pois testes e ambientes existentes
+referenciam seus caminhos.
 
 ## Persistência do cadastro
 

@@ -373,7 +373,7 @@ export function ChatPage({
             )}
             <p id="generation-disclaimer" className={styles.disclaimer}>
               {service.mode === 'demo'
-                ? 'Simulação por modelos de texto. A arte é uma composição, não uma imagem gerada por IA.'
+                ? 'Simulação por modelos de texto. A arte exibida é uma composição ilustrativa.'
                 : 'Revise as informações geradas antes de salvar. Nada será publicado automaticamente.'}
             </p>
             <span className={styles.srOnly} aria-live="polite">

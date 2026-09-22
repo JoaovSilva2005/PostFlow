@@ -94,11 +94,45 @@ async function mockNetwork(page, name) {
           email: 'qa@example.com',
           role: 'member',
         },
+        workspace: { id: 'workspace-qa', role: 'owner' },
+        platformRole: 'platform_owner',
+        billingStatus: 'active',
       }
     } else if (path.endsWith('/health'))
       data = { status: 'ok', storage: 'supabase' }
+    else if (path.includes('/workspaces/') && path.endsWith('/brand'))
+      data = {
+        name: brand.name,
+        segment: brand.segment,
+        toneOfVoice: brand.tone_of_voice,
+        primaryColor: brand.primary_color,
+      }
+    else if (path.includes('/workspaces/') && path.endsWith('/drafts'))
+      data = drafts.map((draft) => ({
+        id: draft.id,
+        title: draft.title,
+        caption: draft.caption,
+        hashtags: draft.post_hashtags.map((tag) => tag.hashtag),
+        platform: draft.social_platforms.name,
+        date: draft.scheduled_at.slice(0, 10),
+        status: draft.status,
+        visualText: draft.visual_text,
+        color: draft.color,
+      }))
     else if (path.endsWith('/finance/summary')) data = summary
     else if (path.endsWith('/finance/transactions')) data = transactions
+    else if (path.endsWith('/content/generate'))
+      data = {
+        id: 'generated-qa',
+        title: 'Uma nova forma de criar',
+        caption: 'Conheça uma nova forma de criar conteúdo para sua marca.',
+        hashtags: ['#PostFlow', '#Conteúdo'],
+        platform: 'Instagram',
+        date: '2026-09-22',
+        status: 'draft',
+        visualText: 'Ideias que conectam.',
+        color: '#4F46E5',
+      }
     else if (path.endsWith('/fiscal/report'))
       data = {
         period: '2026-09',
@@ -154,7 +188,8 @@ async function mockNetwork(page, name) {
       .split(',')
       .map(Number)) {
       for (const name of (
-        process.env.QA_PAGES || 'login,brand,chat,calendar,finance,fiscal'
+        process.env.QA_PAGES ||
+        'login,brand,chat,calendar,finance,fiscal,admin-plans'
       ).split(',')) {
         const page = await browser.newPage({
           viewport: { width, height: 900 },
@@ -164,7 +199,8 @@ async function mockNetwork(page, name) {
         const errors = []
         page.on('pageerror', (error) => errors.push(error.message))
         await mockNetwork(page, name)
-        await page.goto('http://127.0.0.1:5173/' + name)
+        const routePath = name === 'admin-plans' ? 'admin/plans' : name
+        await page.goto('http://127.0.0.1:5173/' + routePath)
         await page.locator('h1').waitFor()
         await page.evaluate(() => document.fonts.ready)
         if (name === 'finance')
@@ -242,8 +278,6 @@ async function mockNetwork(page, name) {
           await page
             .getByRole('region', { name: 'Comprovante de venda de serviço' })
             .waitFor()
-          await page.getByText('Entenda e simule o custo do plano').click()
-          await page.getByLabel('Gerações de imagem').fill('1000')
           assert.equal(
             await page.evaluate(
               () => document.documentElement.scrollWidth > innerWidth,
@@ -262,6 +296,20 @@ async function mockNetwork(page, name) {
             })
             await page.emulateMedia({ media: 'screen' })
           }
+        }
+        if (name === 'admin-plans') {
+          await page.getByText('Entenda e simule o custo do plano').click()
+          await page.getByLabel('Gerações de imagem').fill('1000')
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth > innerWidth,
+            ),
+            false,
+          )
+          await page.screenshot({
+            path: output + '/admin-plans-detail-' + width + '.png',
+            fullPage: true,
+          })
         }
         if (width === 390 && name === 'brand') {
           await page.getByRole('button', { name: 'Abrir menu' }).click()

@@ -13,12 +13,17 @@ contrato de um fornecedor.
 
 `ContentService` depende de `ContentProvider`. O adapter OpenAI chama a
 Responses API no servidor e converte saída estruturada para o contrato interno.
-O modelo padrão é GPT-5.6 Luna; imagem será uma ação opcional separada.
+Depois, o mesmo provider chama a Image Generation API para produzir uma única
+imagem quadrada de prévia. Os padrões são GPT-5.6 Luna para texto e
+`gpt-image-1-mini` com qualidade `medium` e tamanho `1024x1024` para imagem;
+modelo, qualidade e tamanho são configuráveis no ambiente do backend.
 
 ## Consequences
 
 A chave não chega ao navegador e o fornecedor pode ser trocado. A integração
 exige monitoramento de custo, latência e falhas, além de limites por tenant.
+Imagem é retornada somente para a prévia da sessão e não é persistida em
+`post_drafts`; os campos textuais seguem o fluxo normal da agenda.
 
 ## Validation
 
