@@ -13,6 +13,7 @@ import { useApp } from '../../app/AppContext'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
+import { DateField } from '../../components/ui/DateField'
 import { PostPreview } from './PostPreview'
 import {
   draftSchema,
@@ -65,7 +66,9 @@ export function ChatPage({
   const messagesRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const saving = useRef(false)
+  const lastReviewedMessage = useRef<string | null>(null)
   const busy = studio.isGenerating || isAdding
+  const latestMessage = studio.messages[studio.messages.length - 1]
 
   useEffect(() => {
     if (messagesRef.current && studio.messages.length > 0)
@@ -76,6 +79,17 @@ export function ChatPage({
     if (mobilePanel === 'draft')
       document.getElementById('post-preview')?.focus()
   }, [mobilePanel])
+
+  useEffect(() => {
+    if (
+      studio.draft &&
+      latestMessage?.role === 'assistant' &&
+      latestMessage.id !== lastReviewedMessage.current
+    ) {
+      lastReviewedMessage.current = latestMessage.id
+      setMobilePanel('draft')
+    }
+  }, [studio.draft, latestMessage])
 
   function handleGenerate(event: FormEvent) {
     event.preventDefault()
@@ -145,7 +159,7 @@ export function ChatPage({
     <AppShell>
       <PageHeader
         title="Criar com IA"
-        description="Uma ideia na conversa. Um conteúdo pronto para revisar."
+        description="Descreva sua ideia, revise o resultado e salve um rascunho na agenda."
       >
         <span className={styles.mode}>
           <span />
@@ -156,7 +170,6 @@ export function ChatPage({
         <div className={styles.brandContext}>
           <span
             className={styles.brandMark}
-            style={{ borderColor: brand?.primaryColor }}
           >
             {brand?.name.slice(0, 1) || 'P'}
           </span>
@@ -169,7 +182,7 @@ export function ChatPage({
                 'Configure a marca para personalizar e salvar seus posts.'}
             </span>
           </div>
-          <Link to="/brand" aria-label="Configurar marca">
+          <Link to="/brand" aria-label="Configurar marca" title="Configurar marca">
             <ArrowUpRight size={18} />
           </Link>
         </div>
@@ -185,16 +198,13 @@ export function ChatPage({
             ))}
           </select>
         </label>
-        <label>
-          Data sugerida
-          <input
-            type="date"
-            required
-            value={date}
-            disabled={busy}
-            onChange={(e) => setDate(e.target.value || localDate())}
-          />
-        </label>
+        <DateField
+          label="Data sugerida"
+          value={date}
+          required
+          disabled={busy}
+          onChange={(e) => setDate(e.target.value || localDate())}
+        />
       </div>
       <div className={styles.mobileSwitch} aria-label="Painel do estúdio">
         <button
@@ -209,7 +219,7 @@ export function ChatPage({
           aria-pressed={mobilePanel === 'draft'}
           onClick={() => setMobilePanel('draft')}
         >
-          Rascunho{studio.draft ? ' •' : ''}
+          {studio.draft ? 'Rascunho pronto' : 'Rascunho'}
         </button>
       </div>
       <div className={styles.workspace}>

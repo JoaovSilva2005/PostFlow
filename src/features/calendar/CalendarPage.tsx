@@ -152,18 +152,17 @@ export function CalendarPage() {
     <AppShell>
       <PageHeader
         title="Agenda de conteúdo"
-        description="Veja o que está planejado e ajuste cada post antes de publicar."
+        description="Encontre seus posts por data e revise cada rascunho."
       >
         <Button type="button" onClick={() => navigate('/chat')}>
-          <Plus size={17} /> Novo post
+          <Plus size={17} /> Criar no estúdio
         </Button>
       </PageHeader>
 
       <section className={styles.creationStudio} aria-labelledby="creation-title">
         <div className={styles.creationIntro}>
-          <span className={styles.creationKicker}><Sparkles size={14} /> Criação guiada</span>
-          <h2 id="creation-title">Planeje seu conteúdo social</h2>
-          <p>Descreva uma ideia e configure a publicação antes de gerar um rascunho.</p>
+          <h2 id="creation-title">Criar pela agenda</h2>
+          <p>Descreva a ideia. Depois escolha rede, formato e data. O rascunho ficará na agenda para revisão.</p>
         </div>
         <div className={styles.creationComposer}>
           <label htmlFor="calendar-content-prompt">O que você gostaria de criar?</label>
@@ -178,8 +177,8 @@ export function CalendarPage() {
           />
           <div className={styles.creationActions}>
             <small>{generatorPrompt.length}/2000</small>
-            <Button type="button" onClick={() => { setGeneratorError(''); setIsGeneratorOpen(true) }}>
-              <Sparkles size={16} /> Gerar conteúdo
+            <Button type="button" variant="secondary" onClick={() => { setGeneratorError(''); setIsGeneratorOpen(true) }}>
+              <Sparkles size={16} /> Configurar geração
             </Button>
           </div>
         </div>
@@ -214,7 +213,6 @@ export function CalendarPage() {
             </h2>
           </div>
           <div className={styles.legend}>
-            <span /> Rascunho{' '}
             <strong>
               {monthDrafts.length}{' '}
               {monthDrafts.length === 1 ? 'post no mês' : 'posts no mês'}
@@ -270,9 +268,10 @@ export function CalendarPage() {
                           key={draft.id}
                           type="button"
                           className={styles.draft}
+                          data-status={draft.status}
                           onClick={() => setSelectedDraft(draft)}
                         >
-                          <span style={{ background: draft.color }} />
+                          <span />
                           <div>
                             <strong>{draft.title}</strong>
                             <small>
@@ -286,6 +285,11 @@ export function CalendarPage() {
                 )
               })}
             </div>
+            {!monthDrafts.length && (
+              <div className={styles.monthEmpty}>
+                Nenhum post neste mês. Use “Criar no estúdio” para começar um rascunho.
+              </div>
+            )}
           </>
         ) : (
           <div className={styles.agendaList}>

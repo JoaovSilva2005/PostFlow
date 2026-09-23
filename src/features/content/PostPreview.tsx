@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CalendarPlus, Image, MoreHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
+import { DateField } from '../../components/ui/DateField'
 import { TextField } from '../../components/ui/FormField'
 import type { PostDraft } from '../../domain/models'
 import styles from './ChatPage.module.css'
@@ -34,7 +35,7 @@ export function PostPreview({
       aria-label="Prévia do post gerado"
     >
       <header className={styles.panelHeader}>
-        <h2>{draft ? 'Rascunho gerado' : 'Seu rascunho'}</h2>
+        <h2>{draft ? 'Revise seu rascunho' : 'Seu rascunho'}</h2>
         <span className={styles.unpublished}>Não publicado</span>
       </header>
       {draft ? (
@@ -166,9 +167,8 @@ export function PostPreview({
             )}
           </div>
           <footer className={styles.reviewFooter}>
-            <TextField
+            <DateField
               label="Data do post"
-              type="date"
               value={draft.date}
               required
               disabled={disabled}
@@ -190,7 +190,7 @@ export function PostPreview({
               <CalendarPlus size={16} />
               {isAdding ? 'Salvando...' : 'Adicionar à agenda'}
             </Button>
-            <p>Salvo como rascunho. Nenhum post é publicado automaticamente.</p>
+            <p>Ao adicionar, o post será salvo como rascunho. Nada será publicado.</p>
           </footer>
         </>
       ) : (

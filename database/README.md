@@ -35,6 +35,23 @@ O `.env` é ignorado pelo Git para evitar o versionamento de configurações loc
 
 Quando o projeto remoto não responde, somente o módulo financeiro usa uma massa temporária em memória para permitir a apresentação. A interface sinaliza **API demonstração**; esse modo não substitui a aplicação da migração no Supabase.
 
+## Acesso ao backoffice
+
+No SaaS, o acesso a Financeiro, Fiscal e Planos vem de `public.platform_members`; o papel `admin` em `public.brand_members` administra apenas o workspace e não concede acesso ao backoffice. A migração `supabase/migrations/20260917_saas_billing_authorization.sql` cria a tabela de papéis internos. O seed de personas concede acesso somente a `admin@postflow.test`.
+
+Para conceder acesso a uma conta real, crie-a primeiro no Supabase Auth e execute no SQL Editor para o e-mail confirmado do administrador:
+
+```sql
+insert into public.platform_members (user_id, role)
+select id, 'platform_owner'
+from auth.users
+where lower(email) = lower('EMAIL_DO_ADMIN')
+on conflict (user_id) do update
+set role = excluded.role, updated_at = now();
+```
+
+Use esse comando somente para uma conta interna confiável. `platform_owner` dá acesso completo ao backoffice; `finance_admin` e `support` são papéis mais restritos descritos em `docs/user-manual.md`. Confirme que a consulta afetou uma conta e peça ao usuário para recarregar a sessão após a alteração.
+
 ## Como validar no CMD
 
 ```cmd

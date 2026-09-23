@@ -25,7 +25,7 @@
   width: var(--sidebar-width);
   display: flex;
   flex-direction: column;
-  padding: 24px 12px 12px;
+  padding: 28px 12px 12px;
   background: var(--color-sidebar);
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
@@ -52,7 +52,7 @@
   margin-bottom: 16px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #141617;
+  background: var(--color-surface);
 }
 .workspaceIdentity > div,
 .profile > div {
@@ -97,7 +97,7 @@
   align-items: center;
   gap: 8px;
   padding: 0 10px;
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
   color: var(--color-muted);
@@ -136,7 +136,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 10px;
   margin: 2px 0;
   border: 1px solid transparent;
@@ -145,12 +145,12 @@
   font-size: 13px;
   text-decoration: none;
   transition:
-    background 0.15s,
-    color 0.15s;
+    background var(--duration-feedback) var(--ease-feedback),
+    color var(--duration-feedback) var(--ease-feedback);
 }
 .navItem:hover {
   color: #fff;
-  background: #191b1d;
+  background: var(--color-hover);
 }
 .navItem.active {
   background: #242628;
@@ -246,6 +246,9 @@
   padding: 40px;
   min-width: 0;
 }
+.menuBackdrop {
+  display: none;
+}
 .mobileBar {
   display: none;
 }
@@ -274,6 +277,8 @@
     padding: 0 16px;
     background: var(--color-sidebar);
     border-bottom: 1px solid var(--color-border);
+    position: relative;
+    z-index: 42;
   }
   .wordmark {
     display: flex;
@@ -287,14 +292,25 @@
   }
   .sidebar {
     display: none;
-    position: relative;
-    width: 100%;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border);
-    padding: 16px;
+    position: fixed;
+    inset: 60px auto 0 0;
+    z-index: 41;
+    width: min(340px, calc(100vw - 32px));
+    border-right: 1px solid var(--color-border);
+    padding: 20px 16px 16px;
+    box-shadow: var(--shadow-overlay);
   }
   .sidebar.open {
     display: flex;
+  }
+  .menuBackdrop {
+    display: block;
+    position: fixed;
+    inset: 60px 0 0;
+    z-index: 40;
+    width: 100%;
+    border: 0;
+    background: #0009;
   }
   .logo {
     display: none;

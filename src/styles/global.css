@@ -19,6 +19,7 @@ body {
     14px/1.6 'Inter',
     sans-serif;
   -webkit-font-smoothing: antialiased;
+  accent-color: var(--color-primary);
 }
 button,
 input,
@@ -67,7 +68,16 @@ textarea {
 }
 :focus-visible {
   outline: 2px solid var(--color-primary);
-  outline-offset: 4px;
+  outline-offset: 2px;
+}
+input,
+select,
+textarea {
+  caret-color: var(--color-primary);
+}
+input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.75;
 }
 .sr-only {
   position: absolute;

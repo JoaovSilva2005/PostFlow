@@ -3,16 +3,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 .copy {
   min-width: 0;
 }
 .copy h1 {
-  margin: 0 0 12px;
-  font-size: clamp(26px, 2.2vw, 32px);
+  margin: 0 0 8px;
+  font-size: 30px;
   font-weight: 600;
-  letter-spacing: -1px;
+  letter-spacing: -0.8px;
 }
 .copy p {
   max-width: 72ch;
@@ -31,5 +31,10 @@
     align-items: flex-start;
     flex-wrap: wrap;
     gap: 16px;
+  }
+}
+@media (max-width: 560px) {
+  .copy h1 {
+    font-size: 26px;
   }
 }

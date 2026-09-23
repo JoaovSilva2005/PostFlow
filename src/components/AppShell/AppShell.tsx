@@ -14,10 +14,24 @@ import {
   BadgeDollarSign,
   X,
 } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
+import type { PlatformRole, WorkspaceRole } from '../../domain/auth'
 import styles from './AppShell.module.css'
+
+const workspaceRoleLabels: Record<WorkspaceRole, string> = {
+  owner: 'Responsável',
+  admin: 'Administrador',
+  editor: 'Editor',
+  viewer: 'Leitor',
+}
+
+const platformRoleLabels: Record<Exclude<PlatformRole, null>, string> = {
+  platform_owner: 'Administrador',
+  finance_admin: 'Financeiro',
+  support: 'Suporte',
+}
 
 const workspaceNavigation = [
   {
@@ -51,6 +65,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [search, setSearch] = useState('')
   const menuButton = useRef<HTMLButtonElement>(null)
+  const searchInput = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (menuOpen) searchInput.current?.focus()
+  }, [menuOpen])
+
+  useEffect(() => {
+    setMenuOpen(false)
+    setSearch('')
+  }, [pathname])
   const hasActivePlan =
     billingStatus === 'active' || billingStatus === 'trialing'
   const canUseProduct = hasActivePlan || platformRole === 'platform_owner'
@@ -103,6 +127,28 @@ export function AppShell({ children }: { children: ReactNode }) {
     menuButton.current?.focus()
   }
 
+  function handleMenuKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === 'Escape') {
+      handleEscape()
+      return
+    }
+    if (!menuOpen || event.key !== 'Tab') return
+    const controls = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>(
+        'a[href], button:not(:disabled), input:not(:disabled)',
+      ),
+    )
+    const first = controls[0]
+    const last = controls[controls.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last?.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first?.focus()
+    }
+  }
+
   async function handleLogout() {
     await logout()
     navigate('/login', { replace: true })
@@ -128,12 +174,22 @@ export function AppShell({ children }: { children: ReactNode }) {
           {menuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </header>
+      {menuOpen && (
+        <button
+          type="button"
+          className={styles.menuBackdrop}
+          aria-label="Fechar menu"
+          tabIndex={-1}
+          onClick={handleEscape}
+        />
+      )}
       <aside
         id="workspace-navigation"
         className={`${styles.sidebar} ${menuOpen ? styles.open : ''}`}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') handleEscape()
-        }}
+        role={menuOpen ? 'dialog' : undefined}
+        aria-modal={menuOpen ? true : undefined}
+        aria-label={menuOpen ? 'Menu principal' : undefined}
+        onKeyDown={handleMenuKeyDown}
       >
         <NavLink
           className={styles.logo}
@@ -151,14 +207,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             <strong>{brand?.name || 'Seu workspace'}</strong>
             <small>
               {currentWorkspace
-                ? `Workspace · ${currentWorkspace.role}`
-                : 'Sem workspace ativo'}
+                ? workspaceRoleLabels[currentWorkspace.role]
+                : 'Nenhuma área de trabalho ativa'}
             </small>
           </div>
         </div>
         <label className={styles.search}>
           <Search size={16} />
           <input
+            ref={searchInput}
             aria-label="Buscar seção"
             placeholder="Buscar seção..."
             value={search}
@@ -193,17 +250,19 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </nav>
         <div className={styles.sidebarFooter}>
-          <div className={`${styles.databaseStatus} ${styles[databaseStatus]}`}>
-            <Database size={14} />
-            <span>
-              {databaseStatus === 'connected'
-                ? 'Banco conectado'
-                : databaseStatus === 'connecting'
-                  ? 'Conectando ao banco'
-                  : 'Banco indisponível'}
-            </span>
-            <i />
-          </div>
+          {(platformRole || databaseStatus === 'error') && (
+            <div className={`${styles.databaseStatus} ${styles[databaseStatus]}`}>
+              <Database size={14} />
+              <span>
+                {databaseStatus === 'connected'
+                  ? 'Serviços disponíveis'
+                  : databaseStatus === 'connecting'
+                    ? 'Conectando aos serviços'
+                    : 'Serviços indisponíveis'}
+              </span>
+              <i />
+            </div>
+          )}
           <div className={styles.profile}>
             <span className={styles.profileAvatar}>
               {authUser?.displayName?.slice(0, 1).toUpperCase() || 'U'}
@@ -212,7 +271,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <strong>{authUser?.displayName || 'Minha conta'}</strong>
               <small>
                 {platformRole
-                  ? `Administração · ${platformRole}`
+                  ? platformRoleLabels[platformRole]
                   : 'Conta de cliente'}
               </small>
             </div>
@@ -228,7 +287,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       <div className={styles.body}>
         <div className={styles.topbar}>
-          <span>Workspace</span>
+          <span>{currentWorkspace ? 'Área de trabalho' : 'PostFlow'}</span>
           <ChevronRight size={14} />
           <strong>{currentPage}</strong>
         </div>
