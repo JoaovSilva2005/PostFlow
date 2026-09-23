@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 const schema = readFileSync('database/schema.sql', 'utf8')
 const seed = readFileSync('database/seed.sql', 'utf8')
 const contentPlannerMigration = readFileSync(
-  'supabase/migrations/20260923194552_postflow_batched_content_planner.sql',
+  'supabase/migrations/20260923210143_postflow_batched_content_planner.sql',
   'utf8',
 )
 
