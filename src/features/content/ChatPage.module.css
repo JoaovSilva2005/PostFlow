@@ -387,6 +387,9 @@
   overflow-wrap: anywhere;
 }
 .socialHeader small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 10px;
   color: var(--color-muted);
 }

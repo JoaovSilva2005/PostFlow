@@ -242,6 +242,16 @@
   color: var(--color-muted);
   font-size: 9px;
 }
+.platformLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.platformLabel svg {
+  flex: 0 0 auto;
+}
 .agendaList {
   padding: 8px 24px;
 }
@@ -286,6 +296,10 @@
 .agendaEntry small {
   color: var(--color-muted);
   font-size: 11px;
+}
+.agendaEntry .platformLabel svg {
+  width: 14px;
+  height: 14px;
 }
 .agendaEntry > span {
   margin-left: auto;

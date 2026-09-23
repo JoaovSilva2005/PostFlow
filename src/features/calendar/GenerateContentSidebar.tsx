@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/FormField'
+import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import type { BrandProfile } from '../../domain/models'
 import {
   DEFAULT_POST_TIMEZONE,
@@ -63,15 +64,6 @@ const FORMATS: Array<{
     icon: Video,
   },
 ]
-
-const PLATFORM_MARKS: Record<Platform, string> = {
-  Instagram: 'IG',
-  Facebook: 'f',
-  'X / Twitter': 'X',
-  LinkedIn: 'in',
-  TikTok: 'TT',
-  Blog: 'B',
-}
 
 export interface GenerateContentValues {
   prompt: string
@@ -485,7 +477,7 @@ export function GenerateContentSidebar({
                     disabled={isBusy}
                   >
                     <span className={styles.platformMark} aria-hidden="true">
-                      {PLATFORM_MARKS[platform]}
+                      <SocialPlatformIcon platform={platform} size={18} />
                     </span>
                     <span>{platform}</span>
                     <span className={styles.platformCheck} aria-hidden="true">

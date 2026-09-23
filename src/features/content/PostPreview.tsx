@@ -3,6 +3,7 @@ import { CalendarPlus, Image, MoreHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { DateField } from '../../components/ui/DateField'
 import { TextField } from '../../components/ui/FormField'
+import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import type { PostDraft } from '../../domain/models'
 import styles from './ChatPage.module.css'
 
@@ -71,7 +72,10 @@ export function PostPreview({
                   </span>
                   <div>
                     <strong>{brandName || 'Sua marca'}</strong>
-                    <small>{draft.platform}</small>
+                    <small>
+                      <SocialPlatformIcon platform={draft.platform} size={13} />
+                      {draft.platform}
+                    </small>
                   </div>
                   <MoreHorizontal size={18} aria-hidden="true" />
                 </div>
@@ -190,7 +194,10 @@ export function PostPreview({
               <CalendarPlus size={16} />
               {isAdding ? 'Salvando...' : 'Adicionar à agenda'}
             </Button>
-            <p>Ao adicionar, o post será salvo como rascunho. Nada será publicado.</p>
+            <p>
+              Ao adicionar, o post será salvo como rascunho. Nada será
+              publicado.
+            </p>
           </footer>
         </>
       ) : (

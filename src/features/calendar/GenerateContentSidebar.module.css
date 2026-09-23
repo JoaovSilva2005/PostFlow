@@ -358,11 +358,9 @@
   width: 23px;
   height: 23px;
   flex: 0 0 23px;
-  border-radius: 6px;
-  background: #27322c;
-  color: #dce9e0;
-  font-size: 9px;
-  font-weight: 700;
+}
+.platformMark svg {
+  display: block;
 }
 .platformCheck {
   display: grid;

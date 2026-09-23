@@ -5,6 +5,7 @@ import { useApp } from '../../app/AppContext'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
+import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import type { PostDraft } from '../../domain/models'
 import {
   generationError,
@@ -327,7 +328,14 @@ export function CalendarPage() {
                             <strong>{draft.title}</strong>
                             <small>
                               {draft.time ? `${draft.time} · ` : ''}
-                              {draft.platform} · {STATUS_LABELS[draft.status]}
+                              <span className={styles.platformLabel}>
+                                <SocialPlatformIcon
+                                  platform={draft.platform}
+                                  size={12}
+                                />
+                                {draft.platform}
+                              </span>{' '}
+                              · {STATUS_LABELS[draft.status]}
                             </small>
                           </div>
                         </button>
@@ -359,7 +367,14 @@ export function CalendarPage() {
                     <strong>{draft.title}</strong>
                     <small>
                       {draft.time ? `${draft.time} · ` : ''}
-                      {draft.platform} · {STATUS_LABELS[draft.status]}
+                      <span className={styles.platformLabel}>
+                        <SocialPlatformIcon
+                          platform={draft.platform}
+                          size={14}
+                        />
+                        {draft.platform}
+                      </span>{' '}
+                      · {STATUS_LABELS[draft.status]}
                     </small>
                   </div>
                   <span>Editar</span>
