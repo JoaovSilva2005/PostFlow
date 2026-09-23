@@ -12,7 +12,7 @@ dist
 dist-ssr
 .vercel
 .playwright-cli/
-output/playwright/
+output/
 supabase/.temp/
 *.local
 .env

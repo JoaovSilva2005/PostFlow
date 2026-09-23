@@ -3,6 +3,20 @@ import userEvent from '@testing-library/user-event'
 import type { PostDraft } from '../../domain/models'
 import { createTestRepository } from '../../test/testRepository'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
+import { toDateKey } from './calendarUtils'
+
+function dateInCurrentMonth(day: number) {
+  const date = new Date()
+  date.setDate(1)
+  date.setHours(12, 0, 0, 0)
+  date.setDate(
+    Math.min(
+      day,
+      new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(),
+    ),
+  )
+  return toDateKey(date)
+}
 
 const drafts: PostDraft[] = [
   {
@@ -11,7 +25,7 @@ const drafts: PostDraft[] = [
     caption: 'Legenda original',
     hashtags: ['#cafe'],
     platform: 'Instagram',
-    date: '2026-08-14',
+    date: dateInCurrentMonth(14),
     status: 'draft',
     visualText: 'Café',
     color: '#4F46E5',
@@ -22,7 +36,7 @@ const drafts: PostDraft[] = [
     caption: 'Não deve mudar',
     hashtags: ['#marca'],
     platform: 'LinkedIn',
-    date: '2026-08-20',
+    date: dateInCurrentMonth(20),
     status: 'draft',
     visualText: 'Marca',
     color: '#F97316',
@@ -35,17 +49,27 @@ describe('CalendarPage', () => {
     const user = userEvent.setup()
     renderApp('/calendar', createTestRepository({ drafts }))
 
-    await user.click(await screen.findByRole('button', { name: 'Gerar conteúdo' }))
-    expect(screen.getByRole('dialog', { name: 'Gerar conteúdo' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Fechar geração de conteúdo' })).toHaveFocus()
+    await user.click(
+      await screen.findByRole('button', { name: 'Gerar conteúdo' }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'Configurar geração' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Fechar geração de conteúdo' }),
+    ).toHaveFocus()
 
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('dialog', { name: 'Gerar conteúdo' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: 'Configurar geração' }),
+    ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Gerar conteúdo' }))
-    const dialog = screen.getByRole('dialog', { name: 'Gerar conteúdo' })
+    const dialog = screen.getByRole('dialog', { name: 'Configurar geração' })
     await user.click(dialog.parentElement as HTMLElement)
-    expect(screen.queryByRole('dialog', { name: 'Gerar conteúdo' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: 'Configurar geração' }),
+    ).not.toBeInTheDocument()
   })
 
   it('configura formato e plataforma, gera conteúdo e salva na agenda', async () => {
@@ -54,20 +78,65 @@ describe('CalendarPage', () => {
     const repository = createTestRepository({ drafts })
     renderApp('/calendar', repository)
 
-    await user.click(await screen.findByRole('button', { name: 'Gerar conteúdo' }))
-    const dialog = screen.getByRole('dialog', { name: 'Gerar conteúdo' })
-    await user.type(screen.getByLabelText('Ideia do conteúdo'), 'Lançamento de uma novidade')
+    await user.click(
+      await screen.findByRole('button', { name: 'Gerar conteúdo' }),
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Configurar geração' })
+    await user.type(
+      screen.getByLabelText('Ideia do conteúdo na agenda'),
+      'Lançamento de uma novidade',
+    )
+    await user.type(
+      screen.getByLabelText('Público ou persona (opcional)'),
+      'Pessoas que estão conhecendo a marca',
+    )
+    await user.clear(screen.getByLabelText('Horário de Brasília'))
+    await user.type(screen.getByLabelText('Horário de Brasília'), '09:45')
     await user.click(within(dialog).getByRole('button', { name: /^Estático/ }))
     await user.click(within(dialog).getByRole('button', { name: 'Facebook' }))
-    expect(within(dialog).getByRole('button', { name: /^Estático/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(within(dialog).getByRole('button', { name: 'Facebook' })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(within(dialog).getByRole('button', { name: 'LinkedIn' }))
+    expect(
+      within(dialog).getByRole('button', { name: /^Estático/ }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      within(dialog).getByRole('button', { name: 'Facebook' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      within(dialog).getByRole('button', { name: 'LinkedIn' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await user.click(within(dialog).getByLabelText('Próximos 7 dias'))
+    expect(
+      within(dialog).getByText('7 datas × 3 destinos = 21 rascunhos'),
+    ).toBeInTheDocument()
 
-    await user.click(within(dialog).getByRole('button', { name: 'Gerar conteúdo' }))
-    expect(await screen.findByText('Gerando conteúdo...')).toBeInTheDocument()
-    expect(await screen.findByText('Conteúdo gerado e adicionado à agenda.')).toBeInTheDocument()
-    expect(repository.snapshot().drafts).toEqual(expect.arrayContaining([
-      expect.objectContaining({ platform: 'Facebook' }),
-    ]))
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Gerar 21 rascunhos' }),
+    )
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '21 rascunhos salvos na agenda para revisão. A publicação é manual.',
+    )
+    const created = repository.snapshot().drafts.slice(drafts.length)
+    expect(created).toHaveLength(21)
+    expect(
+      new Set(created.map((draft) => `${draft.date}|${draft.platform}`)).size,
+    ).toBe(21)
+    expect(created).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          platform: 'Facebook',
+          format: 'static',
+          persona: 'Pessoas que estão conhecendo a marca',
+          time: '09:45',
+          timezone: 'America/Sao_Paulo',
+          formatData: expect.objectContaining({ kind: 'static' }),
+        }),
+        expect.objectContaining({
+          platform: 'LinkedIn',
+          format: 'static',
+          time: '09:45',
+        }),
+      ]),
+    )
   }, 10_000)
 
   it('permite alternar para lista e mantém o rascunho editável por teclado', async () => {

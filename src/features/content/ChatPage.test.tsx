@@ -12,7 +12,7 @@ describe('ChatPage', () => {
       'Novidade da marca',
     )
     await user.click(screen.getByRole('button', { name: 'Gerar post' }))
-    await screen.findByText('Rascunho gerado')
+    await screen.findByText(/Rascunho gerado/)
     await user.click(screen.getByRole('button', { name: 'Editar conteúdo' }))
     const title = await screen.findByLabelText('Título do post')
     await user.clear(title)
@@ -48,7 +48,7 @@ describe('ChatPage', () => {
     expect(screen.getByText('Preparando seu rascunho...')).toBeInTheDocument()
 
     expect(
-      await screen.findByText('Rascunho gerado', {}, { timeout: 2000 }),
+      await screen.findByText(/Rascunho gerado/, {}, { timeout: 2000 }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: 'Post sobre café especial' }),

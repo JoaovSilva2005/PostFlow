@@ -1,6 +1,7 @@
 import {
   apiGenerationService,
   demoGenerationService,
+  type BatchContentRequest,
   type ContentRequest,
 } from './generationService'
 import { vi } from 'vitest'
@@ -17,6 +18,18 @@ const input: ContentRequest = {
   },
   history: [],
   previousDraft: null,
+}
+
+const batchInput: BatchContentRequest = {
+  workspaceId: 'workspace-test',
+  prompt: 'Apresente nosso serviço',
+  dates: ['2099-12-30', '2099-12-31'],
+  time: '09:45',
+  timezone: 'America/Sao_Paulo',
+  format: 'carousel',
+  persona: 'Pessoas que estão começando',
+  platforms: ['Instagram', 'LinkedIn'],
+  brand: input.brand,
 }
 
 describe('Contrato de geração', () => {
@@ -76,5 +89,80 @@ describe('Contrato de geração', () => {
     await expect(
       apiGenerationService.generate(input, new AbortController().signal),
     ).rejects.toMatchObject({ status: 429 })
+  })
+
+  it('gera uma variação por data e rede na demonstração, preservando os metadados', async () => {
+    const drafts = await demoGenerationService.generateBatch!(
+      batchInput,
+      new AbortController().signal,
+    )
+
+    expect(drafts).toHaveLength(4)
+    expect(
+      new Set(drafts.map((draft) => `${draft.date}|${draft.platform}`)).size,
+    ).toBe(4)
+    expect(drafts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          date: '2099-12-30',
+          platform: 'Instagram',
+          time: '09:45',
+          timezone: 'America/Sao_Paulo',
+          format: 'carousel',
+          persona: 'Pessoas que estão começando',
+          formatData: expect.objectContaining({ kind: 'carousel' }),
+        }),
+        expect.objectContaining({ date: '2099-12-31', platform: 'LinkedIn' }),
+      ]),
+    )
+  })
+
+  it('envia um lote ao BFF e rejeita uma matriz incompleta', async () => {
+    const drafts = await demoGenerationService.generateBatch!(
+      batchInput,
+      new AbortController().signal,
+    )
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ data: drafts })))
+    vi.stubGlobal('fetch', fetch)
+    const signal = new AbortController().signal
+
+    await expect(
+      apiGenerationService.generateBatch!(batchInput, signal),
+    ).resolves.toEqual(drafts)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/content/generate-batch'),
+      expect.objectContaining({
+        credentials: 'include',
+        signal,
+        headers: expect.objectContaining({
+          'X-Workspace-Id': 'workspace-test',
+        }),
+        body: JSON.stringify({
+          prompt: batchInput.prompt,
+          dates: batchInput.dates,
+          time: batchInput.time,
+          timezone: batchInput.timezone,
+          format: batchInput.format,
+          persona: batchInput.persona,
+          platforms: batchInput.platforms,
+          brand: batchInput.brand,
+        }),
+      }),
+    )
+
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ data: drafts.slice(1) })),
+        ),
+    )
+    await expect(
+      apiGenerationService.generateBatch!(batchInput, signal),
+    ).rejects.toThrow('A geração não retornou todas as variações pedidas.')
   })
 })

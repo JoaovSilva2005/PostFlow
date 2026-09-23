@@ -6,6 +6,12 @@ import {
   CONTENT_PLATFORMS,
   type ContentGenerationInput,
 } from './contentTypes.js'
+import { CONTENT_FORMATS } from '../../../shared/domain/contentFormats.js'
+import {
+  DEFAULT_POST_TIMEZONE,
+  dateTimePartsInZone,
+  isValidTimeZone,
+} from '../../../shared/domain/contentTime.js'
 
 const generatedDraftSchema = z.object({
   id: z.string().min(1),
@@ -54,6 +60,34 @@ const requestSchema = z
   })
   .strict()
 
+const batchRequestSchema = z
+  .object({
+    prompt: z.string().trim().min(3).max(2000),
+    dates: z
+      .array(z.iso.date())
+      .min(1)
+      .max(7)
+      .refine((dates) => new Set(dates).size === dates.length),
+    time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+    timezone: z.string().refine(isValidTimeZone).default(DEFAULT_POST_TIMEZONE),
+    format: z.enum(CONTENT_FORMATS),
+    persona: z.string().trim().max(160).default(''),
+    platforms: z
+      .array(z.enum(CONTENT_PLATFORMS))
+      .min(1)
+      .max(CONTENT_PLATFORMS.length)
+      .refine((platforms) => new Set(platforms).size === platforms.length),
+    brand: z
+      .object({
+        name: z.string().trim().min(2).max(120),
+        segment: z.string().trim().max(160),
+        toneOfVoice: z.string().trim().max(120),
+        primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      })
+      .nullable(),
+  })
+  .strict()
+
 const allowGeneration: RequestHandler = (_request, _response, next) => next()
 
 export function createContentRouter(
@@ -96,6 +130,60 @@ export function createContentRouter(
       response.off('close', abortIfDisconnected)
     }
   })
+
+  router.post(
+    '/generate-batch',
+    authorizeGeneration,
+    async (request, response) => {
+      const parsed = batchRequestSchema.safeParse(request.body)
+      if (!parsed.success) {
+        throw new HttpError(
+          400,
+          parsed.error.issues[0]?.message ?? 'Pedido de conteúdo inválido.',
+        )
+      }
+      const today =
+        dateTimePartsInZone(new Date(), parsed.data.timezone)?.date ??
+        new Date().toISOString().slice(0, 10)
+      if (parsed.data.dates.some((date) => date < today)) {
+        throw new HttpError(
+          400,
+          'Escolha hoje ou uma data futura para os rascunhos.',
+        )
+      }
+
+      const items = parsed.data.dates.flatMap((date, dateIndex) =>
+        parsed.data.platforms.map((platform, platformIndex) => ({
+          key: String(dateIndex * parsed.data.platforms.length + platformIndex),
+          date,
+          platform,
+        })),
+      )
+      const abortController = new AbortController()
+      const abortIfDisconnected = () => {
+        if (!response.writableEnded) abortController.abort()
+      }
+      const onRequestClose = () => {
+        if (!request.complete) abortIfDisconnected()
+      }
+
+      request.once('aborted', abortIfDisconnected)
+      request.once('close', onRequestClose)
+      response.once('close', abortIfDisconnected)
+      try {
+        response.json({
+          data: await service.generateBatch(
+            { ...parsed.data, items },
+            abortController.signal,
+          ),
+        })
+      } finally {
+        request.off('aborted', abortIfDisconnected)
+        request.off('close', onRequestClose)
+        response.off('close', abortIfDisconnected)
+      }
+    },
+  )
 
   return router
 }

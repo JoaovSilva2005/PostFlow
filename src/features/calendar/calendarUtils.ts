@@ -15,7 +15,11 @@ export const MONTH_NAMES = [
   'Dezembro',
 ]
 
-export const INITIAL_VISIBLE_MONTH = new Date(2026, 7, 1)
+export const INITIAL_VISIBLE_MONTH = new Date(
+  new Date().getFullYear(),
+  new Date().getMonth(),
+  1,
+)
 export const DEMO_TODAY = '2026-08-10'
 
 interface CalendarCell {

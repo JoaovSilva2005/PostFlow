@@ -1,6 +1,12 @@
 import { z } from 'zod'
 import { HttpError } from '../../shared/HttpError.js'
-import type { ContentGenerationInput, ContentProvider } from './contentTypes.js'
+import { contentFormatDataSchema } from '../../../shared/domain/contentFormats.js'
+import type {
+  BatchContentGenerationInput,
+  ContentGenerationInput,
+  ContentProvider,
+  GeneratedBatchCopy,
+} from './contentTypes.js'
 
 const TEXT_TIMEOUT_MS = 25_000
 const IMAGE_TIMEOUT_MS = 45_000
@@ -8,6 +14,8 @@ const DEFAULT_IMAGE_MODEL = 'gpt-image-1-mini'
 const DEFAULT_IMAGE_QUALITY = 'medium'
 const DEFAULT_IMAGE_SIZE = '1024x1024'
 const IMAGE_OUTPUT_FORMAT = 'webp'
+const BATCH_TIMEOUT_MS = 90_000
+const BATCH_MAX_OUTPUT_TOKENS = 16_000
 
 const providerOutputSchema = z.object({
   title: z.string().trim().min(3).max(160),
@@ -98,10 +106,7 @@ function providerHttpError(target: 'texto' | 'imagem', status: number) {
   }
 
   if (status >= 400 && status < 500) {
-    return new HttpError(
-      502,
-      `O provedor de ${target} recusou a solicitação.`,
-    )
+    return new HttpError(502, `O provedor de ${target} recusou a solicitação.`)
   }
 
   return new HttpError(
@@ -115,6 +120,84 @@ function extractText(response: OpenAiResponse) {
   return response.output
     ?.flatMap((item) => item.content ?? [])
     .find((item) => item.type === 'output_text' && item.text?.trim())?.text
+}
+
+function formatDataJsonSchema(format: BatchContentGenerationInput['format']) {
+  const text = { type: 'string' }
+  const object = (properties: Record<string, unknown>, required: string[]) => ({
+    type: 'object',
+    additionalProperties: false,
+    properties,
+    required,
+  })
+
+  if (format === 'carousel') {
+    return object(
+      {
+        kind: { type: 'string', enum: ['carousel'] },
+        slides: {
+          type: 'array',
+          items: object({ headline: text, copy: text, visualDirection: text }, [
+            'headline',
+            'copy',
+            'visualDirection',
+          ]),
+        },
+      },
+      ['kind', 'slides'],
+    )
+  }
+  if (format === 'reels') {
+    return object(
+      {
+        kind: { type: 'string', enum: ['reels'] },
+        hook: text,
+        durationSeconds: { type: 'integer' },
+        scenes: {
+          type: 'array',
+          items: object({ shot: text, narration: text, onScreenText: text }, [
+            'shot',
+            'narration',
+            'onScreenText',
+          ]),
+        },
+        closingCta: text,
+      },
+      ['kind', 'hook', 'durationSeconds', 'scenes', 'closingCta'],
+    )
+  }
+  return object(
+    {
+      kind: { type: 'string', enum: ['static'] },
+      headline: text,
+      visualDirection: text,
+    },
+    ['kind', 'headline', 'visualDirection'],
+  )
+}
+
+function batchResponseSchema(format: BatchContentGenerationInput['format']) {
+  return z
+    .object({
+      items: z
+        .array(
+          z
+            .object({
+              key: z.string().min(1).max(12),
+              title: z.string().trim().min(3).max(160),
+              caption: z.string().trim().min(1).max(5000),
+              hashtags: z.array(z.string().regex(/^#[^\s#]+$/)).max(30),
+              visualText: z.string().trim().min(1).max(160),
+              formatData: contentFormatDataSchema.refine(
+                (data) => data.kind === format,
+              ),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(42),
+    })
+    .strict()
 }
 
 function isBase64(value: string) {
@@ -223,7 +306,10 @@ export class OpenAiContentProvider implements ContentProvider {
 
       const responseBody = openAiResponseSchema.safeParse(await response.json())
       if (!responseBody.success) {
-        throw new HttpError(502, 'O provedor retornou conteúdo fora do contrato.')
+        throw new HttpError(
+          502,
+          'O provedor retornou conteúdo fora do contrato.',
+        )
       }
 
       const text = extractText(responseBody.data)
@@ -241,6 +327,152 @@ export class OpenAiContentProvider implements ContentProvider {
       }
       if (requestSignal.didTimeout() || isAbortError(error)) {
         throw new HttpError(504, 'O provedor de IA excedeu o tempo limite.')
+      }
+      if (error instanceof z.ZodError || error instanceof SyntaxError) {
+        throw new HttpError(
+          502,
+          'O provedor retornou conteúdo fora do contrato.',
+        )
+      }
+      throw new HttpError(503, 'Não foi possível acessar o provedor de IA.')
+    } finally {
+      requestSignal.cleanup()
+    }
+  }
+
+  async generateBatch(
+    input: BatchContentGenerationInput,
+    signal?: AbortSignal,
+  ): Promise<GeneratedBatchCopy[]> {
+    const requestSignal = createRequestSignal(signal, BATCH_TIMEOUT_MS)
+    const outputSchema = batchResponseSchema(input.format)
+
+    try {
+      throwIfCancelled(signal)
+      const response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        signal: requestSignal.signal,
+        headers: {
+          Authorization: `Bearer ${this.readApiKey()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.textModel,
+          store: false,
+          max_output_tokens: BATCH_MAX_OUTPUT_TOKENS,
+          reasoning: { effort: 'low' },
+          prompt_cache_key: 'postflow-batch-content-v1',
+          input: [
+            {
+              role: 'system',
+              content: [
+                'Você é o redator do PostFlow. Escreva em português brasileiro e adapte cada rascunho à rede indicada.',
+                'A marca pode pertencer a qualquer segmento. Use segmento e tom apenas como contexto; nunca invente fatos, preços, promoções, depoimentos ou resultados.',
+                'Produza uma variação distinta para cada item. Não repita a mesma legenda com apenas uma troca de rede ou data.',
+                'Respeite o limite de texto da rede: X / Twitter até 280 caracteres; demais canais, legendas concisas e adequadas ao formato.',
+                'Os resultados são rascunhos para revisão, não afirmações de que foram publicados.',
+                input.format === 'carousel'
+                  ? 'Cada Carrossel precisa ter de 3 a 5 slides, com progressão clara, título, texto curto e direção visual por slide.'
+                  : input.format === 'reels'
+                    ? 'Cada Reels precisa ter gancho, de 3 a 6 cenas com plano, narração e texto na tela, duração entre 10 e 90 segundos e chamada final.'
+                    : 'Cada Estático precisa ter uma chamada curta e uma direção visual concreta para uma peça única.',
+                'Retorne somente o JSON definido pelo schema. Inclua cada chave fornecida exatamente uma vez.',
+              ].join(' '),
+            },
+            {
+              role: 'user',
+              content: JSON.stringify({
+                marca: input.brand,
+                publicoOuPersona: input.persona || null,
+                ideia: input.prompt,
+                formato: input.format,
+                horario: input.time,
+                fuso: input.timezone,
+                variacoes: input.items,
+              }),
+            },
+          ],
+          text: {
+            format: {
+              type: 'json_schema',
+              name: 'postflow_content_batch',
+              strict: true,
+              schema: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['items'],
+                properties: {
+                  items: {
+                    type: 'array',
+                    maxItems: 42,
+                    items: {
+                      type: 'object',
+                      additionalProperties: false,
+                      required: [
+                        'key',
+                        'title',
+                        'caption',
+                        'hashtags',
+                        'visualText',
+                        'formatData',
+                      ],
+                      properties: {
+                        key: { type: 'string' },
+                        title: { type: 'string' },
+                        caption: { type: 'string' },
+                        hashtags: { type: 'array', items: { type: 'string' } },
+                        visualText: { type: 'string' },
+                        formatData: formatDataJsonSchema(input.format),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
+      })
+
+      throwIfCancelled(signal)
+      if (!response.ok) throw providerHttpError('texto', response.status)
+
+      const responseBody = openAiResponseSchema.safeParse(await response.json())
+      if (!responseBody.success) {
+        throw new HttpError(
+          502,
+          'O provedor retornou conteúdo fora do contrato.',
+        )
+      }
+      const text = extractText(responseBody.data)
+      if (!text)
+        throw new HttpError(502, 'O provedor retornou uma resposta vazia.')
+
+      const parsed = outputSchema.safeParse(JSON.parse(text))
+      if (!parsed.success) {
+        throw new HttpError(
+          502,
+          'O provedor retornou variações fora do contrato.',
+        )
+      }
+      const expectedKeys = new Set(input.items.map((item) => item.key))
+      const returnedKeys = new Set(parsed.data.items.map((item) => item.key))
+      if (
+        parsed.data.items.length !== input.items.length ||
+        returnedKeys.size !== input.items.length ||
+        [...expectedKeys].some((key) => !returnedKeys.has(key))
+      ) {
+        throw new HttpError(
+          502,
+          'O provedor não retornou todas as variações solicitadas.',
+        )
+      }
+      return parsed.data.items
+    } catch (error) {
+      if (error instanceof HttpError) throw error
+      if (signal?.aborted)
+        throw new HttpError(499, 'A solicitação foi cancelada.')
+      if (requestSignal.didTimeout() || isAbortError(error)) {
+        throw new HttpError(504, 'A geração do lote excedeu o tempo limite.')
       }
       if (error instanceof z.ZodError || error instanceof SyntaxError) {
         throw new HttpError(
@@ -332,10 +564,7 @@ export class OpenAiContentProvider implements ContentProvider {
       if (error instanceof z.ZodError || error instanceof SyntaxError) {
         throw new HttpError(502, 'O provedor retornou uma imagem inválida.')
       }
-      throw new HttpError(
-        503,
-        'Não foi possível gerar a imagem do conteúdo.',
-      )
+      throw new HttpError(503, 'Não foi possível gerar a imagem do conteúdo.')
     } finally {
       requestSignal.cleanup()
     }

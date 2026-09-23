@@ -1,3 +1,14 @@
+import type {
+  ContentFormat,
+  ContentFormatData,
+} from '../../shared/domain/contentFormats'
+import type {
+  AuthUser,
+  BillingAccessStatus,
+  PlatformRole,
+  WorkspaceAccess,
+} from './auth'
+
 export type PostStatus = 'draft' | 'scheduled' | 'published'
 
 export interface BrandProfile {
@@ -19,6 +30,12 @@ export interface PostDraft {
   color: string
   /** Imagem gerada para a revisão atual; a agenda persiste o conteúdo textual. */
   imageUrl?: string
+  /** Metadata from the batch planner; absent in older drafts. */
+  format?: ContentFormat
+  formatData?: ContentFormatData
+  persona?: string
+  time?: string
+  timezone?: string
 }
 
 export interface AppState {
@@ -34,9 +51,3 @@ export interface AppState {
   databaseStatus: 'connecting' | 'connected' | 'error'
   databaseError: string | null
 }
-import type {
-  AuthUser,
-  BillingAccessStatus,
-  PlatformRole,
-  WorkspaceAccess,
-} from './auth'

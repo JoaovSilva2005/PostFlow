@@ -10,13 +10,13 @@ import { Edit3, Trash2, X } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { SelectField, TextField } from '../../components/ui/FormField'
 import type { PostDraft } from '../../domain/models'
+import { PLATFORMS } from '../content/generationService'
 import styles from './CalendarPage.module.css'
 
-const PLATFORM_OPTIONS = [
-  { label: 'Instagram', value: 'Instagram' },
-  { label: 'LinkedIn', value: 'LinkedIn' },
-  { label: 'Facebook', value: 'Facebook' },
-]
+const PLATFORM_OPTIONS = PLATFORMS.map((platform) => ({
+  label: platform,
+  value: platform,
+}))
 
 interface EditDraftDialogProps {
   draft: PostDraft
@@ -103,6 +103,73 @@ export function EditDraftDialog({
     }
   }
 
+  function renderFormatStructure() {
+    const data = form.formatData
+    if (!data) return null
+    if (data.kind === 'carousel') {
+      return (
+        <section
+          className={styles.contentStructure}
+          aria-label="Estrutura do carrossel"
+        >
+          <h3>Slides do carrossel</h3>
+          <ol>
+            {data.slides.map((slide, index) => (
+              <li key={`${slide.headline}-${index}`}>
+                <strong>{slide.headline}</strong>
+                <p>{slide.copy}</p>
+                <small>Direção visual: {slide.visualDirection}</small>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )
+    }
+    if (data.kind === 'reels') {
+      return (
+        <section
+          className={styles.contentStructure}
+          aria-label="Roteiro do Reels"
+        >
+          <h3>Roteiro · {data.durationSeconds}s</h3>
+          <p>
+            <strong>Gancho:</strong> {data.hook}
+          </p>
+          <ol>
+            {data.scenes.map((scene, index) => (
+              <li key={`${scene.shot}-${index}`}>
+                <strong>
+                  Cena {index + 1}: {scene.shot}
+                </strong>
+                <p>{scene.narration}</p>
+                {scene.onScreenText ? (
+                  <small>Na tela: {scene.onScreenText}</small>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+          <p>
+            <strong>Encerramento:</strong> {data.closingCta}
+          </p>
+        </section>
+      )
+    }
+    return (
+      <section
+        className={styles.contentStructure}
+        aria-label="Direção da peça estática"
+      >
+        <h3>Peça estática</h3>
+        <p>
+          <strong>Chamada:</strong> {data.headline}
+        </p>
+        <p>
+          <strong>Direção visual:</strong> {data.visualDirection}
+        </p>
+      </section>
+    )
+  }
+
   return (
     <div
       className={styles.overlay}
@@ -135,6 +202,7 @@ export function EditDraftDialog({
             label="Título"
             name="draft-title"
             value={form.title}
+            disabled={isSaving}
             onChange={(event) => updateFormField('title', event.target.value)}
           />
 
@@ -144,11 +212,14 @@ export function EditDraftDialog({
               id="caption"
               rows={5}
               value={form.caption}
+              disabled={isSaving}
               onChange={(event) =>
                 updateFormField('caption', event.target.value)
               }
             />
           </label>
+
+          {renderFormatStructure()}
 
           <div className={styles.dialogRow}>
             <TextField
@@ -156,18 +227,32 @@ export function EditDraftDialog({
               name="draft-date"
               type="date"
               value={form.date}
+              disabled={isSaving}
               onChange={(event) => updateFormField('date', event.target.value)}
             />
-            <SelectField
-              label="Plataforma"
-              name="draft-platform"
-              value={form.platform}
-              onChange={(event) =>
-                updateFormField('platform', event.target.value)
-              }
-              options={PLATFORM_OPTIONS}
+            <TextField
+              label="Horário (Brasília)"
+              name="draft-time"
+              inputMode="numeric"
+              placeholder="16:30"
+              pattern="(?:[01]\d|2[0-3]):[0-5]\d"
+              maxLength={5}
+              value={form.time ?? '12:00'}
+              disabled={isSaving}
+              onChange={(event) => updateFormField('time', event.target.value)}
             />
           </div>
+
+          <SelectField
+            label="Destino"
+            name="draft-platform"
+            value={form.platform}
+            disabled={isSaving}
+            onChange={(event) =>
+              updateFormField('platform', event.target.value)
+            }
+            options={PLATFORM_OPTIONS}
+          />
 
           {error ? (
             <p className={styles.dialogError} role="alert">

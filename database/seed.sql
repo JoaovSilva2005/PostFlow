@@ -51,9 +51,11 @@ on conflict (id) do update set
 insert into public.social_platforms (id, name, character_limit) values
   ('20000000-0000-0000-0000-000000000001', 'Instagram', 2200),
   ('20000000-0000-0000-0000-000000000002', 'LinkedIn', 3000),
-  ('20000000-0000-0000-0000-000000000003', 'Facebook', 63206)
-on conflict (id) do update set
-  name = excluded.name,
+  ('20000000-0000-0000-0000-000000000003', 'Facebook', 63206),
+  ('20000000-0000-0000-0000-000000000004', 'X / Twitter', 280),
+  ('20000000-0000-0000-0000-000000000005', 'TikTok', 2200),
+  ('20000000-0000-0000-0000-000000000006', 'Blog', 30000)
+on conflict (name) do update set
   character_limit = excluded.character_limit;
 
 insert into public.post_drafts (

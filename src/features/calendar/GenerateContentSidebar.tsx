@@ -1,67 +1,158 @@
-import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react'
-import { CalendarDays, Check, ChevronDown, Clock3, Images, Sparkles, Square, Video, X } from 'lucide-react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type MouseEvent,
+} from 'react'
+import {
+  CalendarDays,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Images,
+  Sparkles,
+  Square,
+  Video,
+  X,
+} from 'lucide-react'
 import { Button } from '../../components/ui/Button'
-import { SelectField, TextField } from '../../components/ui/FormField'
+import { TextField } from '../../components/ui/FormField'
 import type { BrandProfile } from '../../domain/models'
-import { type Platform } from '../content/generationService'
+import {
+  DEFAULT_POST_TIMEZONE,
+  dateTimePartsInZone,
+} from '../../../shared/domain/contentTime'
+import {
+  MONTH_NAMES,
+  toDateKey,
+  WEEK_DAYS,
+  buildCalendar,
+} from './calendarUtils'
+import {
+  PLATFORMS,
+  type ContentFormat,
+  type Platform,
+} from '../content/generationService'
 import styles from './GenerateContentSidebar.module.css'
 
-export type ContentFormat = 'Carrossel' | 'Estático' | 'Reels'
+const FORMATS: Array<{
+  value: ContentFormat
+  label: string
+  description: string
+  icon: typeof Images
+}> = [
+  {
+    value: 'carousel',
+    label: 'Carrossel',
+    description: 'Sequência de slides',
+    icon: Images,
+  },
+  {
+    value: 'static',
+    label: 'Estático',
+    description: 'Uma peça visual',
+    icon: Square,
+  },
+  {
+    value: 'reels',
+    label: 'Reels',
+    description: 'Roteiro de vídeo curto',
+    icon: Video,
+  },
+]
+
+const PLATFORM_MARKS: Record<Platform, string> = {
+  Instagram: 'IG',
+  Facebook: 'f',
+  'X / Twitter': 'X',
+  LinkedIn: 'in',
+  TikTok: 'TT',
+  Blog: 'B',
+}
 
 export interface GenerateContentValues {
   prompt: string
-  date: string
+  dates: string[]
   time: string
-  nextSevenDays: boolean
+  timezone: string
+  persona: string
   format: ContentFormat
-  platform: Platform
+  platforms: Platform[]
 }
 
 interface GenerateContentSidebarProps {
   brand: BrandProfile | null
   initialDate: string
   initialPrompt: string
-  isGenerating: boolean
+  phase: 'idle' | 'generating' | 'saving'
   error: string
+  onEditPrompt: () => void
   onClose: () => void
   onCancel: () => void
   onGenerate: (values: GenerateContentValues) => Promise<void>
 }
 
-const formats: Array<{ label: ContentFormat; description: string; icon: typeof Images }> = [
-  { label: 'Carrossel', description: 'Sequência de cards', icon: Images },
-  { label: 'Estático', description: 'Uma peça visual', icon: Square },
-  { label: 'Reels', description: 'Vídeo curto', icon: Video },
-]
+function parseDateKey(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return new Date()
+  const [, year, month, day] = match
+  return new Date(Number(year), Number(month) - 1, Number(day), 12)
+}
 
-const platformOptions = [
-  { label: 'Instagram', supported: true },
-  { label: 'Facebook', supported: true },
-  { label: 'X / Twitter', supported: false },
-  { label: 'LinkedIn', supported: true },
-  { label: 'TikTok', supported: false },
-  { label: 'Blog', supported: false },
-] as const
+function formatDateLabel(value: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: 'numeric',
+    month: 'long',
+  }).format(parseDateKey(value))
+}
 
 export function GenerateContentSidebar({
   brand,
   initialDate,
   initialPrompt,
-  isGenerating,
+  phase,
   error,
+  onEditPrompt,
   onClose,
   onCancel,
   onGenerate,
 }: GenerateContentSidebarProps) {
-  const [prompt, setPrompt] = useState(initialPrompt)
-  const [date, setDate] = useState(initialDate)
+  const today =
+    dateTimePartsInZone(new Date(), DEFAULT_POST_TIMEZONE)?.date ?? initialDate
+  const [persona, setPersona] = useState('')
+  const [selectedDates, setSelectedDates] = useState<string[]>([
+    initialDate || today,
+  ])
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const selected = parseDateKey(initialDate || today)
+    return new Date(selected.getFullYear(), selected.getMonth(), 1)
+  })
   const [time, setTime] = useState('16:30')
-  const [nextSevenDays, setNextSevenDays] = useState(false)
-  const [format, setFormat] = useState<ContentFormat>('Carrossel')
-  const [platform, setPlatform] = useState<Platform>('Instagram')
-  const [promptError, setPromptError] = useState('')
+  const [format, setFormat] = useState<ContentFormat>('carousel')
+  const [platforms, setPlatforms] = useState<Platform[]>(['Instagram'])
+  const [formError, setFormError] = useState('')
   const panelRef = useRef<HTMLElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const isBusy = phase !== 'idle'
+  const calendarCells = useMemo(
+    () => buildCalendar(visibleMonth.getFullYear(), visibleMonth.getMonth()),
+    [visibleMonth],
+  )
+  const nextSevenDays = useMemo(() => {
+    const first = parseDateKey(today)
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(first)
+      date.setDate(date.getDate() + index)
+      return toDateKey(date)
+    })
+  }, [today])
+  const isNextSevenSelected =
+    selectedDates.length === nextSevenDays.length &&
+    nextSevenDays.every((date) => selectedDates.includes(date))
+  const plannedCount = selectedDates.length * platforms.length
 
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null
@@ -70,7 +161,7 @@ export function GenerateContentSidebar({
     closeButtonRef.current?.focus()
 
     function handleKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === 'Escape' && !isGenerating) {
+      if (event.key === 'Escape' && !isBusy) {
         event.preventDefault()
         onClose()
         return
@@ -97,20 +188,74 @@ export function GenerateContentSidebar({
       document.body.style.overflow = previousOverflow
       previousFocus?.focus()
     }
-  }, [isGenerating, onClose])
+  }, [isBusy, onClose])
+
+  function selectDate(date: string) {
+    setFormError('')
+    if (selectedDates.includes(date)) {
+      setSelectedDates(selectedDates.filter((selected) => selected !== date))
+      return
+    }
+    if (selectedDates.length >= 7) {
+      setFormError('Escolha até sete datas por geração.')
+      return
+    }
+    setSelectedDates([...selectedDates, date].sort())
+  }
+
+  function toggleNextSeven(checked: boolean) {
+    setFormError('')
+    setSelectedDates((current) => {
+      if (checked) return nextSevenDays
+      return current.filter((date) => !nextSevenDays.includes(date))
+    })
+    setVisibleMonth(() => {
+      const date = parseDateKey(today)
+      return new Date(date.getFullYear(), date.getMonth(), 1)
+    })
+  }
+
+  function togglePlatform(platform: Platform) {
+    setFormError('')
+    setPlatforms((current) =>
+      current.includes(platform)
+        ? current.filter((selected) => selected !== platform)
+        : [...current, platform],
+    )
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (prompt.trim().length < 3) {
-      setPromptError('Descreva sua ideia com pelo menos 3 caracteres.')
+    if (initialPrompt.trim().length < 3) {
+      setFormError('Escreva uma ideia no campo da agenda antes de gerar.')
       return
     }
-    setPromptError('')
-    void onGenerate({ prompt: prompt.trim(), date, time, nextSevenDays, format, platform })
+    if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+      setFormError('Informe o horário no formato 24 horas, como 16:30.')
+      return
+    }
+    if (selectedDates.length === 0) {
+      setFormError('Selecione pelo menos uma data para a agenda.')
+      return
+    }
+    if (platforms.length === 0) {
+      setFormError('Selecione pelo menos um destino para adaptar o conteúdo.')
+      return
+    }
+    setFormError('')
+    void onGenerate({
+      prompt: initialPrompt.trim(),
+      dates: [...selectedDates].sort(),
+      time,
+      timezone: DEFAULT_POST_TIMEZONE,
+      persona: persona.trim(),
+      format,
+      platforms: PLATFORMS.filter((platform) => platforms.includes(platform)),
+    })
   }
 
   function handleBackdrop(event: MouseEvent<HTMLDivElement>) {
-    if (event.target === event.currentTarget && !isGenerating) onClose()
+    if (event.target === event.currentTarget && !isBusy) onClose()
   }
 
   return (
@@ -124,51 +269,196 @@ export function GenerateContentSidebar({
       >
         <header className={styles.header}>
           <div>
-            <span className={styles.kicker}><Sparkles size={14} /> Estúdio de conteúdo</span>
-            <h2 id="generate-content-title">Gerar conteúdo</h2>
-            <p>Configure a publicação antes de transformar a ideia em rascunho.</p>
+            <h2 id="generate-content-title">Configurar geração</h2>
+            <p>
+              Uma variação por data e destino. Todos ficam como rascunhos para
+              revisão.
+            </p>
           </div>
-          <button ref={closeButtonRef} type="button" className={styles.close} onClick={onClose} disabled={isGenerating} aria-label="Fechar geração de conteúdo">
+          <button
+            ref={closeButtonRef}
+            type="button"
+            className={styles.close}
+            onClick={onClose}
+            disabled={isBusy}
+            aria-label="Fechar geração de conteúdo"
+          >
             <X size={18} />
           </button>
         </header>
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.section}>
-            <SelectField
-              label="Persona da marca"
-              value={brand?.name || 'default'}
-              onChange={() => undefined}
-              options={[{ label: brand?.name || 'Persona padrão', value: brand?.name || 'default' }]}
-              disabled={isGenerating}
+            <TextField
+              label="Público ou persona (opcional)"
+              name="content-persona"
+              value={persona}
+              onChange={(event) => setPersona(event.target.value.slice(0, 160))}
+              placeholder="Ex.: pessoas que estão começando..."
+              disabled={isBusy}
             />
-            <span className={styles.hint}>{brand ? `${brand.segment} · ${brand.toneOfVoice}` : 'Configure sua marca para personalizar a criação.'}</span>
+            <span className={styles.helper}>
+              {brand
+                ? `Referência da marca: ${brand.segment} · ${brand.toneOfVoice}`
+                : 'A ideia continua aberta a qualquer segmento.'}
+            </span>
           </div>
 
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}><CalendarDays size={16} /><h3>Quando publicar?</h3></div>
-            <div className={styles.fieldGrid}>
-              <TextField label="Data principal" type="date" value={date} onChange={(event) => setDate(event.target.value)} disabled={isGenerating} />
-              <TextField label="Horário" type="time" value={time} onChange={(event) => setTime(event.target.value)} disabled={isGenerating} />
+          <section
+            className={styles.ideaSummary}
+            aria-label="Ideia do conteúdo"
+          >
+            <div>
+              <strong>Ideia do conteúdo</strong>
+              <p>
+                {initialPrompt.trim() ||
+                  'Escreva primeiro a ideia que deseja transformar em conteúdo.'}
+              </p>
             </div>
-            <label className={styles.checkRow}>
-              <input type="checkbox" checked={nextSevenDays} onChange={(event) => setNextSevenDays(event.target.checked)} disabled={isGenerating} />
-              <span><strong>Próximos 7 dias</strong><small>Usar a agenda da próxima semana como referência.</small></span>
-            </label>
-          </div>
+            <button type="button" onClick={onEditPrompt} disabled={isBusy}>
+              Editar ideia
+            </button>
+          </section>
 
-          <label className={styles.promptField}>
-            <span>O que você quer criar?</span>
-            <textarea aria-label="Ideia do conteúdo" rows={4} maxLength={2000} value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={isGenerating} placeholder="Ex.: apresente o novo serviço para pequenos negócios..." />
-            <small>{prompt.length}/2000</small>
-          </label>
+          <section className={styles.section} aria-labelledby="schedule-title">
+            <div className={styles.sectionTitle}>
+              <CalendarDays size={16} />
+              <h3 id="schedule-title">Em quais dias?</h3>
+            </div>
+            <div className={styles.monthHeader}>
+              <button
+                type="button"
+                onClick={() =>
+                  setVisibleMonth(
+                    (month) =>
+                      new Date(month.getFullYear(), month.getMonth() - 1, 1),
+                  )
+                }
+                disabled={
+                  isBusy ||
+                  toDateKey(
+                    new Date(
+                      visibleMonth.getFullYear(),
+                      visibleMonth.getMonth(),
+                      0,
+                      12,
+                    ),
+                  ) < today
+                }
+                aria-label="Mês anterior"
+              >
+                <ChevronLeft size={17} />
+              </button>
+              <strong>
+                {MONTH_NAMES[visibleMonth.getMonth()]}{' '}
+                {visibleMonth.getFullYear()}
+              </strong>
+              <button
+                type="button"
+                onClick={() =>
+                  setVisibleMonth(
+                    (month) =>
+                      new Date(month.getFullYear(), month.getMonth() + 1, 1),
+                  )
+                }
+                disabled={isBusy}
+                aria-label="Próximo mês"
+              >
+                <ChevronRight size={17} />
+              </button>
+            </div>
+            <div className={styles.weekdays} aria-hidden="true">
+              {WEEK_DAYS.map((day) => (
+                <span key={day}>{day.slice(0, 3)}</span>
+              ))}
+            </div>
+            <div
+              className={styles.monthGrid}
+              role="group"
+              aria-label="Selecione até sete datas"
+            >
+              {calendarCells.map(({ date, inCurrentMonth }) => {
+                const dateKey = toDateKey(date)
+                const selected = selectedDates.includes(dateKey)
+                const disabled =
+                  isBusy ||
+                  !inCurrentMonth ||
+                  dateKey < today ||
+                  (!selected && selectedDates.length >= 7)
+                return (
+                  <button
+                    key={dateKey}
+                    type="button"
+                    className={`${styles.dateButton} ${selected ? styles.dateSelected : ''} ${dateKey === today ? styles.dateToday : ''}`}
+                    aria-label={formatDateLabel(dateKey)}
+                    aria-pressed={selected}
+                    disabled={disabled}
+                    onClick={() => selectDate(dateKey)}
+                  >
+                    {date.getDate()}
+                  </button>
+                )
+              })}
+            </div>
+            <div className={styles.calendarActions}>
+              <label className={styles.checkRow}>
+                <input
+                  type="checkbox"
+                  checked={isNextSevenSelected}
+                  onChange={(event) => toggleNextSeven(event.target.checked)}
+                  disabled={isBusy}
+                />
+                <span>Próximos 7 dias</span>
+              </label>
+              <button
+                type="button"
+                className={styles.clearDates}
+                onClick={() => {
+                  setSelectedDates([])
+                  setFormError('')
+                }}
+                disabled={isBusy || selectedDates.length === 0}
+              >
+                Limpar
+              </button>
+            </div>
+            <p className={styles.helper}>
+              {selectedDates.length === 0
+                ? 'Nenhuma data selecionada.'
+                : `${selectedDates.length} ${selectedDates.length === 1 ? 'dia selecionado' : 'dias selecionados'}${selectedDates.length <= 3 ? ` · ${selectedDates.map(formatDateLabel).join(', ')}` : ''}`}
+            </p>
+          </section>
+
+          <div className={styles.timeSection}>
+            <TextField
+              label="Horário de Brasília"
+              name="content-time"
+              value={time}
+              inputMode="numeric"
+              placeholder="16:30"
+              pattern="(?:[01]\d|2[0-3]):[0-5]\d"
+              maxLength={5}
+              onChange={(event) => setTime(event.target.value)}
+              disabled={isBusy}
+            />
+            <span className={styles.timezone}>
+              <Clock3 size={13} /> Fuso {DEFAULT_POST_TIMEZONE}
+            </span>
+          </div>
 
           <fieldset className={styles.section}>
             <legend>Formato do conteúdo</legend>
             <div className={styles.choiceGrid}>
-              {formats.map(({ label, description, icon: Icon }) => (
-                <button key={label} type="button" className={styles.choice} aria-pressed={format === label} onClick={() => setFormat(label)} disabled={isGenerating}>
-                  <Icon size={21} strokeWidth={1.8} />
+              {FORMATS.map(({ value, label, description, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={styles.choice}
+                  aria-pressed={format === value}
+                  onClick={() => setFormat(value)}
+                  disabled={isBusy}
+                >
+                  <Icon size={20} strokeWidth={1.8} />
                   <strong>{label}</strong>
                   <small>{description}</small>
                 </button>
@@ -177,33 +467,64 @@ export function GenerateContentSidebar({
           </fieldset>
 
           <fieldset className={styles.section}>
-            <legend>Plataforma</legend>
+            <legend>Destinos do conteúdo</legend>
+            <p className={styles.helper}>
+              Cada rede recebe um rascunho adaptado. A publicação continua com
+              você.
+            </p>
             <div className={styles.platformGrid}>
-              {platformOptions.map(({ label, supported }) => {
-                const value = label === 'X / Twitter' ? 'Instagram' : label
-                const isSelected = supported && platform === value
+              {PLATFORMS.map((platform) => {
+                const selected = platforms.includes(platform)
                 return (
-                  <button key={label} type="button" className={styles.platform} aria-pressed={isSelected} disabled={!supported || isGenerating} onClick={() => supported && setPlatform(value as Platform)} title={supported ? undefined : 'Disponível em uma próxima versão'}>
-                    <span className={styles.platformDot}>{isSelected ? <Check size={13} /> : null}</span>
-                    {label}
-                    {!supported ? <small>Em breve</small> : null}
+                  <button
+                    key={platform}
+                    type="button"
+                    className={styles.platform}
+                    aria-pressed={selected}
+                    onClick={() => togglePlatform(platform)}
+                    disabled={isBusy}
+                  >
+                    <span className={styles.platformMark} aria-hidden="true">
+                      {PLATFORM_MARKS[platform]}
+                    </span>
+                    <span>{platform}</span>
+                    <span className={styles.platformCheck} aria-hidden="true">
+                      {selected ? <Check size={14} /> : null}
+                    </span>
                   </button>
                 )
               })}
             </div>
           </fieldset>
 
-          <details className={styles.advanced}>
-            <summary><span><ChevronDown size={16} /> Configurações avançadas</span></summary>
-            <p>O tom, as cores e o contexto da sua marca serão usados automaticamente. Mais opções editoriais serão adicionadas aqui.</p>
-          </details>
-
-          {promptError || error ? <p className={styles.error} role="alert">{promptError || error}</p> : null}
+          {formError || error ? (
+            <p className={styles.error} role="alert">
+              {formError || error}
+            </p>
+          ) : null}
 
           <footer className={styles.footer}>
-            {isGenerating ? <Button type="button" variant="ghost" onClick={onCancel}><Clock3 size={15} /> Cancelar geração</Button> : null}
-            <Button type="submit" fullWidth disabled={isGenerating}>
-              <Sparkles size={16} /> {isGenerating ? 'Gerando conteúdo...' : 'Gerar conteúdo'}
+            <p className={styles.plannedCount} aria-live="polite">
+              {plannedCount > 0
+                ? `${selectedDates.length} ${selectedDates.length === 1 ? 'data' : 'datas'} × ${platforms.length} ${platforms.length === 1 ? 'destino' : 'destinos'} = ${plannedCount} ${plannedCount === 1 ? 'rascunho' : 'rascunhos'}`
+                : 'Selecione datas e destinos para continuar.'}
+            </p>
+            {phase === 'generating' ? (
+              <Button type="button" variant="ghost" onClick={onCancel}>
+                <Clock3 size={15} /> Cancelar geração
+              </Button>
+            ) : null}
+            <Button
+              type="submit"
+              fullWidth
+              disabled={isBusy || plannedCount === 0}
+            >
+              <Sparkles size={16} />
+              {phase === 'generating'
+                ? `Gerando ${plannedCount} rascunhos...`
+                : phase === 'saving'
+                  ? 'Salvando na agenda...'
+                  : `Gerar ${plannedCount || ''} ${plannedCount === 1 ? 'rascunho' : 'rascunhos'}`}
             </Button>
           </footer>
         </form>

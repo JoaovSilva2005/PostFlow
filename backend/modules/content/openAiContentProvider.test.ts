@@ -16,6 +16,37 @@ const input = {
   previousDraft: null,
 }
 
+const batchInput = {
+  prompt: 'Fale sobre café especial',
+  platforms: ['Instagram', 'LinkedIn'] as ('Instagram' | 'LinkedIn')[],
+  dates: ['2099-12-30'],
+  time: '09:45',
+  timezone: 'America/Sao_Paulo',
+  format: 'carousel' as const,
+  persona: 'Pessoas que apreciam café',
+  brand: input.brand,
+  items: [
+    { key: '0', platform: 'Instagram' as const, date: '2099-12-30' },
+    { key: '1', platform: 'LinkedIn' as const, date: '2099-12-30' },
+  ],
+}
+
+const carouselCopy = (key: string) => ({
+  key,
+  title: 'Café com intenção',
+  caption: 'Descubra uma forma de apreciar café.',
+  hashtags: ['#Cafe'],
+  visualText: 'Uma pausa com presença',
+  formatData: {
+    kind: 'carousel',
+    slides: [1, 2, 3].map((slide) => ({
+      headline: `Slide ${slide}`,
+      copy: 'Uma explicação curta.',
+      visualDirection: 'Composição editorial simples.',
+    })),
+  },
+})
+
 const textResponse = () =>
   new Response(
     JSON.stringify({
@@ -94,7 +125,9 @@ describe('OpenAiContentProvider', () => {
       .fn()
       .mockResolvedValueOnce(textResponse())
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ data: [{ url: 'javascript:alert(1)' }] })),
+        new Response(
+          JSON.stringify({ data: [{ url: 'javascript:alert(1)' }] }),
+        ),
       )
     vi.stubGlobal('fetch', fetch)
 
@@ -140,9 +173,11 @@ describe('OpenAiContentProvider', () => {
   })
 
   it('preserva erro HTTP de limite do provedor e não faz fallback', async () => {
-    const fetch = vi.fn().mockResolvedValueOnce(
-      new Response('provider-error-body', { status: 429 }),
-    )
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response('provider-error-body', { status: 429 }),
+      )
     vi.stubGlobal('fetch', fetch)
 
     await expect(
@@ -212,5 +247,58 @@ describe('OpenAiContentProvider', () => {
 
     await vi.advanceTimersByTimeAsync(25_000)
     await result
+  })
+
+  it('gera todas as variações do lote em uma única chamada de texto e não chama imagens', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({
+            items: [carouselCopy('0'), carouselCopy('1')],
+          }),
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetch)
+
+    const generated = await new OpenAiContentProvider(
+      () => 'test-key',
+      'text-model',
+    ).generateBatch(batchInput)
+
+    expect(generated).toHaveLength(2)
+    expect(generated.map((item) => item.key)).toEqual(['0', '1'])
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch.mock.calls[0]?.[0]).toBe('https://api.openai.com/v1/responses')
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toMatchObject({
+      model: 'text-model',
+      store: false,
+      max_output_tokens: 16_000,
+      text: {
+        format: {
+          name: 'postflow_content_batch',
+          strict: true,
+        },
+      },
+    })
+  })
+
+  it('rejeita itens duplicados ou ausentes no retorno do lote', async () => {
+    const duplicate = carouselCopy('0')
+    const fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({ items: [duplicate, duplicate] }),
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(
+      new OpenAiContentProvider(() => 'test-key', 'text-model').generateBatch(
+        batchInput,
+      ),
+    ).rejects.toMatchObject({ statusCode: 502 })
+    expect(fetch).toHaveBeenCalledTimes(1)
   })
 })

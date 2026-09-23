@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
@@ -6,7 +6,14 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import type { PostDraft } from '../../domain/models'
-import { generationError, generationService } from '../content/generationService'
+import {
+  generationError,
+  generationService,
+} from '../content/generationService'
+import {
+  DEFAULT_POST_TIMEZONE,
+  dateTimePartsInZone,
+} from '../../../shared/domain/contentTime'
 import {
   buildCalendar,
   INITIAL_VISIBLE_MONTH,
@@ -30,8 +37,14 @@ const STATUS_LABELS: Record<PostDraft['status'], string> = {
 export function CalendarPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { brand, currentWorkspace, drafts, updateDraft, removeDraft, addDraft } =
-    useApp()
+  const {
+    brand,
+    currentWorkspace,
+    drafts,
+    updateDraft,
+    removeDraft,
+    addDrafts,
+  } = useApp()
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const draftDate = location.state?.draftDate
     if (
@@ -51,7 +64,10 @@ export function CalendarPage() {
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false)
   const [generatorPrompt, setGeneratorPrompt] = useState('')
   const [generatorError, setGeneratorError] = useState('')
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [generationPhase, setGenerationPhase] = useState<
+    'idle' | 'generating' | 'saving'
+  >('idle')
+  const isGenerating = generationPhase !== 'idle'
   const [generationNotice, setGenerationNotice] = useState('')
   const generationController = useRef<AbortController | null>(null)
   const monthDrafts = drafts
@@ -103,32 +119,43 @@ export function CalendarPage() {
     if (isGenerating) return
     const controller = new AbortController()
     generationController.current = controller
-    setIsGenerating(true)
+    setGenerationPhase('generating')
     setGeneratorError('')
     setGenerationNotice('')
 
     try {
-      const generated = await generationService.generate(
+      if (!generationService.generateBatch) {
+        throw new Error('Geração em lote indisponível.')
+      }
+      const generated = await generationService.generateBatch(
         {
           workspaceId: currentWorkspace?.id,
-          prompt: `Formato solicitado: ${values.format}. Horário sugerido: ${values.time}.\n\n${values.prompt}`,
-          platform: values.platform,
-          date: values.date,
+          prompt: values.prompt,
+          dates: values.dates,
+          time: values.time,
+          timezone: values.timezone,
+          format: values.format,
+          persona: values.persona,
+          platforms: values.platforms,
           brand,
-          history: [],
-          previousDraft: null,
         },
         controller.signal,
       )
-      await addDraft(generated)
-      const generatedDate = new Date(`${generated.date}T12:00:00`)
+      controller.signal.throwIfAborted()
+      setGenerationPhase('saving')
+      const savedDrafts = await addDrafts(generated)
+      const generatedDate = new Date(
+        `${savedDrafts[0]?.date ?? generated[0]?.date}T12:00:00`,
+      )
       if (!Number.isNaN(generatedDate.getTime())) {
         setVisibleMonth(
           new Date(generatedDate.getFullYear(), generatedDate.getMonth(), 1),
         )
       }
       setGeneratorPrompt('')
-      setGenerationNotice('Conteúdo gerado e adicionado à agenda.')
+      setGenerationNotice(
+        `${savedDrafts.length} ${savedDrafts.length === 1 ? 'rascunho salvo' : 'rascunhos salvos'} na agenda para revisão. A publicação é manual.`,
+      )
       setIsGeneratorOpen(false)
     } catch (error) {
       if (controller.signal.aborted) {
@@ -140,13 +167,22 @@ export function CalendarPage() {
       if (generationController.current === controller) {
         generationController.current = null
       }
-      setIsGenerating(false)
+      setGenerationPhase('idle')
     }
   }
 
   function cancelGeneration() {
     generationController.current?.abort()
   }
+
+  const closeGenerator = useCallback(() => setIsGeneratorOpen(false), [])
+  const editComposerIdea = useCallback(() => {
+    setIsGeneratorOpen(false)
+    window.setTimeout(
+      () => document.getElementById('calendar-content-prompt')?.focus(),
+      0,
+    )
+  }, [])
 
   return (
     <AppShell>
@@ -159,13 +195,22 @@ export function CalendarPage() {
         </Button>
       </PageHeader>
 
-      <section className={styles.creationStudio} aria-labelledby="creation-title">
+      <section
+        className={styles.creationStudio}
+        aria-labelledby="creation-title"
+      >
         <div className={styles.creationIntro}>
           <h2 id="creation-title">Criar pela agenda</h2>
-          <p>Descreva a ideia. Depois escolha rede, formato e data. O rascunho ficará na agenda para revisão.</p>
+          <p>
+            Descreva a ideia aqui. Em Gerar conteúdo, escolha público, dias,
+            horário, formato e redes. Os itens ficam como rascunhos para
+            revisão.
+          </p>
         </div>
         <div className={styles.creationComposer}>
-          <label htmlFor="calendar-content-prompt">O que você gostaria de criar?</label>
+          <label htmlFor="calendar-content-prompt">
+            O que você gostaria de criar?
+          </label>
           <textarea
             id="calendar-content-prompt"
             aria-label="Ideia do conteúdo na agenda"
@@ -177,8 +222,14 @@ export function CalendarPage() {
           />
           <div className={styles.creationActions}>
             <small>{generatorPrompt.length}/2000</small>
-            <Button type="button" variant="secondary" onClick={() => { setGeneratorError(''); setIsGeneratorOpen(true) }}>
-              <Sparkles size={16} /> Configurar geração
+            <Button
+              type="button"
+              onClick={() => {
+                setGeneratorError('')
+                setIsGeneratorOpen(true)
+              }}
+            >
+              <Sparkles size={16} /> Gerar conteúdo
             </Button>
           </div>
         </div>
@@ -275,6 +326,7 @@ export function CalendarPage() {
                           <div>
                             <strong>{draft.title}</strong>
                             <small>
+                              {draft.time ? `${draft.time} · ` : ''}
                               {draft.platform} · {STATUS_LABELS[draft.status]}
                             </small>
                           </div>
@@ -287,7 +339,8 @@ export function CalendarPage() {
             </div>
             {!monthDrafts.length && (
               <div className={styles.monthEmpty}>
-                Nenhum post neste mês. Use “Criar no estúdio” para começar um rascunho.
+                Nenhum post neste mês. Use “Criar no estúdio” para começar um
+                rascunho.
               </div>
             )}
           </>
@@ -305,6 +358,7 @@ export function CalendarPage() {
                   <div>
                     <strong>{draft.title}</strong>
                     <small>
+                      {draft.time ? `${draft.time} · ` : ''}
                       {draft.platform} · {STATUS_LABELS[draft.status]}
                     </small>
                   </div>
@@ -344,14 +398,16 @@ export function CalendarPage() {
       {isGeneratorOpen ? (
         <GenerateContentSidebar
           brand={brand}
-          initialDate={toDateKey(new Date())}
+          initialDate={
+            dateTimePartsInZone(new Date(), DEFAULT_POST_TIMEZONE)?.date ??
+            toDateKey(new Date())
+          }
           initialPrompt={generatorPrompt}
-          isGenerating={isGenerating}
+          phase={generationPhase}
           error={generatorError}
-          onClose={() => {
-            if (!isGenerating) setIsGeneratorOpen(false)
-          }}
+          onClose={closeGenerator}
           onCancel={cancelGeneration}
+          onEditPrompt={editComposerIdea}
           onGenerate={handleGenerate}
         />
       ) : null}

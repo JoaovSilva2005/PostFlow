@@ -2,6 +2,17 @@ import { Router, type RequestHandler } from 'express'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { HttpError } from '../../shared/HttpError.js'
+import {
+  contentFormatDataSchema,
+  contentFormatSchema,
+} from '../../../shared/domain/contentFormats.js'
+import {
+  DEFAULT_POST_TIMEZONE,
+  dateTimePartsInZone,
+  isValidTimeZone,
+  localDateTimeToIso,
+} from '../../../shared/domain/contentTime.js'
+import { socialPlatformSchema } from '../../../shared/domain/socialPlatforms.js'
 
 const brandSchema = z
   .object({
@@ -14,7 +25,7 @@ const brandSchema = z
 const draftSchema = z
   .object({
     id: z.uuid().optional(),
-    platform: z.string().trim().min(2).max(80),
+    platform: socialPlatformSchema,
     title: z.string().trim().min(3).max(240),
     caption: z.string().trim().min(1),
     hashtags: z.array(z.string().regex(/^#[^\s#]+$/)).max(30),
@@ -22,8 +33,32 @@ const draftSchema = z
     color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
     date: z.iso.date(),
     status: z.enum(['draft', 'scheduled', 'published']),
+    format: contentFormatSchema.optional(),
+    formatData: contentFormatDataSchema.optional(),
+    persona: z.string().trim().max(160).optional(),
+    time: z
+      .string()
+      .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
+      .optional(),
+    timezone: z.string().refine(isValidTimeZone).optional(),
   })
   .strict()
+
+const batchDraftSchema = z
+  .array(
+    draftSchema.extend({
+      id: z.uuid(),
+      platform: socialPlatformSchema,
+      status: z.literal('draft'),
+      format: contentFormatSchema,
+      formatData: contentFormatDataSchema,
+      persona: z.string().trim().max(160),
+      time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+      timezone: z.string().refine(isValidTimeZone),
+    }),
+  )
+  .min(1)
+  .max(42)
 function parse<T>(schema: z.ZodType<T>, value: unknown) {
   const result = schema.safeParse(value)
   if (!result.success)
@@ -61,6 +96,8 @@ function dbDraft(
   brandId: string,
   platformId: string,
 ) {
+  const timezone = row.timezone ?? DEFAULT_POST_TIMEZONE
+  const format = row.format ?? 'static'
   return {
     brand_id: brandId,
     platform_id: platformId,
@@ -68,21 +105,46 @@ function dbDraft(
     caption: row.caption,
     visual_text: row.visualText,
     color: row.color,
-    scheduled_at: `${row.date}T12:00:00Z`,
+    scheduled_at: localDateTimeToIso(row.date, row.time ?? '12:00', timezone),
     status: row.status,
+    content_format: format,
+    audience_persona: row.persona ?? '',
+    schedule_timezone: timezone,
+    format_data: row.formatData ?? {
+      kind: 'static',
+      headline: row.visualText.slice(0, 120),
+      visualDirection: row.visualText,
+    },
   }
 }
 function toDraft(row: any) {
+  const timezone = row.schedule_timezone ?? DEFAULT_POST_TIMEZONE
+  const scheduled = dateTimePartsInZone(row.scheduled_at, timezone)
+  const format = contentFormatSchema.safeParse(row.content_format).success
+    ? row.content_format
+    : 'static'
+  const formatData = contentFormatDataSchema.safeParse(row.format_data)
   return {
     id: row.id,
     title: row.title,
     caption: row.caption,
     hashtags: (row.post_hashtags ?? []).map((tag: any) => tag.hashtag),
     platform: row.social_platforms?.name ?? '',
-    date: String(row.scheduled_at).slice(0, 10),
+    date: scheduled?.date ?? String(row.scheduled_at).slice(0, 10),
+    time: scheduled?.time ?? '12:00',
+    timezone,
     status: row.status,
     visualText: row.visual_text,
     color: row.color,
+    format,
+    persona: row.audience_persona ?? '',
+    formatData: formatData.success
+      ? formatData.data
+      : {
+          kind: 'static',
+          headline: String(row.visual_text ?? '').slice(0, 120),
+          visualDirection: row.visual_text ?? '',
+        },
   }
 }
 
@@ -159,6 +221,27 @@ export function createWorkspaceRouter(
       }),
     })
   })
+  router.post('/drafts/batch', authorizeWrite, async (request, response) => {
+    const input = parse(batchDraftSchema, request.body)
+    const { data: ids, error } = await supabase.rpc(
+      'create_post_drafts_batch',
+      {
+        p_brand_id: workspaceId(request),
+        p_drafts: input,
+      },
+    )
+    if (error)
+      throw new Error(`Falha ao salvar o lote de posts: ${error.message}`)
+    if (
+      !ids ||
+      ids.length !== input.length ||
+      input.some((draft, index) => ids[index] !== draft.id)
+    ) {
+      throw new Error('O lote não retornou todos os rascunhos salvos.')
+    }
+
+    response.status(201).json({ data: input })
+  })
   router.patch(
     '/drafts/:draftId',
     authorizeWrite,
@@ -174,8 +257,40 @@ export function createWorkspaceRouter(
       if (input.caption !== undefined) patch.caption = input.caption
       if (input.visualText !== undefined) patch.visual_text = input.visualText
       if (input.color !== undefined) patch.color = input.color
-      if (input.date !== undefined)
-        patch.scheduled_at = `${input.date}T12:00:00Z`
+      if (
+        input.date !== undefined ||
+        input.time !== undefined ||
+        input.timezone !== undefined
+      ) {
+        const { data: current, error: currentError } = await supabase
+          .from('post_drafts')
+          .select('scheduled_at,schedule_timezone')
+          .eq('id', request.params.draftId)
+          .eq('brand_id', workspaceId(request))
+          .maybeSingle()
+        if (currentError)
+          throw new Error(
+            `Falha ao consultar horário do post: ${currentError.message}`,
+          )
+        if (!current) throw new HttpError(404, 'Post não encontrado.')
+        const timezone =
+          input.timezone ?? current.schedule_timezone ?? DEFAULT_POST_TIMEZONE
+        const currentParts = dateTimePartsInZone(
+          current.scheduled_at,
+          current.schedule_timezone ?? DEFAULT_POST_TIMEZONE,
+        )
+        patch.scheduled_at = localDateTimeToIso(
+          input.date ??
+            currentParts?.date ??
+            String(current.scheduled_at).slice(0, 10),
+          input.time ?? currentParts?.time ?? '12:00',
+          timezone,
+        )
+        patch.schedule_timezone = timezone
+      }
+      if (input.format !== undefined) patch.content_format = input.format
+      if (input.formatData !== undefined) patch.format_data = input.formatData
+      if (input.persona !== undefined) patch.audience_persona = input.persona
       if (input.status !== undefined) patch.status = input.status
       const id = parse(z.uuid(), request.params.draftId)
       const { data, error } = await supabase

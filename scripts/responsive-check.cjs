@@ -10,25 +10,38 @@ const brand = {
   tone_of_voice: 'Profissional e objetivo',
   primary_color: '#4F46E5',
 }
+function dateInCurrentMonth(day) {
+  const date = new Date()
+  date.setDate(1)
+  date.setHours(12, 0, 0, 0)
+  date.setDate(
+    Math.min(
+      day,
+      new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(),
+    ),
+  )
+  return date.toISOString().slice(0, 10)
+}
+
 const drafts = [
   {
     id: 'draft-1',
     title: 'Uma nova forma de criar',
-    scheduled_at: '2026-08-14T12:00:00Z',
+    scheduled_at: dateInCurrentMonth(14) + 'T12:00:00Z',
     status: 'draft',
     social_platforms: { name: 'Instagram' },
   },
   {
     id: 'draft-2',
     title: 'Bastidores da nossa marca',
-    scheduled_at: '2026-08-20T12:00:00Z',
+    scheduled_at: dateInCurrentMonth(20) + 'T12:00:00Z',
     status: 'draft',
     social_platforms: { name: 'LinkedIn' },
   },
   {
     id: 'draft-3',
     title: 'Ideias que conectam',
-    scheduled_at: '2026-08-26T12:00:00Z',
+    scheduled_at: dateInCurrentMonth(26) + 'T12:00:00Z',
     status: 'scheduled',
     social_platforms: { name: 'Instagram' },
   },
@@ -78,6 +91,7 @@ const summary = {
 }
 
 async function mockNetwork(page, name) {
+  const state = { batchInput: null, generatedBatch: null, persistedBatch: null }
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname
     let data
@@ -107,7 +121,10 @@ async function mockNetwork(page, name) {
         toneOfVoice: brand.tone_of_voice,
         primaryColor: brand.primary_color,
       }
-    else if (path.includes('/workspaces/') && path.endsWith('/drafts'))
+    else if (path.includes('/workspaces/') && path.endsWith('/drafts/batch')) {
+      state.persistedBatch = JSON.parse(route.request().postData() || '[]')
+      data = state.persistedBatch
+    } else if (path.includes('/workspaces/') && path.endsWith('/drafts'))
       data = drafts.map((draft) => ({
         id: draft.id,
         title: draft.title,
@@ -121,7 +138,52 @@ async function mockNetwork(page, name) {
       }))
     else if (path.endsWith('/finance/summary')) data = summary
     else if (path.endsWith('/finance/transactions')) data = transactions
-    else if (path.endsWith('/content/generate'))
+    else if (path.endsWith('/content/generate-batch')) {
+      state.batchInput = JSON.parse(route.request().postData() || '{}')
+      const requestBody = state.batchInput
+      const formatData = () => ({
+        kind: 'reels',
+        hook: 'Uma ideia simples para começar.',
+        durationSeconds: 20,
+        scenes: [
+          {
+            shot: 'Apresente a ideia para a câmera.',
+            narration: requestBody.prompt,
+            onScreenText: 'Uma dica prática',
+          },
+          {
+            shot: 'Mostre um exemplo relacionado.',
+            narration: 'Use um exemplo que sua marca possa confirmar.',
+            onScreenText: 'Veja um exemplo',
+          },
+          {
+            shot: 'Encerre olhando para a câmera.',
+            narration: 'Convide o público a continuar a conversa.',
+            onScreenText: 'Conte sua opinião',
+          },
+        ],
+        closingCta: 'Compartilhe sua experiência.',
+      })
+      state.generatedBatch = requestBody.dates.flatMap((date) =>
+        requestBody.platforms.map((platform, index) => ({
+          id: `generated-${date}-${index}`,
+          title: `Ideia para ${platform}`,
+          caption: `${requestBody.prompt} — ${platform}.`,
+          hashtags: ['#PostFlow'],
+          platform,
+          date,
+          status: 'draft',
+          visualText: 'Uma dica prática',
+          color: brand.primary_color,
+          format: requestBody.format,
+          formatData: formatData(),
+          persona: requestBody.persona,
+          time: requestBody.time,
+          timezone: requestBody.timezone,
+        })),
+      )
+      data = state.generatedBatch
+    } else if (path.endsWith('/content/generate'))
       data = {
         id: 'generated-qa',
         title: 'Uma nova forma de criar',
@@ -173,6 +235,7 @@ async function mockNetwork(page, name) {
         : drafts,
     }),
   )
+  return state
 }
 
 ;(async () => {
@@ -180,7 +243,7 @@ async function mockNetwork(page, name) {
     headless: true,
     channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
   })
-  const output = 'docs/screenshots/responsive'
+  const output = process.env.QA_OUTPUT || 'docs/screenshots/responsive'
   fs.mkdirSync(output, { recursive: true })
   let checked = 0
   try {
@@ -198,11 +261,42 @@ async function mockNetwork(page, name) {
         })
         const errors = []
         page.on('pageerror', (error) => errors.push(error.message))
-        await mockNetwork(page, name)
+        const mock = await mockNetwork(page, name)
         const routePath = name === 'admin-plans' ? 'admin/plans' : name
+        console.log(`QA ${width}px · ${name}`)
         await page.goto('http://127.0.0.1:5173/' + routePath)
-        await page.locator('h1').waitFor()
+        try {
+          await page.locator('h1').waitFor({ timeout: 10_000 })
+        } catch (error) {
+          const body = (await page.locator('body').innerText()).slice(0, 400)
+          await page.screenshot({
+            path: output + '/failed-' + name + '-' + width + '.png',
+            fullPage: true,
+          })
+          throw new Error(
+            `Não carregou título em ${name} a ${width}px. URL: ${page.url()}. ` +
+              `Erros: ${errors.join('; ')}. Página: ${body}`,
+            { cause: error },
+          )
+        }
         await page.evaluate(() => document.fonts.ready)
+        if (name !== 'login') {
+          let navigation = page
+          if (width <= 760) {
+            await page.getByRole('button', { name: 'Abrir menu' }).click()
+            navigation = page.getByRole('dialog', { name: 'Menu principal' })
+          }
+          await navigation
+            .getByRole('link', { name: 'Financeiro', exact: true })
+            .waitFor()
+          await navigation
+            .getByRole('link', { name: 'Fiscal', exact: true })
+            .waitFor()
+          if (width <= 760) {
+            await page.keyboard.press('Escape')
+            await page.getByRole('button', { name: 'Abrir menu' }).waitFor()
+          }
+        }
         if (name === 'finance')
           await page
             .getByText('Consultoria de conteúdo', { exact: true })
@@ -211,6 +305,69 @@ async function mockNetwork(page, name) {
           await page
             .getByRole('button', { name: /Uma nova forma de criar/ })
             .waitFor()
+        if (name === 'calendar') {
+          await page
+            .getByLabel('Ideia do conteúdo na agenda')
+            .fill('Compartilhe uma dica prática para organizar a semana')
+          await page
+            .getByRole('button', { name: 'Gerar conteúdo', exact: true })
+            .click()
+          const dialog = page.getByRole('dialog', {
+            name: 'Configurar geração',
+          })
+          await dialog.waitFor()
+          await page
+            .getByLabel('Público ou persona (opcional)')
+            .fill('Pessoas que estão começando')
+          await page.getByLabel('Horário de Brasília').fill('09:45')
+          await page.getByLabel('Próximos 7 dias').check()
+          await dialog.getByRole('button', { name: /^Reels/ }).click()
+          await dialog
+            .getByRole('button', { name: 'Facebook', exact: true })
+            .click()
+          assert.equal(
+            await page.getByLabel('Horário de Brasília').getAttribute('value'),
+            '09:45',
+          )
+          await dialog
+            .getByRole('button', { name: 'Gerar 14 rascunhos' })
+            .waitFor()
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth > innerWidth,
+            ),
+            false,
+            'painel de geração: overflow em ' + width,
+          )
+          await page.screenshot({
+            path: output + '/calendar-generator-' + width + '.png',
+            fullPage: true,
+          })
+          await dialog
+            .getByRole('button', { name: 'Gerar 14 rascunhos' })
+            .click()
+          await page
+            .getByText(
+              '14 rascunhos salvos na agenda para revisão. A publicação é manual.',
+              { exact: true },
+            )
+            .waitFor()
+          assert.equal(mock.batchInput.dates.length, 7)
+          assert.deepEqual(mock.batchInput.platforms, ['Instagram', 'Facebook'])
+          assert.equal(mock.batchInput.time, '09:45')
+          assert.equal(mock.batchInput.timezone, 'America/Sao_Paulo')
+          assert.equal(mock.batchInput.format, 'reels')
+          assert.equal(mock.generatedBatch.length, 14)
+          assert.equal(mock.persistedBatch.length, 14)
+          assert.equal(
+            new Set(
+              mock.persistedBatch.map(
+                (draft) => `${draft.date}|${draft.platform}`,
+              ),
+            ).size,
+            14,
+          )
+        }
         if (name === 'chat') {
           await page.screenshot({
             path: output + '/chat-empty-' + width + '.png',
@@ -222,10 +379,20 @@ async function mockNetwork(page, name) {
           await page
             .getByRole('button', { name: 'Gerar post', exact: true })
             .click()
-          await page.getByRole('button', { name: /Revisar rascunho/ }).waitFor()
-          if (width <= 1100)
+          if (width <= 1100) {
+            // The responsive studio opens the review panel automatically after generation.
+            await page
+              .getByRole('heading', { name: 'Revise seu rascunho' })
+              .waitFor()
+          } else {
+            await page
+              .getByRole('button', { name: /Revisar rascunho/ })
+              .waitFor()
             await page.getByRole('button', { name: /Revisar rascunho/ }).click()
-          await page.getByText('Rascunho gerado', { exact: true }).waitFor()
+            await page
+              .getByRole('heading', { name: 'Revise seu rascunho' })
+              .waitFor()
+          }
         }
         if (name === 'fiscal')
           await page.getByRole('button', { name: /Ver comprovante/ }).waitFor()

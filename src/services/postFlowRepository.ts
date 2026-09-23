@@ -10,6 +10,7 @@ export interface PostFlowDataRepository {
   load(workspaceId: string): Promise<ProjectData>
   saveBrand(workspaceId: string, brand: BrandProfile): Promise<BrandProfile>
   createDraft(workspaceId: string, draft: PostDraft): Promise<PostDraft>
+  createDrafts?(workspaceId: string, drafts: PostDraft[]): Promise<PostDraft[]>
   updateDraft(workspaceId: string, draft: PostDraft): Promise<PostDraft>
   deleteDraft(workspaceId: string, id: string): Promise<void>
 }
@@ -41,6 +42,16 @@ export const ApiPostFlowRepository: PostFlowDataRepository = {
         body: JSON.stringify(persistedDraft),
       })
     })(),
+
+  createDrafts: (workspaceId, drafts) => {
+    const persistedDrafts = drafts.map(
+      ({ imageUrl: _imageUrl, ...draft }) => draft,
+    )
+    return apiRequest<PostDraft[]>(workspacePath(workspaceId, 'drafts/batch'), {
+      method: 'POST',
+      body: JSON.stringify(persistedDrafts),
+    })
+  },
 
   updateDraft: (workspaceId, draft) =>
     (() => {

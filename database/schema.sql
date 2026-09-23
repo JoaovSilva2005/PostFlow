@@ -58,6 +58,10 @@ create table if not exists public.post_drafts (
   visual_text text not null,
   color text not null default '#4F46E5',
   scheduled_at timestamptz not null,
+  content_format text not null default 'static',
+  audience_persona text not null default '',
+  schedule_timezone text not null default 'America/Sao_Paulo',
+  format_data jsonb,
   status text not null default 'draft',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -73,7 +77,16 @@ create table if not exists public.post_drafts (
   constraint post_drafts_status_check check (
     status in ('draft', 'scheduled', 'published')
   ),
-  constraint post_drafts_color_check check (color ~ '^#[0-9A-Fa-f]{6}$')
+  constraint post_drafts_color_check check (color ~ '^#[0-9A-Fa-f]{6}$'),
+  constraint post_drafts_content_format_check check (
+    content_format in ('carousel', 'static', 'reels')
+  ),
+  constraint post_drafts_audience_persona_length_check check (
+    length(audience_persona) <= 160
+  ),
+  constraint post_drafts_format_data_object_check check (
+    format_data is null or jsonb_typeof(format_data) = 'object'
+  )
 );
 
 create table if not exists public.post_hashtags (

@@ -31,6 +31,7 @@ type AppAction =
   | { type: 'DATABASE_ERROR'; payload: string }
   | { type: 'SAVE_BRAND'; payload: BrandProfile }
   | { type: 'ADD_DRAFT'; payload: PostDraft }
+  | { type: 'ADD_DRAFTS'; payload: PostDraft[] }
   | { type: 'UPDATE_DRAFT'; payload: PostDraft }
   | { type: 'REMOVE_DRAFT'; payload: string }
 
@@ -42,6 +43,7 @@ interface AppContextValue extends AppState {
   refreshSession: () => Promise<AuthSession | null>
   saveBrand: (brand: BrandProfile) => Promise<void>
   addDraft: (draft: PostDraft) => Promise<void>
+  addDrafts: (drafts: PostDraft[]) => Promise<PostDraft[]>
   updateDraft: (draft: PostDraft) => Promise<void>
   removeDraft: (id: string) => Promise<void>
 }
@@ -113,6 +115,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         drafts: [...state.drafts, action.payload],
+        databaseError: null,
+      }
+    case 'ADD_DRAFTS':
+      return {
+        ...state,
+        drafts: [...state.drafts, ...action.payload],
         databaseError: null,
       }
     case 'UPDATE_DRAFT':
@@ -324,6 +332,23 @@ export function AppProvider({
             draft,
           )
           dispatch({ type: 'ADD_DRAFT', payload: createdDraft })
+        } catch (error) {
+          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+          throw error
+        }
+      },
+      addDrafts: async (drafts) => {
+        if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
+        try {
+          const createdDrafts = repository.createDrafts
+            ? await repository.createDrafts(state.currentWorkspace.id, drafts)
+            : await Promise.all(
+                drafts.map((draft) =>
+                  repository.createDraft(state.currentWorkspace!.id, draft),
+                ),
+              )
+          dispatch({ type: 'ADD_DRAFTS', payload: createdDrafts })
+          return createdDrafts
         } catch (error) {
           dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
           throw error

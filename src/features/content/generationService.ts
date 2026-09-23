@@ -2,10 +2,20 @@ import { z } from 'zod'
 import type { BrandProfile, PostDraft } from '../../domain/models'
 import { ApiError, apiRequest } from '../../services/apiClient'
 import { localDate } from '../../domain/dates'
+import {
+  CONTENT_FORMATS,
+  contentFormatDataSchema,
+  contentFormatSchema,
+  type ContentFormat,
+  type ContentFormatData,
+} from '../../../shared/domain/contentFormats'
+import { isValidTimeZone } from '../../../shared/domain/contentTime'
+import { SOCIAL_PLATFORMS } from '../../../shared/domain/socialPlatforms'
 export { localDate } from '../../domain/dates'
 
-export const PLATFORMS = ['Instagram', 'LinkedIn', 'Facebook'] as const
+export const PLATFORMS = SOCIAL_PLATFORMS
 export type Platform = (typeof PLATFORMS)[number]
+export { CONTENT_FORMATS, type ContentFormat, type ContentFormatData }
 export interface ConversationMessage {
   id: string
   role: 'user' | 'assistant'
@@ -19,10 +29,30 @@ export interface ContentRequest {
   brand: BrandProfile | null
   history: Pick<ConversationMessage, 'role' | 'content'>[]
   previousDraft: PostDraft | null
+  format?: ContentFormat
+  formatData?: ContentFormatData
+  persona?: string
+  time?: string
+  timezone?: string
+}
+export interface BatchContentRequest {
+  workspaceId?: string
+  prompt: string
+  dates: string[]
+  time: string
+  timezone: string
+  format: ContentFormat
+  persona: string
+  platforms: Platform[]
+  brand: BrandProfile | null
 }
 export interface GenerationService {
   mode: 'demo' | 'api'
   generate(request: ContentRequest, signal: AbortSignal): Promise<PostDraft>
+  generateBatch?(
+    request: BatchContentRequest,
+    signal: AbortSignal,
+  ): Promise<PostDraft[]>
 }
 
 const dateSchema = z
@@ -44,6 +74,14 @@ export const draftSchema = z.object({
   status: z.literal('draft'),
   visualText: z.string().trim().min(1).max(160),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  format: contentFormatSchema.optional(),
+  formatData: contentFormatDataSchema.optional(),
+  persona: z.string().trim().max(160).optional(),
+  time: z
+    .string()
+    .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
+    .optional(),
+  timezone: z.string().refine(isValidTimeZone).optional(),
   imageUrl: z
     .string()
     .max(6_000_000)
@@ -69,7 +107,7 @@ export function generationError(error: unknown): string {
     error !== null &&
     'name' in error &&
     error.name === 'TimeoutError'
-    ? 'A geração demorou demais. Seu rascunho foi preservado; tente novamente.'
+    ? 'A geração demorou demais. Seus ajustes continuam no painel; tente novamente.'
     : 'Não foi possível gerar o conteúdo. Seus ajustes foram preservados. Tente novamente.'
 }
 
@@ -86,6 +124,61 @@ function abortableDelay(signal: AbortSignal): Promise<void> {
     }, 650)
     signal.addEventListener('abort', abort, { once: true })
   })
+}
+
+function demoFormatData(
+  format: ContentFormat,
+  subject: string,
+): ContentFormatData {
+  const visualDirection = `Composição editorial sobre ${subject.slice(0, 90)}; siga a identidade da marca sem texto ilegível.`
+  if (format === 'carousel') {
+    return {
+      kind: 'carousel',
+      slides: [
+        {
+          headline: 'A ideia principal',
+          copy: subject.slice(0, 180),
+          visualDirection,
+        },
+        {
+          headline: 'Um próximo passo',
+          copy: 'Apresente uma ação prática e simples para o público.',
+          visualDirection,
+        },
+        {
+          headline: 'Continue a conversa',
+          copy: 'Feche com uma pergunta relacionada ao tema.',
+          visualDirection,
+        },
+      ],
+    }
+  }
+  if (format === 'reels') {
+    return {
+      kind: 'reels',
+      hook: subject.slice(0, 120),
+      durationSeconds: 20,
+      scenes: [
+        {
+          shot: 'Apresente a ideia diretamente para a câmera.',
+          narration: subject.slice(0, 180),
+          onScreenText: subject.slice(0, 80),
+        },
+        {
+          shot: 'Mostre um exemplo relacionado ao tema.',
+          narration: 'Use uma situação que a marca possa confirmar.',
+          onScreenText: 'Um exemplo prático',
+        },
+        {
+          shot: 'Encerre com um enquadramento estável.',
+          narration: 'Convide o público a continuar a conversa.',
+          onScreenText: 'O que você acha?',
+        },
+      ],
+      closingCta: 'Compartilhe sua experiência nos comentários.',
+    }
+  }
+  return { kind: 'static', headline: subject.slice(0, 90), visualDirection }
 }
 
 export const demoGenerationService: GenerationService = {
@@ -120,6 +213,42 @@ export const demoGenerationService: GenerationService = {
       imageUrl: previousDraft?.imageUrl,
     })
   },
+  async generateBatch(request, signal) {
+    await abortableDelay(signal)
+    const subject = request.prompt.trim()
+    const name = request.brand?.name || 'Sua marca'
+    const platformAngles: Record<Platform, string> = {
+      Instagram: 'Use uma abertura visual e convide a comunidade a participar.',
+      Facebook: 'Contextualize a ideia e convide as pessoas a conversar.',
+      'X / Twitter':
+        'Seja direto e concentre a ideia principal em poucas frases.',
+      LinkedIn: 'Traga uma perspectiva prática e profissional sobre o tema.',
+      TikTok:
+        'Abra com uma frase falada que prenda a atenção nos primeiros segundos.',
+      Blog: 'Organize a ideia como uma introdução útil para um artigo.',
+    }
+
+    return request.dates.flatMap((date) =>
+      request.platforms.map((platform) =>
+        draftSchema.parse({
+          id: crypto.randomUUID(),
+          title: subject.slice(0, 95).padEnd(3, '.'),
+          caption: `${name}: ${subject}\n\n${platformAngles[platform]}${request.persona ? `\n\nPúblico: ${request.persona}` : ''}`,
+          hashtags: [`#${name.replace(/[^\p{L}\p{N}]/gu, '') || 'SuaMarca'}`],
+          platform,
+          date,
+          status: 'draft',
+          visualText: subject.slice(0, 120),
+          color: request.brand?.primaryColor || '#4F46E5',
+          format: request.format,
+          formatData: demoFormatData(request.format, subject),
+          persona: request.persona,
+          time: request.time,
+          timezone: request.timezone,
+        }),
+      ),
+    )
+  },
 }
 
 export const apiGenerationService: GenerationService = {
@@ -139,6 +268,51 @@ export const apiGenerationService: GenerationService = {
       signal,
     })
     return draftSchema.parse(result)
+  },
+  async generateBatch(request, signal) {
+    const { workspaceId, ...contentRequest } = request
+    const result = await apiRequest<unknown>('/content/generate-batch', {
+      method: 'POST',
+      body: JSON.stringify(contentRequest),
+      headers: workspaceId ? { 'X-Workspace-Id': workspaceId } : undefined,
+      signal,
+    })
+    const batchSchema = z
+      .array(
+        draftSchema.extend({
+          format: contentFormatSchema,
+          formatData: contentFormatDataSchema,
+          persona: z.string().max(160),
+          time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+          timezone: z.string().refine(isValidTimeZone),
+        }),
+      )
+      .min(1)
+      .max(42)
+    const drafts = batchSchema.parse(result)
+    const expected = new Set(
+      request.dates.flatMap((date) =>
+        request.platforms.map((platform) => `${date}|${platform}`),
+      ),
+    )
+    const returned = new Set(
+      drafts.map((draft) => `${draft.date}|${draft.platform}`),
+    )
+    if (
+      drafts.length !== expected.size ||
+      returned.size !== expected.size ||
+      [...expected].some((key) => !returned.has(key)) ||
+      drafts.some(
+        (draft) =>
+          draft.format !== request.format ||
+          draft.time !== request.time ||
+          draft.timezone !== request.timezone ||
+          draft.persona !== request.persona,
+      )
+    ) {
+      throw new Error('A geração não retornou todas as variações pedidas.')
+    }
+    return drafts
   },
 }
 

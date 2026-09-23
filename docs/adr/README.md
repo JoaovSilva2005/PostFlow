@@ -9,3 +9,4 @@
 | [ADR-0005](ADR-0005-separate-platform-and-workspace-authorization.md) | Roles da plataforma e do workspace    | Accepted |
 | [ADR-0006](ADR-0006-ai-image-preview-boundary.md)                     | Arte gerada como preview da revisão   | Accepted |
 | [ADR-0007](ADR-0007-shared-contracts-and-boundaries.md)               | Contratos puros em `shared/`          | Accepted |
+| [ADR-0008](ADR-0008-batched-content-planner.md)                       | Planejador de conteúdo em lote        | Accepted |

@@ -14,7 +14,9 @@ describe('fitness functions de produção', () => {
   it('mantém o backend independente da árvore de apresentação', () => {
     const violations = filesIn('backend')
       .filter((file) => /\.(ts|tsx)$/.test(file))
-      .filter((file) => /from\s+['"][^'"]*src\//.test(readFileSync(file, 'utf8')))
+      .filter((file) =>
+        /from\s+['"][^'"]*src\//.test(readFileSync(file, 'utf8')),
+      )
 
     expect(violations).toEqual([])
   })
@@ -23,6 +25,7 @@ describe('fitness functions de produção', () => {
     const forbidden = /from\s+['"][^'"]*(react|express|supabase|vite|node:)/i
     const violations = filesIn('shared')
       .filter((file) => /\.(ts|tsx)$/.test(file))
+      .filter((file) => !/\.(test|spec)\.(ts|tsx)$/.test(file))
       .filter((file) => forbidden.test(readFileSync(file, 'utf8')))
 
     expect(violations).toEqual([])
