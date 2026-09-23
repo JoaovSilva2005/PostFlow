@@ -1,8 +1,7 @@
 import { useId } from 'react'
-import type { SocialPlatform } from '../../../shared/domain/socialPlatforms'
 
 interface SocialPlatformIconProps {
-  platform: SocialPlatform
+  platform: string
   size?: number
 }
 
@@ -106,10 +105,21 @@ export function SocialPlatformIcon({
     )
   }
 
+  if (platform === 'Blog') {
+    return (
+      <svg {...common} fill="none" stroke="currentColor" strokeWidth="1.8">
+        <rect x="3.5" y="3" width="17" height="18" rx="2.5" />
+        <path d="M7.5 8h9M7.5 12h9M7.5 16h5" />
+      </svg>
+    )
+  }
+
   return (
     <svg {...common} fill="none" stroke="currentColor" strokeWidth="1.8">
-      <rect x="3.5" y="3" width="17" height="18" rx="2.5" />
-      <path d="M7.5 8h9M7.5 12h9M7.5 16h5" />
+      <circle cx="6" cy="6" r="2.5" />
+      <circle cx="18" cy="12" r="2.5" />
+      <circle cx="6" cy="18" r="2.5" />
+      <path d="m8.3 7.1 7.4 3.8m-7.4 6 7.4-3.8" />
     </svg>
   )
 }
