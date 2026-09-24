@@ -59,46 +59,30 @@ export function FiscalPage() {
         title="Fiscal e faturamento"
         description="Cada receita do financeiro, com seu imposto e comprovante."
       >
-        <Link className={styles.moduleLink} to="/finance">
-          Abrir financeiro
-        </Link>
+        <Link to="/finance">Abrir financeiro</Link>
       </PageHeader>
       <p className={styles.warning}>
         <strong>Simulação acadêmica.</strong> Alíquota fixa de 6% para
         demonstração. Não emite nota fiscal nem calcula tributos legais.
       </p>
       <div className={styles.toolbar}>
-        <label className={styles.periodField} htmlFor="fiscal-period">
-          <span>Período por vencimento</span>
+        <label>
+          Período por vencimento
           <input
-            id="fiscal-period"
             aria-label="Período fiscal"
-            aria-describedby="fiscal-period-name"
             type="month"
             value={period}
             onChange={(e) => {
               if (e.target.value) setPeriod(e.target.value)
             }}
           />
-          <span id="fiscal-period-name" className={styles.periodName}>
-            {new Intl.DateTimeFormat('pt-BR', {
-              month: 'long',
-              year: 'numeric',
-            }).format(new Date(`${period}-01T00:00:00`))}
-          </span>
         </label>
         <Button
           variant="ghost"
           onClick={() => setRevision((value) => value + 1)}
           disabled={loading}
-          aria-label={
-            loading
-              ? 'Atualizando relatório fiscal'
-              : 'Atualizar relatório fiscal'
-          }
         >
-          <RefreshCw size={15} />
-          {loading ? 'Atualizando…' : 'Atualizar relatório'}
+          <RefreshCw size={15} /> Sincronizar
         </Button>
       </div>
       {notice && (
@@ -142,7 +126,7 @@ export function FiscalPage() {
         caixa.
       </p>
       <div className={styles.layout}>
-        <section className={styles.panel} aria-busy={loading}>
+        <section className={styles.panel}>
           <div className={styles.sectionHeader}>
             <h2>Vendas e serviços</h2>
             <span>
@@ -153,11 +137,6 @@ export function FiscalPage() {
           </div>
           {loading ? (
             <p role="status">Carregando receitas...</p>
-          ) : error && !report ? (
-            <p className={styles.empty} role="status">
-              As vendas deste período não puderam ser carregadas. Use “Atualizar
-              relatório” para tentar novamente.
-            </p>
           ) : report && !report.sales.length ? (
             <p className={styles.empty}>
               Nenhuma receita neste período. Registre um serviço ou escolha

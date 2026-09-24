@@ -89,14 +89,12 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-  min-width: 0;
 }
 .calendarToolbar button {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   background: #202426;
   border: 1px solid #353c3f;
   border-radius: 6px;
@@ -105,13 +103,8 @@
 .calendarToolbar button:hover {
   background: #323a3b;
 }
-.calendarToolbar .todayButton {
-  width: auto;
-  padding-inline: 12px;
-  font-size: 13px;
-}
 .calendarToolbar h2 {
-  margin: 0 0 0 8px;
+  margin: 0 0 0 14px;
   font-size: 17px;
   font-weight: 500;
   letter-spacing: -0.4px;
@@ -242,12 +235,12 @@
 }
 .draft strong {
   color: var(--color-text);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
 }
 .draft small {
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: 9px;
 }
 .platformLabel {
   display: inline-flex;
@@ -525,8 +518,8 @@
     min-width: 36px;
   }
   .calendarToolbar h2 {
-    font-size: 14px;
-    margin-left: 2px;
+    font-size: 15px;
+    margin-left: 6px;
   }
   .legend {
     display: none;
@@ -545,11 +538,7 @@
     gap: 2px;
   }
   .draft strong {
-    font-size: 11px;
-    white-space: normal;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    font-size: 9px;
   }
   .agendaList {
     padding: 0 16px;

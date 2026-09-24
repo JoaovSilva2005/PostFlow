@@ -14,7 +14,6 @@ import { Link } from 'react-router'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
-import { DateField } from '../../components/ui/DateField'
 import { useApp } from '../../app/AppContext'
 import { SelectField, TextField } from '../../components/ui/FormField'
 import type {
@@ -95,7 +94,6 @@ export function FinancePage() {
       (statusFilter === 'all' || transaction.status === statusFilter)
     )
   })
-  const hasActiveFilters = Boolean(search.trim()) || statusFilter !== 'all'
 
   async function loadFinance() {
     setLoading(true)
@@ -265,11 +263,7 @@ export function FinancePage() {
         </div>
       ) : null}
 
-      <section
-        className={styles.summaryGrid}
-        aria-label="Resumo financeiro"
-        aria-busy={loading}
-      >
+      <section className={styles.summaryGrid} aria-label="Resumo financeiro">
         <article className={styles.summaryCard}>
           <div className={`${styles.icon} ${styles.income}`}>
             <ArrowUpRight size={20} />
@@ -330,51 +324,32 @@ export function FinancePage() {
             <div>
               <h2>Entradas e saídas</h2>
             </div>
-            <small aria-live="polite">
+            <small>
               {loading
-                ? 'Carregando lançamentos…'
-                : error && !hasLoadedSummary
-                  ? 'Dados indisponíveis'
-                  : hasActiveFilters
-                    ? `${filteredTransactions.length} de ${transactions.length} lançamentos`
-                    : `${transactions.length} ${transactions.length === 1 ? 'lançamento' : 'lançamentos'}`}
+                ? 'Carregando'
+                : hasLoadedSummary
+                  ? `${transactions.length} lançamentos`
+                  : 'Sem dados'}
             </small>
           </div>
 
           <div className={styles.filters}>
-            <label className={styles.filterField}>
-              <span>Buscar lançamentos</span>
-              <input
-                type="search"
-                placeholder="Descrição ou categoria"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </label>
-            <label className={styles.filterField}>
-              <span>Status</span>
-              <select
-                aria-label="Filtrar por status"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-              >
-                <option value="all">Todos</option>
-                <option value="paid">Pagos</option>
-                <option value="pending">Pendentes</option>
-              </select>
-            </label>
-            {hasActiveFilters ? (
-              <button
-                className={styles.clearFilters}
-                type="button"
-                onClick={() => {
-                  setSearch('')
-                  setStatusFilter('all')
-                }}
-              >
-                Limpar filtros
-              </button>
-            ) : null}
+            <input
+              type="search"
+              aria-label="Buscar lançamentos"
+              placeholder="Buscar descrição ou categoria..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <select
+              aria-label="Filtrar por status"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
+              <option value="all">Todos os status</option>
+              <option value="paid">Pagos</option>
+              <option value="pending">Pendentes</option>
+            </select>
           </div>
 
           {loading ? (
@@ -392,7 +367,6 @@ export function FinancePage() {
           ) : (
             <div className={styles.tableWrapper}>
               <table>
-                <caption className="sr-only">Lançamentos financeiros</caption>
                 <thead>
                   <tr>
                     <th>Descrição</th>
@@ -560,8 +534,9 @@ export function FinancePage() {
                     updateForm('amount', Number(event.target.value))
                   }
                 />
-                <DateField
+                <TextField
                   label="Vencimento"
+                  type="date"
                   value={form.dueDate}
                   required
                   onChange={(event) =>

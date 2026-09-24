@@ -14,13 +14,7 @@ import {
   BadgeDollarSign,
   X,
 } from 'lucide-react'
-import {
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import type { PlatformRole, WorkspaceRole } from '../../domain/auth'
@@ -74,19 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const searchInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!menuOpen) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    searchInput.current?.focus()
-    const desktop = window.matchMedia?.('(min-width: 761px)')
-    const closeOnDesktop = () => {
-      if (desktop?.matches) setMenuOpen(false)
-    }
-    desktop?.addEventListener('change', closeOnDesktop)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      desktop?.removeEventListener('change', closeOnDesktop)
-    }
+    if (menuOpen) searchInput.current?.focus()
   }, [menuOpen])
 
   useEffect(() => {
@@ -155,7 +137,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       event.currentTarget.querySelectorAll<HTMLElement>(
         'a[href], button:not(:disabled), input:not(:disabled)',
       ),
-    ).filter((control) => control.getClientRects().length > 0)
+    )
     const first = controls[0]
     const last = controls[controls.length - 1]
     if (event.shiftKey && document.activeElement === first) {
@@ -209,16 +191,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         aria-label={menuOpen ? 'Menu principal' : undefined}
         onKeyDown={handleMenuKeyDown}
       >
-        <div className={styles.menuHeading}>
-          <strong>Menu principal</strong>
-          <button
-            type="button"
-            onClick={handleEscape}
-            aria-label="Fechar navegação"
-          >
-            <X size={20} />
-          </button>
-        </div>
         <NavLink
           className={styles.logo}
           to={canUseProduct ? '/brand' : '/billing'}
@@ -274,25 +246,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               ),
           )}
           {!groups.some((group) => group.links.length) && (
-            <div className={styles.noResults} role="status">
-              <p>Nenhuma seção encontrada.</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch('')
-                  searchInput.current?.focus()
-                }}
-              >
-                Limpar busca
-              </button>
-            </div>
+            <p className={styles.noResults}>Nenhuma seção encontrada.</p>
           )}
         </nav>
         <div className={styles.sidebarFooter}>
           {(platformRole || databaseStatus === 'error') && (
-            <div
-              className={`${styles.databaseStatus} ${styles[databaseStatus]}`}
-            >
+            <div className={`${styles.databaseStatus} ${styles[databaseStatus]}`}>
               <Database size={14} />
               <span>
                 {databaseStatus === 'connected'
@@ -326,7 +285,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </aside>
-      <div className={styles.body} inert={menuOpen || undefined}>
+      <div className={styles.body}>
         <div className={styles.topbar}>
           <span>{currentWorkspace ? 'Área de trabalho' : 'PostFlow'}</span>
           <ChevronRight size={14} />

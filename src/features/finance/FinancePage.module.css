@@ -8,7 +8,7 @@
   border-radius: 6px;
   background: #1e2b23;
   color: #a1d8b7;
-  font-size: 12px;
+  font-size: 11px;
 }
 .headerActions {
   display: flex;
@@ -23,7 +23,7 @@
   border: 1px solid var(--color-border);
   border-radius: 6px;
   color: var(--color-text);
-  font-size: 12px;
+  font-size: 11px;
   text-decoration: none;
 }
 .moduleLink:hover {
@@ -33,8 +33,7 @@
 .notice {
   margin: 0 0 20px;
   padding: 11px 14px;
-  border: 1px solid #34463c;
-  border-radius: 6px;
+  border-left: 3px solid var(--color-primary);
   background: #19271f;
   color: #afe2c0;
   font-size: 12px;
@@ -112,7 +111,7 @@
   overflow-wrap: anywhere;
 }
 .summaryCard small {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-muted);
   margin-top: 10px;
 }
@@ -168,6 +167,13 @@
   gap: 16px;
   margin-bottom: 24px;
 }
+.sectionTitle span {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: var(--color-muted);
+  margin-bottom: 8px;
+}
 .sectionTitle h2 {
   margin: 0;
   font-size: 15px;
@@ -175,7 +181,7 @@
 }
 .sectionTitle small {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 10px;
   white-space: nowrap;
 }
 .form {
@@ -217,7 +223,7 @@
   width: 100%;
 }
 .tableCard th {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 400;
   color: var(--color-muted);
   background: #141718;
@@ -247,7 +253,7 @@
   color: var(--color-text);
 }
 .tableCard td span {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-muted);
   margin-top: 5px;
 }
@@ -261,7 +267,7 @@
   padding: 6px 8px;
   border: 1px solid transparent;
   border-radius: 5px;
-  font-size: 12px;
+  font-size: 10px;
 }
 .paid {
   background: #22372b;
@@ -296,27 +302,13 @@
 }
 .filters {
   display: flex;
-  align-items: end;
   gap: 12px;
   margin-bottom: 20px;
 }
-.filterField {
-  display: grid;
-  gap: 6px;
+.filters input,
+.filters select {
   min-width: 0;
-  color: var(--color-muted);
-  font-size: 12px;
-}
-.filterField:first-child {
-  flex: 1;
-}
-.filterField span {
-  line-height: 1.2;
-}
-.filterField input,
-.filterField select {
-  min-width: 0;
-  height: 44px;
+  height: 40px;
   padding: 8px 10px;
   background: #111314;
   border: 1px solid #353c3e;
@@ -324,27 +316,12 @@
   color: var(--color-text);
   font-size: 12px;
 }
-.filterField input {
+.filters input {
+  flex: 1;
   width: 100%;
 }
-.filterField select {
-  min-width: 140px;
-}
-.clearFilters {
-  min-height: 44px;
-  flex: 0 0 auto;
-  padding: 0 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-muted);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.clearFilters:hover {
-  color: var(--color-text);
-  border-color: #555c60;
+.filters select {
+  max-width: 130px;
 }
 @media (max-width: 1350px) {
   .contentGrid {
@@ -381,7 +358,7 @@
     padding: 16px;
   }
   .summaryCard > span {
-    font-size: 12px;
+    font-size: 10px;
     padding-right: 0;
     margin-bottom: 14px;
   }
@@ -403,17 +380,13 @@
   }
   .filters {
     flex-direction: column;
-    align-items: stretch;
   }
-  .filterField select {
-    width: 100%;
+  .filters select {
+    max-width: none;
   }
-  .filterField input,
-  .filterField select {
+  .filters input,
+  .filters select {
     font-size: 16px;
-  }
-  .clearFilters {
-    width: 100%;
   }
   .tableCard table,
   .tableCard tbody,
@@ -451,7 +424,7 @@
     display: block;
     margin-bottom: 5px;
     color: var(--color-muted);
-    font-size: 12px;
+    font-size: 10px;
   }
   .tableCard td strong {
     overflow-wrap: anywhere;

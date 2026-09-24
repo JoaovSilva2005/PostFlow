@@ -14,7 +14,6 @@ interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label: string
   error?: string
-  hint?: string
   options: Array<{ label: string; value: string }>
 }
 
@@ -23,8 +22,6 @@ export function TextField({
   error,
   hint,
   id,
-  className = '',
-  'aria-describedby': describedBy,
   ...props
 }: TextFieldProps) {
   const generatedId = useId()
@@ -42,12 +39,10 @@ export function TextField({
       </label>
       <input
         id={inputId}
+        className={`${styles.control} ${error ? styles.invalid : ''}`}
+        aria-invalid={Boolean(error)}
+        aria-describedby={descriptionId}
         {...props}
-        className={`${styles.control} ${error ? styles.invalid : ''} ${className}`}
-        aria-invalid={error ? true : props['aria-invalid']}
-        aria-describedby={
-          [describedBy, descriptionId].filter(Boolean).join(' ') || undefined
-        }
       />
       {hint && !error ? (
         <span id={descriptionId} className={styles.hint}>
@@ -66,20 +61,13 @@ export function TextField({
 export function SelectField({
   label,
   error,
-  hint,
   options,
   id,
-  className = '',
-  'aria-describedby': describedBy,
   ...props
 }: SelectFieldProps) {
   const generatedId = useId()
   const inputId = id ?? props.name ?? generatedId
-  const descriptionId = error
-    ? `${inputId}-error`
-    : hint
-      ? `${inputId}-hint`
-      : undefined
+  const descriptionId = error ? `${inputId}-error` : undefined
 
   return (
     <div className={styles.field}>
@@ -88,12 +76,10 @@ export function SelectField({
       </label>
       <select
         id={inputId}
+        className={`${styles.control} ${error ? styles.invalid : ''}`}
+        aria-invalid={Boolean(error)}
+        aria-describedby={descriptionId}
         {...props}
-        className={`${styles.control} ${error ? styles.invalid : ''} ${className}`}
-        aria-invalid={error ? true : props['aria-invalid']}
-        aria-describedby={
-          [describedBy, descriptionId].filter(Boolean).join(' ') || undefined
-        }
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -101,11 +87,6 @@ export function SelectField({
           </option>
         ))}
       </select>
-      {hint && !error ? (
-        <span id={descriptionId} className={styles.hint}>
-          {hint}
-        </span>
-      ) : null}
       {error ? (
         <span id={descriptionId} className={styles.error}>
           {error}

@@ -81,17 +81,6 @@
   background: var(--color-control);
   color: var(--color-text);
   font-size: 14px;
-  padding-left: 38px;
-}
-.platformControl {
-  position: relative;
-  display: block;
-}
-.platformControl > svg {
-  position: absolute;
-  top: 13px;
-  left: 12px;
-  pointer-events: none;
 }
 .brief select:hover {
   border-color: #555c60;
@@ -206,7 +195,7 @@
   font-weight: 500;
 }
 .suggestions small {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-muted);
 }
 .suggestions svg {
@@ -231,7 +220,7 @@
 .userMessage small,
 .assistantMessage small {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 .assistantMessage small {
   color: var(--color-primary);
@@ -314,16 +303,16 @@
   margin-top: 8px;
 }
 .composerActions > small {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-muted);
 }
 .composerActions button {
-  min-height: 44px;
+  min-height: 36px;
   font-size: 12px;
   padding: 8px 12px;
 }
 .disclaimer {
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1.6;
   color: var(--color-muted);
   margin: 10px 0 0;
@@ -334,7 +323,7 @@
   background: #131516;
 }
 .unpublished {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-muted);
 }
 .previewSwitch,
@@ -401,7 +390,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-muted);
 }
 .socialHeader > svg {
@@ -429,7 +418,7 @@
   z-index: -1;
 }
 .artwork > span {
-  font-size: 12px;
+  font-size: 11px;
   overflow-wrap: anywhere;
 }
 .artwork strong {
@@ -441,7 +430,7 @@
   letter-spacing: -0.9px;
 }
 .artwork small {
-  font-size: 12px;
+  font-size: 10px;
   opacity: 0.8;
 }
 .generatedArtwork {
@@ -466,7 +455,7 @@
   border-radius: 5px;
   background: #101112b8;
   color: #f5f6f6;
-  font-size: 12px;
+  font-size: 10px;
 }
 .postCopy {
   padding: 18px;
@@ -484,18 +473,18 @@
 }
 .postCopy > span {
   color: var(--color-primary);
-  font-size: 12px;
+  font-size: 11px;
 }
 .previewHint {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.7;
   margin: 0;
 }
 .socialPost > .previewHint {
   padding: 12px 18px;
   border-top: 1px solid var(--color-border);
-  font-size: 12px;
+  font-size: 10px;
 }
 .reviewForm {
   display: grid;
@@ -518,7 +507,7 @@
 }
 .reviewForm small {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 10px;
   text-align: right;
 }
 .reviewFooter {
@@ -530,7 +519,7 @@
 .reviewFooter > p:last-child {
   margin: 0;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 11px;
   text-align: center;
 }
 .emptyPreview {

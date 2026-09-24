@@ -1,6 +1,5 @@
 .field {
   display: grid;
-  align-content: start;
   gap: 8px;
   min-width: 0;
 }
@@ -31,11 +30,7 @@
   box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 .control::placeholder {
-  color: var(--color-placeholder);
-}
-.control:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
+  color: #7c8287;
 }
 .invalid {
   border-color: var(--color-danger);

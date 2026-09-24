@@ -31,7 +31,6 @@ export function PasswordField({
       />
       <button
         type="button"
-        disabled={props.disabled}
         className={styles.toggle}
         onClick={() => setIsVisible((visible) => !visible)}
         aria-label={`${isVisible ? 'Ocultar' : 'Mostrar'} ${label.toLowerCase()}`}

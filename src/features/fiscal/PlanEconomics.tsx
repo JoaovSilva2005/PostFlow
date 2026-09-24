@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
 import { TextField } from '../../components/ui/FormField'
 import {
   calculatePlanEconomics,
@@ -8,7 +7,7 @@ import {
   type PricingAssumptions,
 } from '../../domain/fiscal'
 import { currency } from './fiscalApi'
-import styles from './PlanEconomics.module.css'
+import styles from './FiscalPage.module.css'
 
 export function PlanEconomics() {
   const [assumptions, setAssumptions] =
@@ -46,6 +45,7 @@ export function PlanEconomics() {
     <section className={styles.plan} aria-labelledby="plan-title">
       <div className={styles.planIntro}>
         <div>
+          <span>Proposta de plano</span>
           <h2 id="plan-title">{ESSENTIAL_PLAN.name}</h2>
           <p>
             Uma marca, {ESSENTIAL_PLAN.texts} gerações de texto e{' '}
@@ -58,14 +58,11 @@ export function PlanEconomics() {
         </div>
       </div>
       <p className={styles.note}>
-        Simulação interna de custo. Alterações aqui não mudam preços, franquias
-        ou assinaturas ativas.
+        Proposta, não assinatura ativa. Regenerações entram no limite. IA,
+        cobrança e controle de consumo ainda não estão integrados.
       </p>
       <details className={styles.economics}>
-        <summary>
-          <ChevronRight size={18} aria-hidden="true" />
-          Entenda e simule o custo do plano
-        </summary>
+        <summary>Entenda e simule o custo do plano</summary>
         <p>
           Texto: Gemini 3.1 Flash-Lite. Imagem: Gemini 3.1 Flash Lite Image, 1K.
           Preços Standard pagos consultados em 16/09/2026. Recomendação inicial,
@@ -109,9 +106,7 @@ export function PlanEconomics() {
               <dt>Imposto didático de 6%</dt>
               <dd>{currency(result.tax)}</dd>
             </div>
-            <div
-              className={`${styles.total} ${result.contribution < 0 ? styles.negative : ''}`}
-            >
+            <div className={styles.total}>
               <dt>Contribuição estimada (não é lucro líquido)</dt>
               <dd>
                 {currency(result.contribution)}{' '}
@@ -120,7 +115,7 @@ export function PlanEconomics() {
             </div>
           </dl>
         ) : (
-          <p className={styles.error} role="alert">
+          <p role="alert">
             Informe valores válidos; mensalidade e câmbio devem ser maiores que
             zero.
           </p>

@@ -1,6 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Button } from '../../components/ui/Button'
-import { DateField } from '../../components/ui/DateField'
 import { SelectField, TextField } from '../../components/ui/FormField'
 import {
   calculateTax,
@@ -71,7 +70,6 @@ export function SaleForm({
         />
         <TextField
           label="Valor bruto (R$)"
-          hint="O imposto estimado é informativo e está incluído neste valor."
           type="number"
           min="0.01"
           max="999999999.99"
@@ -81,8 +79,9 @@ export function SaleForm({
           disabled={saving}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <DateField
+        <TextField
           label="Vencimento da venda"
+          type="date"
           value={date}
           required
           disabled={saving}

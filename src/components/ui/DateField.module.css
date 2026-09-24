@@ -1,6 +1,5 @@
 .field {
   display: grid;
-  align-content: start;
   gap: 6px;
   min-width: 0;
 }
@@ -45,8 +44,9 @@
 }
 .readableDate {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.4;
+  text-transform: capitalize;
 }
 @media (max-width: 760px) {
   .controlWrap input,

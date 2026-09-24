@@ -52,26 +52,6 @@
 .fullWidth {
   width: 100%;
 }
-.button > svg {
-  flex-shrink: 0;
-}
-.button:active:not(:disabled):not(:focus-visible) {
-  transform: scale(0.98);
-}
-.spinner {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: spin 700ms linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 @media (max-width: 760px) {
   .button {
     min-height: 46px;
