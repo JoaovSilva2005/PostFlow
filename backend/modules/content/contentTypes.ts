@@ -8,16 +8,26 @@ export const CONTENT_PLATFORMS = SOCIAL_PLATFORMS
 
 export type ContentPlatform = (typeof CONTENT_PLATFORMS)[number]
 
+export interface BrandContext {
+  name: string
+  segment: string
+  toneOfVoice: string
+  primaryColor: string
+  description?: string
+  targetAudience?: string
+  productsOrServices?: string
+  differentials?: string
+  contentGoals?: string
+  keywords?: string
+  avoidTopics?: string
+  defaultCta?: string
+}
+
 export interface ContentGenerationInput {
   prompt: string
   platform: ContentPlatform
   date: string
-  brand: {
-    name: string
-    segment: string
-    toneOfVoice: string
-    primaryColor: string
-  } | null
+  brand: BrandContext | null
   history: { role: 'user' | 'assistant'; content: string }[]
   previousDraft: GeneratedDraft | null
   format?: ContentFormat

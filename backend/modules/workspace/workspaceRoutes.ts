@@ -20,6 +20,14 @@ const brandSchema = z
     segment: z.string().trim().min(2).max(120),
     toneOfVoice: z.string().trim().min(2).max(240),
     primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+    description: z.string().trim().max(600).optional(),
+    targetAudience: z.string().trim().max(400).optional(),
+    productsOrServices: z.string().trim().max(600).optional(),
+    differentials: z.string().trim().max(400).optional(),
+    contentGoals: z.string().trim().max(400).optional(),
+    keywords: z.string().trim().max(300).optional(),
+    avoidTopics: z.string().trim().max(300).optional(),
+    defaultCta: z.string().trim().max(180).optional(),
   })
   .strict()
 const draftSchema = z
@@ -74,12 +82,27 @@ function workspaceId(request: Parameters<RequestHandler>[0]) {
   return request.workspaceContext.workspaceId
 }
 function dbBrand(row: z.infer<typeof brandSchema>) {
-  return {
+  const brand: Record<string, string> = {
     name: row.name,
     segment: row.segment,
     tone_of_voice: row.toneOfVoice,
     primary_color: row.primaryColor,
   }
+  const optionalFields: Array<[keyof typeof row, string]> = [
+    ['description', 'description'],
+    ['targetAudience', 'target_audience'],
+    ['productsOrServices', 'products_or_services'],
+    ['differentials', 'differentials'],
+    ['contentGoals', 'content_goals'],
+    ['keywords', 'keywords'],
+    ['avoidTopics', 'avoid_topics'],
+    ['defaultCta', 'default_cta'],
+  ]
+  for (const [field, column] of optionalFields) {
+    const value = row[field]
+    if (value !== undefined) brand[column] = value
+  }
+  return brand
 }
 async function platformId(supabase: SupabaseClient, platform: string) {
   const { data, error } = await supabase
@@ -167,6 +190,14 @@ export function createWorkspaceRouter(
         segment: data.segment,
         toneOfVoice: data.tone_of_voice,
         primaryColor: data.primary_color,
+        description: data.description ?? '',
+        targetAudience: data.target_audience ?? '',
+        productsOrServices: data.products_or_services ?? '',
+        differentials: data.differentials ?? '',
+        contentGoals: data.content_goals ?? '',
+        keywords: data.keywords ?? '',
+        avoidTopics: data.avoid_topics ?? '',
+        defaultCta: data.default_cta ?? '',
       },
     })
   })
@@ -185,6 +216,14 @@ export function createWorkspaceRouter(
         segment: data.segment,
         toneOfVoice: data.tone_of_voice,
         primaryColor: data.primary_color,
+        description: data.description ?? '',
+        targetAudience: data.target_audience ?? '',
+        productsOrServices: data.products_or_services ?? '',
+        differentials: data.differentials ?? '',
+        contentGoals: data.content_goals ?? '',
+        keywords: data.keywords ?? '',
+        avoidTopics: data.avoid_topics ?? '',
+        defaultCta: data.default_cta ?? '',
       },
     })
   })

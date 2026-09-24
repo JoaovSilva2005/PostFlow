@@ -57,6 +57,18 @@ assert.match(
   /schedule_timezone text not null default 'America\/Sao_Paulo'/,
 )
 assert.match(schema, /format_data jsonb/)
+for (const column of [
+  'description',
+  'target_audience',
+  'products_or_services',
+  'differentials',
+  'content_goals',
+  'keywords',
+  'avoid_topics',
+  'default_cta',
+]) {
+  assert.match(schema, new RegExp(`${column} text not null default ''`))
+}
 assert.match(
   contentPlannerMigration,
   /create or replace function public\.create_post_drafts_batch/,

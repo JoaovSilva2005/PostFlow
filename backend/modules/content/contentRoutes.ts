@@ -35,19 +35,29 @@ const generatedDraftSchema = z.object({
     .optional(),
 })
 
+const brandContextSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120),
+    segment: z.string().trim().max(160),
+    toneOfVoice: z.string().trim().max(120),
+    primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    description: z.string().trim().max(600).optional(),
+    targetAudience: z.string().trim().max(400).optional(),
+    productsOrServices: z.string().trim().max(600).optional(),
+    differentials: z.string().trim().max(400).optional(),
+    contentGoals: z.string().trim().max(400).optional(),
+    keywords: z.string().trim().max(300).optional(),
+    avoidTopics: z.string().trim().max(300).optional(),
+    defaultCta: z.string().trim().max(180).optional(),
+  })
+  .strict()
+
 const requestSchema = z
   .object({
     prompt: z.string().trim().min(3).max(4000),
     platform: z.enum(CONTENT_PLATFORMS),
     date: z.iso.date(),
-    brand: z
-      .object({
-        name: z.string().trim().min(2).max(120),
-        segment: z.string().trim().max(160),
-        toneOfVoice: z.string().trim().max(120),
-        primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-      })
-      .nullable(),
+    brand: brandContextSchema.nullable(),
     history: z
       .array(
         z.object({
@@ -77,14 +87,7 @@ const batchRequestSchema = z
       .min(1)
       .max(CONTENT_PLATFORMS.length)
       .refine((platforms) => new Set(platforms).size === platforms.length),
-    brand: z
-      .object({
-        name: z.string().trim().min(2).max(120),
-        segment: z.string().trim().max(160),
-        toneOfVoice: z.string().trim().max(120),
-        primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-      })
-      .nullable(),
+    brand: brandContextSchema.nullable(),
   })
   .strict()
 

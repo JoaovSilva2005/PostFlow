@@ -16,6 +16,15 @@ export interface BrandProfile {
   segment: string
   toneOfVoice: string
   primaryColor: string
+  /** Contexto amplo da marca usado para orientar a geração de conteúdo. */
+  description?: string
+  targetAudience?: string
+  productsOrServices?: string
+  differentials?: string
+  contentGoals?: string
+  keywords?: string
+  avoidTopics?: string
+  defaultCta?: string
 }
 
 export interface PostDraft {

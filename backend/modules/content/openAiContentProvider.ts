@@ -263,7 +263,7 @@ export class OpenAiContentProvider implements ContentProvider {
             {
               role: 'system',
               content:
-                'Você é o redator do PostFlow. Gere conteúdo em português brasileiro, fiel à marca, sem inventar fatos, promoções ou resultados. Retorne somente o JSON solicitado.',
+                'Você é o redator do PostFlow. Gere conteúdo em português brasileiro, fiel à marca, sem inventar fatos, promoções ou resultados. Use os campos de contexto da marca como briefing editorial quando estiverem preenchidos; trate público, objetivos, palavras-chave e restrições como regras de orientação. Se algum campo estiver vazio, não invente informação para preenchê-lo. Retorne somente o JSON solicitado.',
             },
             {
               role: 'user',
@@ -368,6 +368,7 @@ export class OpenAiContentProvider implements ContentProvider {
               content: [
                 'Você é o redator do PostFlow. Escreva em português brasileiro e adapte cada rascunho à rede indicada.',
                 'A marca pode pertencer a qualquer segmento. Use segmento e tom apenas como contexto; nunca invente fatos, preços, promoções, depoimentos ou resultados.',
+                'Use descrição, público, produtos ou serviços, diferenciais, objetivos, palavras-chave, temas a evitar e chamada padrão da marca como briefing quando estiverem preenchidos. Não invente dados para completar campos vazios.',
                 'Produza uma variação distinta para cada item. Não repita a mesma legenda com apenas uma troca de rede ou data.',
                 'Respeite o limite de texto da rede: X / Twitter até 280 caracteres; demais canais, legendas concisas e adequadas ao formato.',
                 'Os resultados são rascunhos para revisão, não afirmações de que foram publicados.',
@@ -513,6 +514,9 @@ export class OpenAiContentProvider implements ContentProvider {
               `Marca: ${input.brand?.name ?? 'marca independente'}.`,
               `Segmento: ${input.brand?.segment ?? 'não informado'}.`,
               `Tom: ${input.brand?.toneOfVoice ?? 'profissional e próximo'}.`,
+              `Contexto da marca: ${input.brand?.description ?? 'não informado'}.`,
+              `Público: ${input.brand?.targetAudience ?? 'não informado'}.`,
+              `Diferenciais: ${input.brand?.differentials ?? 'não informado'}.`,
               `Pedido do usuário: ${input.prompt}.`,
               `Ideia central da arte: ${visualText}.`,
             ].join('\n'),
