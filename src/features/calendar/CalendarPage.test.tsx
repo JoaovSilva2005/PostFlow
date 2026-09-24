@@ -44,6 +44,20 @@ const drafts: PostDraft[] = [
 ]
 
 describe('CalendarPage', () => {
+  it('retorna ao mês atual pela ação Hoje', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    renderApp('/calendar', createTestRepository({ drafts }))
+    await screen.findByRole('button', { name: /Café especial/ })
+    expect(screen.getByRole('button', { name: 'Hoje' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Próximo mês' }))
+    expect(screen.getByRole('button', { name: 'Hoje' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Hoje' }))
+    expect(screen.getByRole('button', { name: 'Hoje' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /Café especial/ }),
+    ).toBeInTheDocument()
+  })
   it('abre a sidebar de geração e fecha com Escape e backdrop', async () => {
     authenticateDemo()
     const user = userEvent.setup()

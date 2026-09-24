@@ -89,6 +89,13 @@ const summary = {
   pendingExpenses: 650,
   pendingCount: 1,
 }
+const billingPlan = {
+  id: 'professional',
+  code: 'professional',
+  name: 'Profissional',
+  price: 79.9,
+  limits: { text: 100, image: 30 },
+}
 
 async function mockNetwork(page, name) {
   const state = { batchInput: null, generatedBatch: null, persistedBatch: null }
@@ -96,7 +103,7 @@ async function mockNetwork(page, name) {
     const path = new URL(route.request().url()).pathname
     let data
     if (path.includes('/auth/')) {
-      if (name === 'login')
+      if (name === 'login' || name === 'register')
         return route.fulfill({
           status: 401,
           json: { error: 'Sessão de teste anônima' },
@@ -136,6 +143,32 @@ async function mockNetwork(page, name) {
         visualText: draft.visual_text,
         color: draft.color,
       }))
+    else if (path.endsWith('/billing/plans')) data = [billingPlan]
+    else if (path.endsWith('/billing'))
+      data = {
+        workspaceId: 'workspace-qa',
+        demoMode: true,
+        plan: billingPlan,
+        subscription: {
+          id: 'subscription-qa',
+          status: 'active',
+          currentPeriodStart: '2026-09-01',
+          currentPeriodEnd: '2026-09-30',
+        },
+        usage: { period: '2026-09', textUsed: 18, imageUsed: 4 },
+      }
+    else if (path.endsWith('/invoices'))
+      data = [
+        {
+          id: 'invoice-qa',
+          number: 'PF-2026-0001',
+          amount: 79.9,
+          status: 'pending',
+          dueDate: '2026-09-30',
+          paidAt: null,
+          receipt: null,
+        },
+      ]
     else if (path.endsWith('/finance/summary')) data = summary
     else if (path.endsWith('/finance/transactions')) data = transactions
     else if (path.endsWith('/content/generate-batch')) {
@@ -252,7 +285,7 @@ async function mockNetwork(page, name) {
       .map(Number)) {
       for (const name of (
         process.env.QA_PAGES ||
-        'login,brand,chat,calendar,finance,fiscal,admin-plans'
+        'login,register,brand,chat,calendar,billing,finance,fiscal,admin-plans'
       ).split(',')) {
         const page = await browser.newPage({
           viewport: { width, height: 900 },
@@ -262,7 +295,12 @@ async function mockNetwork(page, name) {
         const errors = []
         page.on('pageerror', (error) => errors.push(error.message))
         const mock = await mockNetwork(page, name)
-        const routePath = name === 'admin-plans' ? 'admin/plans' : name
+        const routePath =
+          name === 'admin-plans'
+            ? 'admin/plans'
+            : name === 'register'
+              ? 'login'
+              : name
         console.log(`QA ${width}px · ${name}`)
         await page.goto('http://127.0.0.1:5173/' + routePath)
         try {
@@ -280,7 +318,14 @@ async function mockNetwork(page, name) {
           )
         }
         await page.evaluate(() => document.fonts.ready)
-        if (name !== 'login') {
+        if (name === 'register') {
+          await page
+            .getByRole('button', { name: 'Criar conta', exact: true })
+            .click()
+          await page.getByRole('heading', { name: 'Criar conta' }).waitFor()
+        }
+        if (name === 'billing') await page.getByText('PF-2026-0001').waitFor()
+        if (name !== 'login' && name !== 'register') {
           let navigation = page
           if (width <= 760) {
             await page.getByRole('button', { name: 'Abrir menu' }).click()
@@ -293,8 +338,35 @@ async function mockNetwork(page, name) {
             .getByRole('link', { name: 'Fiscal', exact: true })
             .waitFor()
           if (width <= 760) {
+            const closeNavigation = navigation.getByRole('button', {
+              name: 'Fechar navegação',
+            })
+            await closeNavigation.focus()
+            await page.keyboard.press('Shift+Tab')
+            assert.equal(
+              await navigation
+                .getByRole('button', { name: 'Sair', exact: true })
+                .evaluate((element) => element === document.activeElement),
+              true,
+              'menu: foco deve permanecer dentro do painel',
+            )
+            await page.keyboard.press('Tab')
+            assert.equal(
+              await closeNavigation.evaluate(
+                (element) => element === document.activeElement,
+              ),
+              true,
+            )
+            assert.equal(
+              await page.evaluate(() => document.body.style.overflow),
+              'hidden',
+            )
             await page.keyboard.press('Escape')
             await page.getByRole('button', { name: 'Abrir menu' }).waitFor()
+            assert.equal(
+              await page.evaluate(() => document.body.style.overflow),
+              '',
+            )
           }
         }
         if (name === 'finance')
@@ -521,6 +593,10 @@ async function mockNetwork(page, name) {
           )
           await page
             .getByText('Assinatura de ferramentas', { exact: true })
+            .waitFor()
+          await page.getByRole('button', { name: 'Limpar filtros' }).click()
+          await page
+            .getByText('Consultoria de conteúdo', { exact: true })
             .waitFor()
         }
         await page.close()

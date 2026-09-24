@@ -47,11 +47,15 @@
   margin: 0;
 }
 .formGrid {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px 16px;
 }
-.formGrid > :first-child,
+.formGrid > div:first-of-type,
 .colorField {
   grid-column: 1/-1;
 }
@@ -78,8 +82,8 @@
 .colors button {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   color: white;
   border: 3px solid var(--color-surface);
   border-radius: 9px;
@@ -90,9 +94,8 @@
 }
 .colorValue {
   margin: 12px 0 0;
-  font-family: monospace;
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .formFooter {
   display: flex;
@@ -108,7 +111,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-muted);
 }
 .formFooter p svg {
@@ -186,7 +189,7 @@
 }
 .exampleHeader small {
   color: var(--color-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .examplePost > p {
   color: #c4c9cc;
@@ -198,7 +201,7 @@
   color: var(--color-primary);
 }
 .previewHint {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-muted);
   margin: 20px 0 0;
 }

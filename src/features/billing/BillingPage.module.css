@@ -19,6 +19,7 @@
   align-items: center;
   gap: 8px;
   color: var(--color-muted);
+  min-height: 44px;
 }
 .offer,
 .checkout {
@@ -197,19 +198,18 @@
   font-size: 18px;
   margin: 4px 0 0;
 }
-.sectionHeader button,
-.invoice button {
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text);
-  padding: 8px 10px;
-}
 .invoiceActions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+.invoiceActions > button {
+  min-height: 44px;
+}
+.invoiceActions > button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 .usageGrid {
   display: grid;
@@ -240,6 +240,7 @@
   padding: 14px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
+  min-width: 0;
 }
 .invoice > div {
   display: flex;
@@ -249,6 +250,10 @@
 .invoice > div > div {
   display: grid;
   gap: 4px;
+}
+.invoice > strong {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .status {
   padding: 5px 8px;
@@ -266,9 +271,6 @@
   background: #292b2d;
   color: #a0a4a8;
 }
-.invoice button:disabled {
-  opacity: 0.45;
-}
 @media (max-width: 900px) {
   .offer {
     grid-template-columns: 1fr;
@@ -282,7 +284,10 @@
     grid-template-columns: 1fr;
   }
   .summary {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .summary article:last-child {
+    grid-column: 1 / -1;
   }
   .usageGrid {
     grid-template-columns: 1fr;
@@ -292,6 +297,10 @@
   }
   .invoice > strong {
     justify-self: start;
+  }
+  .invoiceActions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
   }
 }
 @media (max-width: 560px) {
@@ -311,6 +320,9 @@
   .panel {
     padding: 16px;
   }
+  .summary {
+    grid-template-columns: 1fr;
+  }
   .invoice {
     grid-template-columns: 1fr;
   }
@@ -318,6 +330,11 @@
     justify-self: start;
   }
   .invoiceActions {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+  .invoiceActions > button {
+    width: 100%;
   }
 }

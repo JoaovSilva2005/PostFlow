@@ -1,4 +1,5 @@
 import { FileDown, ShieldAlert, X } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
 import type { BillingInvoice } from '../../domain/billing'
 import styles from './SimulatedServiceInvoice.module.css'
 
@@ -32,14 +33,18 @@ export function SimulatedServiceInvoice({
       aria-label="Nota Fiscal de Serviço eletrônica simulada"
     >
       <div className={styles.actions}>
-        <button type="button" onClick={() => window.print()}>
+        <Button
+          variant="secondary"
+          type="button"
+          onClick={() => window.print()}
+        >
           <FileDown size={16} aria-hidden="true" />
           Imprimir ou salvar em PDF
-        </button>
-        <button type="button" onClick={onClose}>
+        </Button>
+        <Button variant="ghost" type="button" onClick={onClose}>
           <X size={16} aria-hidden="true" />
           Fechar
-        </button>
+        </Button>
       </div>
 
       <article className={styles.paper}>

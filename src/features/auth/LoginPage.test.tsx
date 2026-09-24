@@ -10,6 +10,10 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar no PostFlow' }))
     expect(screen.getByText('Informe seu e-mail.')).toBeInTheDocument()
     expect(screen.getByText('Informe sua senha.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^E-mail/)).toHaveFocus()
+    expect(screen.getByLabelText(/^E-mail/)).toHaveAccessibleDescription(
+      'Informe seu e-mail.',
+    )
 
     await user.type(screen.getByLabelText(/^E-mail/), 'aluno@postflow.com')
     await user.type(screen.getByLabelText(/^Senha/), '123456')

@@ -5,6 +5,8 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-color: #535b60 var(--color-background);
+  scrollbar-width: thin;
 }
 html {
   min-width: 320px;
@@ -40,6 +42,7 @@ button:disabled {
 }
 a {
   color: inherit;
+  text-underline-offset: 3px;
 }
 h1,
 h2,
@@ -63,6 +66,16 @@ select,
 textarea {
   min-width: 0;
 }
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-placeholder);
+  opacity: 1;
+}
+time,
+td,
+input[type='number'] {
+  font-variant-numeric: tabular-nums;
+}
 ::selection {
   background: #79e2ae40;
 }
@@ -76,7 +89,6 @@ textarea {
   caret-color: var(--color-primary);
 }
 input[type='date']::-webkit-calendar-picker-indicator {
-  filter: invert(1);
   opacity: 0.75;
 }
 .sr-only {

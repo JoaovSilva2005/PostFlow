@@ -44,14 +44,17 @@ export function BrandPage() {
     value: BrandProfile[Key],
   ) {
     setHasChanges(true)
+    if (field === 'name') setError('')
     setForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    if (isSaving) return
 
     if (!form.name.trim()) {
       setError('Informe o nome da marca.')
+      document.getElementById('brand-name')?.focus()
       return
     }
 
@@ -63,7 +66,9 @@ export function BrandPage() {
       await saveBrand({ ...form, name: form.name.trim() })
       navigate('/chat')
     } catch {
-      setSaveError('Não foi possível salvar a marca no Supabase.')
+      setSaveError(
+        'Não foi possível salvar a marca. Verifique sua conexão e tente novamente. Seus ajustes continuam aqui.',
+      )
     } finally {
       setIsSaving(false)
     }
@@ -91,7 +96,8 @@ export function BrandPage() {
             </div>
           </div>
 
-          <div className={styles.formGrid}>
+          <fieldset className={styles.formGrid} disabled={isSaving}>
+            <legend className="sr-only">Informações da marca</legend>
             <TextField
               label="Nome da marca"
               name="brand-name"
@@ -108,6 +114,7 @@ export function BrandPage() {
                 updateFormField('segment', event.target.value)
               }
               options={BRAND_SEGMENT_OPTIONS}
+              hint="Escolha o segmento mais próximo da sua atividade."
             />
             <SelectField
               label="Tom de voz"
@@ -142,14 +149,14 @@ export function BrandPage() {
                 {form.primaryColor} · Cor aplicada à prévia
               </p>
             </fieldset>
-          </div>
+          </fieldset>
 
           <div className={styles.formFooter}>
             <p>
               <Sparkles size={14} /> Você poderá alterar essas informações
               quando quiser.
             </p>
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" loading={isSaving}>
               {isSaving ? 'Salvando...' : 'Salvar e continuar'}
             </Button>
           </div>

@@ -206,6 +206,7 @@ export function LoginPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    if (isBusy) return
     const nextErrors =
       mode === 'register'
         ? validateRegistration({
@@ -221,6 +222,12 @@ export function LoginPage() {
     setErrors(nextErrors)
     setFeedback(null)
     if (Object.keys(nextErrors).length > 0) {
+      const firstInvalid = Array.from(
+        event.currentTarget.querySelectorAll<
+          HTMLInputElement | HTMLSelectElement
+        >('input, select'),
+      ).find((field) => nextErrors[field.name as keyof FormErrors])
+      firstInvalid?.focus()
       return
     }
 
@@ -270,6 +277,7 @@ export function LoginPage() {
 
     if (emailError) {
       setErrors((current) => ({ ...current, email: emailError }))
+      document.getElementById('email')?.focus()
       return
     }
 
@@ -333,6 +341,7 @@ export function LoginPage() {
               <TextField
                 label="Nome completo"
                 name="displayName"
+                disabled={isBusy}
                 autoComplete="name"
                 placeholder="Como devemos chamar você?"
                 value={displayName}
@@ -344,6 +353,7 @@ export function LoginPage() {
               <TextField
                 label="Marca ou empresa"
                 name="brandName"
+                disabled={isBusy}
                 autoComplete="organization"
                 placeholder="Ex.: Café Aurora"
                 value={brandName}
@@ -355,6 +365,7 @@ export function LoginPage() {
               <SelectField
                 label="Segmento"
                 name="segment"
+                disabled={isBusy}
                 value={segment}
                 onChange={(event) => setSegment(event.target.value)}
                 error={errors.segment}
@@ -367,6 +378,7 @@ export function LoginPage() {
             <TextField
               label="E-mail"
               name="email"
+              disabled={isBusy}
               type="email"
               autoComplete="email"
               placeholder="voce@empresa.com"
@@ -377,6 +389,7 @@ export function LoginPage() {
             <PasswordField
               label="Senha"
               name="password"
+              disabled={isBusy}
               autoComplete={
                 mode === 'login' ? 'current-password' : 'new-password'
               }
@@ -394,6 +407,7 @@ export function LoginPage() {
               <PasswordField
                 label="Confirmar senha"
                 name="confirmPassword"
+                disabled={isBusy}
                 autoComplete="new-password"
                 placeholder="Repita sua senha"
                 value={confirmPassword}
@@ -414,7 +428,7 @@ export function LoginPage() {
               </button>
             </div>
           )}
-          <Button fullWidth type="submit" disabled={isBusy}>
+          <Button fullWidth type="submit" loading={isBusy}>
             {isBusy
               ? 'Aguarde...'
               : mode === 'login'
@@ -422,7 +436,10 @@ export function LoginPage() {
                 : 'Criar minha conta'}
           </Button>
           {feedback && (
-            <p className={styles[feedback.type]} role="status">
+            <p
+              className={styles[feedback.type]}
+              role={feedback.type === 'error' ? 'alert' : 'status'}
+            >
               {feedback.message}
             </p>
           )}
@@ -430,7 +447,7 @@ export function LoginPage() {
             {mode === 'login'
               ? 'Ainda não tem uma conta?'
               : 'Já tem uma conta?'}{' '}
-            <button type="button" onClick={toggleMode}>
+            <button type="button" onClick={toggleMode} disabled={isBusy}>
               {mode === 'login' ? 'Criar conta' : 'Entrar'}
             </button>
           </p>

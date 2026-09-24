@@ -1,0 +1,12 @@
+.notice {
+  max-width: 760px;
+  margin: 4px 0 24px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.notice strong {
+  color: var(--color-text);
+  font-weight: 600;
+}

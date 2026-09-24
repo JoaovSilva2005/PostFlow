@@ -247,6 +247,12 @@
 }
 
 .card {
+  color-scheme: light;
+  --color-primary: #27704d;
+  --color-primary-dark: #32845d;
+  --color-on-primary: #ffffff;
+  --color-focus-ring: #27704d30;
+  --color-placeholder: #68706b;
   --color-text: #151816;
   --color-muted: #68706b;
   --color-border: #dfe4e1;
@@ -328,7 +334,11 @@
 }
 
 .card input::placeholder {
-  color: #929a95;
+  color: var(--color-placeholder);
+}
+.card input[aria-invalid='true'],
+.card select[aria-invalid='true'] {
+  border-color: var(--color-danger);
 }
 
 .fields + button {
@@ -343,6 +353,7 @@
 
 .formMeta button,
 .signup button {
+  min-height: 44px;
   padding: 0;
   color: #276b4a;
   border: 0;
@@ -372,10 +383,10 @@
   max-width: 330px;
   margin: 22px auto 0;
   padding-top: 18px;
-  color: #858c88;
+  color: #68706b;
   border-top: 1px solid #e4e8e5;
   text-align: center;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
 }
 

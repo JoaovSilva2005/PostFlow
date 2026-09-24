@@ -14,6 +14,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import { DateField } from '../../components/ui/DateField'
+import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import { PostPreview } from './PostPreview'
 import {
   draftSchema,
@@ -163,14 +164,14 @@ export function ChatPage({
       >
         <span className={styles.mode}>
           <span />
-          {service.mode === 'demo' ? 'Modo demonstrativo' : 'Geração via API'}
+          {service.mode === 'demo'
+            ? 'Modo demonstrativo'
+            : 'Assistente de conteúdo'}
         </span>
       </PageHeader>
       <div className={styles.brief}>
         <div className={styles.brandContext}>
-          <span
-            className={styles.brandMark}
-          >
+          <span className={styles.brandMark}>
             {brand?.name.slice(0, 1) || 'P'}
           </span>
           <div>
@@ -182,21 +183,28 @@ export function ChatPage({
                 'Configure a marca para personalizar e salvar seus posts.'}
             </span>
           </div>
-          <Link to="/brand" aria-label="Configurar marca" title="Configurar marca">
+          <Link
+            to="/brand"
+            aria-label="Configurar marca"
+            title="Configurar marca"
+          >
             <ArrowUpRight size={18} />
           </Link>
         </div>
         <label>
           Rede social
-          <select
-            value={platform}
-            disabled={busy}
-            onChange={(e) => setPlatform(e.target.value as Platform)}
-          >
-            {PLATFORMS.map((name) => (
-              <option key={name}>{name}</option>
-            ))}
-          </select>
+          <span className={styles.platformControl}>
+            <SocialPlatformIcon platform={platform} size={18} />
+            <select
+              value={platform}
+              disabled={busy}
+              onChange={(e) => setPlatform(e.target.value as Platform)}
+            >
+              {PLATFORMS.map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
+          </span>
         </label>
         <DateField
           label="Data sugerida"

@@ -7,12 +7,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode
   variant?: ButtonVariant
   fullWidth?: boolean
+  loading?: boolean
 }
 
 export function Button({
   children,
   variant = 'primary',
   fullWidth = false,
+  loading = false,
+  disabled,
   className = '',
   ...props
 }: ButtonProps) {
@@ -26,7 +29,13 @@ export function Button({
     .join(' ')
 
   return (
-    <button className={buttonClasses} {...props}>
+    <button
+      className={buttonClasses}
+      {...props}
+      disabled={disabled || loading}
+      aria-busy={loading || props['aria-busy']}
+    >
+      {loading && <span className={styles.spinner} aria-hidden="true" />}
       {children}
     </button>
   )

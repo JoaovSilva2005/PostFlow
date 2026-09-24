@@ -503,6 +503,11 @@ export function BillingPage() {
               </div>
               <strong>{invoices.length}</strong>
             </div>
+            {paymentError ? (
+              <p className={styles.inlineError} role="alert">
+                {paymentError}
+              </p>
+            ) : null}
             {invoices.length === 0 ? (
               <p className={styles.empty}>
                 Nenhuma fatura emitida para este workspace.
@@ -526,33 +531,36 @@ export function BillingPage() {
                     <strong>{currency(invoice.amount)}</strong>
                     <div className={styles.invoiceActions}>
                       {invoice.status === 'pending' && canManageBilling ? (
-                        <button
-                          type="button"
+                        <Button
+                          variant="secondary"
                           onClick={() => void payInvoice(invoice)}
                           disabled={payingInvoiceId === invoice.id}
+                          aria-busy={payingInvoiceId === invoice.id}
                         >
-                          {payingInvoiceId === invoice.id
-                            ? 'Processando...'
-                            : 'Pagar em demonstração'}
-                        </button>
+                          {payingInvoiceId === invoice.id ? (
+                            <>
+                              <LoaderCircle size={15} aria-hidden="true" />
+                              Processando...
+                            </>
+                          ) : (
+                            'Pagar em demonstração'
+                          )}
+                        </Button>
                       ) : null}
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
                         onClick={() => setSelectedInvoice(invoice)}
                         disabled={!invoice.receipt}
                       >
-                        Ver nota simulada
-                      </button>
+                        {invoice.receipt
+                          ? 'Ver nota simulada'
+                          : 'Nota simulada indisponível'}
+                      </Button>
                     </div>
                   </article>
                 ))}
               </div>
             )}
-            {paymentError ? (
-              <p className={styles.inlineError} role="alert">
-                {paymentError}
-              </p>
-            ) : null}
           </section>
         </>
       ) : null}

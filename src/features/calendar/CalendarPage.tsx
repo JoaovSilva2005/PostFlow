@@ -60,7 +60,7 @@ export function CalendarPage() {
   })
   const [selectedDraft, setSelectedDraft] = useState<PostDraft | null>(null)
   const [view, setView] = useState<'month' | 'list'>(() =>
-    window.matchMedia?.('(max-width: 560px)').matches ? 'list' : 'month',
+    window.matchMedia?.('(max-width: 1100px)').matches ? 'list' : 'month',
   )
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false)
   const [generatorPrompt, setGeneratorPrompt] = useState('')
@@ -75,7 +75,11 @@ export function CalendarPage() {
     .filter((draft) =>
       draft.date.startsWith(toDateKey(visibleMonth).slice(0, 7)),
     )
-    .sort((left, right) => left.date.localeCompare(right.date))
+    .sort((left, right) =>
+      `${left.date} ${left.time ?? ''}`.localeCompare(
+        `${right.date} ${right.time ?? ''}`,
+      ),
+    )
   const calendarCells = useMemo(
     () => buildCalendar(visibleMonth.getFullYear(), visibleMonth.getMonth()),
     [visibleMonth],
@@ -184,6 +188,10 @@ export function CalendarPage() {
       0,
     )
   }, [])
+  const currentMonth = new Date()
+  const isCurrentMonth =
+    visibleMonth.getMonth() === currentMonth.getMonth() &&
+    visibleMonth.getFullYear() === currentMonth.getFullYear()
 
   return (
     <AppShell>
@@ -191,7 +199,11 @@ export function CalendarPage() {
         title="Agenda de conteúdo"
         description="Encontre seus posts por data e revise cada rascunho."
       >
-        <Button type="button" onClick={() => navigate('/chat')}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => navigate('/chat')}
+        >
           <Plus size={17} /> Criar no estúdio
         </Button>
       </PageHeader>
@@ -236,6 +248,11 @@ export function CalendarPage() {
         </div>
       </section>
 
+      {generationNotice ? (
+        <p className={styles.savedNotice} role="status">
+          {generationNotice}
+        </p>
+      ) : null}
       {location.state?.createdDraft ? (
         <p className={styles.savedNotice} role="status">
           Rascunho adicionado à agenda. Selecione o post para fazer novos
@@ -259,11 +276,27 @@ export function CalendarPage() {
             >
               <ChevronRight size={17} />
             </button>
-            <h2>
+            <h2 aria-live="polite">
               {MONTH_NAMES[visibleMonth.getMonth()]}{' '}
               <span>{visibleMonth.getFullYear()}</span>
             </h2>
           </div>
+          <button
+            className={styles.todayButton}
+            type="button"
+            disabled={isCurrentMonth}
+            onClick={() =>
+              setVisibleMonth(
+                new Date(
+                  currentMonth.getFullYear(),
+                  currentMonth.getMonth(),
+                  1,
+                ),
+              )
+            }
+          >
+            Hoje
+          </button>
           <div className={styles.legend}>
             <strong>
               {monthDrafts.length}{' '}
@@ -311,7 +344,10 @@ export function CalendarPage() {
                     key={dateKey}
                     className={`${styles.day} ${!inCurrentMonth ? styles.outside : ''}`}
                   >
-                    <span className={isToday ? styles.today : ''}>
+                    <span
+                      className={isToday ? styles.today : ''}
+                      aria-current={isToday ? 'date' : undefined}
+                    >
                       {date.getDate()}
                     </span>
                     <div className={styles.dayDrafts}>
@@ -321,6 +357,7 @@ export function CalendarPage() {
                           type="button"
                           className={styles.draft}
                           data-status={draft.status}
+                          title={`${draft.title} · ${draft.platform}${draft.time ? ` · ${draft.time}` : ''} · ${STATUS_LABELS[draft.status]}`}
                           onClick={() => setSelectedDraft(draft)}
                         >
                           <span />
@@ -347,8 +384,8 @@ export function CalendarPage() {
             </div>
             {!monthDrafts.length && (
               <div className={styles.monthEmpty}>
-                Nenhum post neste mês. Use “Criar no estúdio” para começar um
-                rascunho.
+                Nenhum post neste mês. Descreva uma ideia acima e selecione
+                “Gerar conteúdo” para começar.
               </div>
             )}
           </>
@@ -404,11 +441,6 @@ export function CalendarPage() {
           onSave={handleSaveDraft}
           onDelete={handleDeleteDraft}
         />
-      ) : null}
-      {generationNotice ? (
-        <p className={styles.savedNotice} role="status">
-          {generationNotice}
-        </p>
       ) : null}
       {isGeneratorOpen ? (
         <GenerateContentSidebar
