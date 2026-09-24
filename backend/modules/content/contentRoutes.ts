@@ -41,6 +41,11 @@ const brandContextSchema = z
     segment: z.string().trim().max(160),
     toneOfVoice: z.string().trim().max(120),
     primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    colorPalette: z
+      .array(z.string().regex(/^#[0-9a-fA-F]{6}$/))
+      .min(1)
+      .max(5)
+      .optional(),
     description: z.string().trim().max(600).optional(),
     targetAudience: z.string().trim().max(400).optional(),
     productsOrServices: z.string().trim().max(600).optional(),

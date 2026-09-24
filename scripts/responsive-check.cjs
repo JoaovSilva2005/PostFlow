@@ -396,6 +396,21 @@ async function mockNetwork(page, name) {
         }
         if (name === 'fiscal')
           await page.getByRole('button', { name: /Ver comprovante/ }).waitFor()
+        if (name === 'brand') {
+          await page.getByRole('tab', { name: /Contexto da IA/ }).click()
+          await page
+            .getByLabel('O que a marca faz?')
+            .fill('Uma marca com uma proposta clara.')
+          await page.getByRole('tab', { name: /Direção editorial/ }).click()
+          await page
+            .getByLabel('Chamada para ação padrão')
+            .fill('Conheça a marca')
+          await page.getByRole('tab', { name: /Essencial/ }).click()
+          await page.getByRole('button', { name: 'Adicionar cor' }).click()
+          await page
+            .getByRole('textbox', { name: 'Cor de apoio 1', exact: true })
+            .waitFor()
+        }
         assert.deepEqual(errors, [], name + ' runtime errors')
         if (process.env.QA_DEBUG) {
           console.log(

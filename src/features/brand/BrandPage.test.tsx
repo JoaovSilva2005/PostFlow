@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
 
@@ -12,17 +12,18 @@ describe('BrandPage', () => {
       await screen.findByLabelText('Nome da marca'),
       'Café Aurora',
     )
+    fireEvent.change(screen.getByLabelText('Cor principal'), {
+      target: { value: '#123456' },
+    })
     await user.selectOptions(screen.getByLabelText('Tom de voz'), 'Inspirador')
-    await user.click(
-      screen.getByRole('button', { name: 'Selecionar cor #F97316' }),
-    )
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
     const saved = repository.snapshot().brand
     expect(saved).toMatchObject({
       name: 'Café Aurora',
       toneOfVoice: 'Inspirador',
-      primaryColor: '#F97316',
+      primaryColor: '#123456',
+      colorPalette: ['#123456', '#F97316', '#16A34A'],
     })
   })
 
@@ -35,6 +36,7 @@ describe('BrandPage', () => {
       await screen.findByLabelText('Nome da marca'),
       'Café Aurora',
     )
+    await user.click(screen.getByRole('tab', { name: /Contexto da IA/ }))
     await user.type(
       screen.getByLabelText('O que a marca faz?'),
       'Torrefação artesanal com cafés especiais e origem rastreável.',
@@ -47,9 +49,7 @@ describe('BrandPage', () => {
       screen.getByLabelText('Produtos ou serviços'),
       'Café em grãos, kits de degustação e assinatura mensal.',
     )
-    await user.click(
-      screen.getByRole('button', { name: /Direção editorial/ }),
-    )
+    await user.click(screen.getByRole('tab', { name: /Direção editorial/ }))
     await user.type(
       screen.getByLabelText('Chamada para ação padrão'),
       'Conheça os cafés no site',

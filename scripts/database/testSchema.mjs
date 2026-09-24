@@ -57,6 +57,11 @@ assert.match(
   /schedule_timezone text not null default 'America\/Sao_Paulo'/,
 )
 assert.match(schema, /format_data jsonb/)
+assert.match(
+  schema,
+  /color_palette jsonb not null default '\["#4F46E5"\]'::jsonb/,
+)
+assert.match(schema, /brands_color_palette_check check/)
 for (const column of [
   'description',
   'target_audience',

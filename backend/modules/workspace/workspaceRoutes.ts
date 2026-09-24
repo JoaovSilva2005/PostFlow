@@ -20,6 +20,11 @@ const brandSchema = z
     segment: z.string().trim().min(2).max(120),
     toneOfVoice: z.string().trim().min(2).max(240),
     primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+    colorPalette: z
+      .array(z.string().regex(/^#[0-9A-Fa-f]{6}$/))
+      .min(1)
+      .max(5)
+      .optional(),
     description: z.string().trim().max(600).optional(),
     targetAudience: z.string().trim().max(400).optional(),
     productsOrServices: z.string().trim().max(600).optional(),
@@ -82,12 +87,13 @@ function workspaceId(request: Parameters<RequestHandler>[0]) {
   return request.workspaceContext.workspaceId
 }
 function dbBrand(row: z.infer<typeof brandSchema>) {
-  const brand: Record<string, string> = {
+  const brand: Record<string, unknown> = {
     name: row.name,
     segment: row.segment,
     tone_of_voice: row.toneOfVoice,
     primary_color: row.primaryColor,
   }
+  if (row.colorPalette !== undefined) brand.color_palette = row.colorPalette
   const optionalFields: Array<[keyof typeof row, string]> = [
     ['description', 'description'],
     ['targetAudience', 'target_audience'],
@@ -190,6 +196,9 @@ export function createWorkspaceRouter(
         segment: data.segment,
         toneOfVoice: data.tone_of_voice,
         primaryColor: data.primary_color,
+        colorPalette: Array.isArray(data.color_palette)
+          ? data.color_palette
+          : [],
         description: data.description ?? '',
         targetAudience: data.target_audience ?? '',
         productsOrServices: data.products_or_services ?? '',
@@ -216,6 +225,9 @@ export function createWorkspaceRouter(
         segment: data.segment,
         toneOfVoice: data.tone_of_voice,
         primaryColor: data.primary_color,
+        colorPalette: Array.isArray(data.color_palette)
+          ? data.color_palette
+          : [],
         description: data.description ?? '',
         targetAudience: data.target_audience ?? '',
         productsOrServices: data.products_or_services ?? '',

@@ -368,7 +368,7 @@ export class OpenAiContentProvider implements ContentProvider {
               content: [
                 'Você é o redator do PostFlow. Escreva em português brasileiro e adapte cada rascunho à rede indicada.',
                 'A marca pode pertencer a qualquer segmento. Use segmento e tom apenas como contexto; nunca invente fatos, preços, promoções, depoimentos ou resultados.',
-                'Use descrição, público, produtos ou serviços, diferenciais, objetivos, palavras-chave, temas a evitar e chamada padrão da marca como briefing quando estiverem preenchidos. Não invente dados para completar campos vazios.',
+                'Use descrição, público, produtos ou serviços, diferenciais, objetivos, palavras-chave, temas a evitar, chamada padrão e paleta de cores da marca como briefing quando estiverem preenchidos. Não invente dados para completar campos vazios.',
                 'Produza uma variação distinta para cada item. Não repita a mesma legenda com apenas uma troca de rede ou data.',
                 'Respeite o limite de texto da rede: X / Twitter até 280 caracteres; demais canais, legendas concisas e adequadas ao formato.',
                 'Os resultados são rascunhos para revisão, não afirmações de que foram publicados.',
@@ -514,6 +514,7 @@ export class OpenAiContentProvider implements ContentProvider {
               `Marca: ${input.brand?.name ?? 'marca independente'}.`,
               `Segmento: ${input.brand?.segment ?? 'não informado'}.`,
               `Tom: ${input.brand?.toneOfVoice ?? 'profissional e próximo'}.`,
+              `Paleta de cores: ${(input.brand?.colorPalette ?? []).join(', ') || 'não informada'}.`,
               `Contexto da marca: ${input.brand?.description ?? 'não informado'}.`,
               `Público: ${input.brand?.targetAudience ?? 'não informado'}.`,
               `Diferenciais: ${input.brand?.differentials ?? 'não informado'}.`,

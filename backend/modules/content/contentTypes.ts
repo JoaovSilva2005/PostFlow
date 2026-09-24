@@ -13,6 +13,7 @@ export interface BrandContext {
   segment: string
   toneOfVoice: string
   primaryColor: string
+  colorPalette?: string[]
   description?: string
   targetAudience?: string
   productsOrServices?: string

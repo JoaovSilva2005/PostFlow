@@ -16,6 +16,7 @@ export interface BrandProfile {
   segment: string
   toneOfVoice: string
   primaryColor: string
+  colorPalette?: string[]
   /** Contexto amplo da marca usado para orientar a geração de conteúdo. */
   description?: string
   targetAudience?: string

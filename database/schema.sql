@@ -25,6 +25,7 @@ create table if not exists public.brands (
   segment text not null,
   tone_of_voice text not null,
   primary_color text not null default '#4F46E5',
+  color_palette jsonb not null default '["#4F46E5"]'::jsonb,
   description text not null default '',
   target_audience text not null default '',
   products_or_services text not null default '',
@@ -45,6 +46,10 @@ create table if not exists public.brands (
   ),
   constraint brands_primary_color_check check (
     primary_color ~ '^#[0-9A-Fa-f]{6}$'
+  ),
+  constraint brands_color_palette_check check (
+    jsonb_typeof(color_palette) = 'array'
+    and jsonb_array_length(color_palette) between 1 and 5
   )
 );
 
