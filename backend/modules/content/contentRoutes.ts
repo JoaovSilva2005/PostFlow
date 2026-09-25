@@ -4,6 +4,7 @@ import { HttpError } from '../../shared/HttpError.js'
 import type { ContentService } from './contentService.js'
 import {
   CONTENT_PLATFORMS,
+  type BatchContentGenerationInput,
   type ContentGenerationInput,
 } from './contentTypes.js'
 import { CONTENT_FORMATS } from '../../../shared/domain/contentFormats.js'
@@ -227,7 +228,7 @@ export function createContentRouter(
             { text: items.length, image: 0 },
             () =>
               service.generateBatch(
-                { ...parsed.data, items },
+                { ...parsed.data, items } as BatchContentGenerationInput,
                 abortController.signal,
               ),
           ),

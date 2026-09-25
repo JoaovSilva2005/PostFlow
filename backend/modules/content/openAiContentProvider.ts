@@ -471,7 +471,15 @@ export class OpenAiContentProvider implements ContentProvider {
           'O provedor não retornou todas as variações solicitadas.',
         )
       }
-      return parsed.data.items
+      return parsed.data.items.map((item) => {
+        if (item.formatData === undefined) {
+          throw new HttpError(
+            502,
+            'O provedor retornou uma variação sem os dados do formato.',
+          )
+        }
+        return { ...item, formatData: item.formatData }
+      })
     } catch (error) {
       if (error instanceof HttpError) throw error
       if (signal?.aborted)
