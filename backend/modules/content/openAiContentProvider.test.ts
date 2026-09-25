@@ -15,6 +15,7 @@ const input = {
   history: [],
   previousDraft: null,
 }
+const qualityInput = { ...input, imageTier: 'quality' as const }
 
 const batchInput = {
   prompt: 'Fale sobre café especial',
@@ -98,6 +99,34 @@ describe('OpenAiContentProvider', () => {
       quality: 'high',
       output_format: 'webp',
       n: 1,
+    })
+  })
+
+  it('usa GPT-6 Luna e Flare por padrão e permite escolher Sunburst no servidor', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(textResponse())
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [{ b64_json: 'aW1hZ2U=' }] })),
+      )
+      .mockResolvedValueOnce(textResponse())
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [{ b64_json: 'aW1hZ2U=' }] })),
+      )
+    vi.stubGlobal('fetch', fetch)
+    const provider = new OpenAiContentProvider(() => 'test-key', 'gpt-6-luna')
+
+    await provider.generate(input)
+    await provider.generate(qualityInput)
+
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toMatchObject({
+      model: 'gpt-6-luna',
+    })
+    expect(JSON.parse(String(fetch.mock.calls[1]?.[1]?.body))).toMatchObject({
+      model: 'gpt-image-2.5-flare',
+    })
+    expect(JSON.parse(String(fetch.mock.calls[3]?.[1]?.body))).toMatchObject({
+      model: 'gpt-image-2.5-sunburst',
     })
   })
 

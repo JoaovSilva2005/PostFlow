@@ -15,6 +15,7 @@ export { localDate } from '../../domain/dates'
 
 export const PLATFORMS = SOCIAL_PLATFORMS
 export type Platform = (typeof PLATFORMS)[number]
+export type ImageGenerationTier = 'standard' | 'quality'
 export { CONTENT_FORMATS, type ContentFormat, type ContentFormatData }
 export interface ConversationMessage {
   id: string
@@ -29,6 +30,7 @@ export interface ContentRequest {
   brand: BrandProfile | null
   history: Pick<ConversationMessage, 'role' | 'content'>[]
   previousDraft: PostDraft | null
+  imageTier?: ImageGenerationTier
   format?: ContentFormat
   formatData?: ContentFormatData
   persona?: string
@@ -254,12 +256,18 @@ export const demoGenerationService: GenerationService = {
 export const apiGenerationService: GenerationService = {
   mode: 'api',
   async generate(request, signal) {
-    const { workspaceId, previousDraft, ...requestWithoutWorkspace } = request
+    const {
+      workspaceId,
+      previousDraft,
+      imageTier = 'standard',
+      ...requestWithoutWorkspace
+    } = request
     const contentRequest = {
       ...requestWithoutWorkspace,
       previousDraft: previousDraft
         ? (({ imageUrl: _imageUrl, ...draft }) => draft)(previousDraft)
         : null,
+      imageTier,
     }
     const result = await apiRequest<unknown>('/content/generate', {
       method: 'POST',

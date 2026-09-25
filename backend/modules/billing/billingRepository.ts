@@ -68,32 +68,37 @@ export class SupabaseBillingRepository implements BillingRepository {
   }
 
   async getOverview(workspaceId: string): Promise<BillingOverview> {
-    const [
-      { data: subscription, error: subscriptionError },
-      { data: usage, error: usageError },
-    ] = await Promise.all([
-      this.supabase
-        .from('subscriptions')
-        .select(
-          'id,status,current_period_start,current_period_end,plans(id,code,name,price_cents,text_limit,image_limit)',
-        )
-        .eq('brand_id', workspaceId)
-        .in('status', ['active', 'trialing', 'past_due'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      this.supabase
-        .from('usage_counters')
-        .select('period_start,text_used,image_used')
-        .eq('brand_id', workspaceId)
-        .order('period_start', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ])
-    if (subscriptionError || usageError)
-      throw new Error(
-        `Falha ao consultar billing: ${subscriptionError?.message ?? usageError?.message}`,
+    const { data: subscription, error: subscriptionError } = await this.supabase
+      .from('subscriptions')
+      .select(
+        'id,status,current_period_start,current_period_end,plans(id,code,name,price_cents,text_limit,image_limit)',
       )
+      .eq('brand_id', workspaceId)
+      .in('status', ['active', 'trialing', 'past_due'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (subscriptionError)
+      throw new Error(`Falha ao consultar assinatura: ${subscriptionError.message}`)
+
+    const period =
+      subscription?.current_period_start ?? new Date().toISOString().slice(0, 10)
+    const { error: reservationCleanupError } = await this.supabase.rpc(
+      'release_expired_content_generation_reservations',
+      { p_brand_id: workspaceId, p_period_start: period },
+    )
+    if (reservationCleanupError) {
+      throw new Error('Falha ao liberar reservas de geração vencidas.')
+    }
+
+    const { data: usage, error: usageError } = await this.supabase
+      .from('usage_counters')
+      .select('period_start,text_used,image_used,text_reserved,image_reserved')
+      .eq('brand_id', workspaceId)
+      .eq('period_start', period)
+      .maybeSingle()
+    if (usageError)
+      throw new Error(`Falha ao consultar consumo: ${usageError.message}`)
     const subscriptionPlan = subscription?.plans as any
     return {
       workspaceId,
@@ -108,9 +113,11 @@ export class SupabaseBillingRepository implements BillingRepository {
           }
         : null,
       usage: {
-        period: usage?.period_start ?? new Date().toISOString().slice(0, 10),
+        period,
         textUsed: usage?.text_used ?? 0,
         imageUsed: usage?.image_used ?? 0,
+        textReserved: usage?.text_reserved ?? 0,
+        imageReserved: usage?.image_reserved ?? 0,
       },
     }
   }

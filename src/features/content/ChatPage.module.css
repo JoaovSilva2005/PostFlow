@@ -64,7 +64,8 @@
   font-weight: 600;
 }
 .brief > label,
-.brief > div:last-child {
+.briefField,
+.imageTierField {
   display: grid;
   gap: 6px;
   font-size: 12px;
@@ -84,6 +85,12 @@
 }
 .brief select:hover {
   border-color: #555c60;
+}
+.imageTierField {
+  flex: 0 1 240px;
+}
+.imageTierField select {
+  text-overflow: ellipsis;
 }
 .workspace {
   display: grid;
@@ -615,7 +622,8 @@
     flex-basis: 100%;
   }
   .brief > label,
-  .brief > div:last-child {
+  .briefField,
+  .imageTierField {
     flex: 1;
   }
   .workspace {

@@ -7,6 +7,7 @@ import { SOCIAL_PLATFORMS } from '../../../shared/domain/socialPlatforms.js'
 export const CONTENT_PLATFORMS = SOCIAL_PLATFORMS
 
 export type ContentPlatform = (typeof CONTENT_PLATFORMS)[number]
+export type ImageGenerationTier = 'standard' | 'quality'
 
 export interface BrandContext {
   name: string
@@ -31,6 +32,7 @@ export interface ContentGenerationInput {
   brand: BrandContext | null
   history: { role: 'user' | 'assistant'; content: string }[]
   previousDraft: GeneratedDraft | null
+  imageTier?: ImageGenerationTier
   format?: ContentFormat
   formatData?: ContentFormatData
   persona?: string

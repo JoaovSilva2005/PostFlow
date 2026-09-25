@@ -111,7 +111,15 @@ export class SupabaseAuthProvider implements AuthProvider {
     if (error) throw error
   }
 
-  async logout(accessToken: string) {
-    await this.createClient().auth.getUser(accessToken)
+  async logout(accessToken: string, refreshToken: string) {
+    const client = this.createClient()
+    const { error: sessionError } = await client.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    })
+    if (sessionError) throw sessionError
+
+    const { error } = await client.auth.signOut({ scope: 'local' })
+    if (error) throw error
   }
 }

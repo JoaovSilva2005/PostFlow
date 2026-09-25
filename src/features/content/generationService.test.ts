@@ -62,9 +62,28 @@ describe('Contrato de geração', () => {
       expect.objectContaining({
         credentials: 'include',
         signal,
-        body: JSON.stringify(input),
+        body: JSON.stringify({ ...input, imageTier: 'standard' }),
       }),
     )
+  })
+  it('envia ao BFF a preferência de imagem sem escolher o identificador do modelo', async () => {
+    const draft = await demoGenerationService.generate(
+      input,
+      new AbortController().signal,
+    )
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ data: draft })))
+    vi.stubGlobal('fetch', fetch)
+
+    await apiGenerationService.generate(
+      { ...input, imageTier: 'quality' },
+      new AbortController().signal,
+    )
+
+    const body = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))
+    expect(body.imageTier).toBe('quality')
+    expect(body.imageModel).toBeUndefined()
   })
   it('não aceita resposta malformada nem substitui falha por demo', async () => {
     vi.stubGlobal(

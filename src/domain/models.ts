@@ -28,6 +28,11 @@ export interface BrandProfile {
   defaultCta?: string
 }
 
+export interface BrandWorkspace extends WorkspaceAccess {
+  brand: BrandProfile
+  billingStatus: BillingAccessStatus
+}
+
 export interface PostDraft {
   id: string
   title: string
@@ -53,6 +58,7 @@ export interface AppState {
   authStatus: 'checking' | 'authenticated' | 'anonymous'
   authUser: AuthUser | null
   currentWorkspace: WorkspaceAccess | null
+  availableWorkspaces: BrandWorkspace[]
   platformRole: PlatformRole
   billingStatus: BillingAccessStatus
   isAuthenticated: boolean

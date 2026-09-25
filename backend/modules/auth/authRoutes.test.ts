@@ -10,6 +10,7 @@ import { InMemoryFinancialRepository } from '../../test/InMemoryFinancialReposit
 import { AuthService } from './authService.js'
 import { InMemoryWorkspaceAccessRepository } from '../tenancy/workspaceRepository.js'
 import type { WorkspaceAccessRepository } from '../tenancy/workspaceTypes.js'
+import { createOriginPolicy } from '../../config/environment.js'
 
 function testApp(
   provider = new InMemoryAuthProvider(),
@@ -40,15 +41,37 @@ describe('autenticação', () => {
       .set('Origin', 'https://post-flow-git-main-dranoxs-projects.vercel.app')
     const blocked = await request(app)
       .options('/api/auth/login')
-      .set('Origin', 'https://site-nao-autorizado.example')
+      .set(
+        'Origin',
+        'https://post-flow-git-feature-dranoxs-projects.vercel.app',
+      )
 
     expect(allowed.headers['access-control-allow-origin']).toBe(
       'http://localhost:5173',
     )
-    expect(allowedPreview.headers['access-control-allow-origin']).toBe(
-      'https://post-flow-git-main-dranoxs-projects.vercel.app',
-    )
+    expect(allowedPreview.status).toBe(403)
     expect(blocked.status).toBe(403)
+  })
+
+  it('permite em produção apenas origens explicitamente confiáveis', () => {
+    const productionPolicy = createOriginPolicy({
+      isProduction: true,
+      appUrl: 'https://post-flow.example.com',
+      allowedOrigins: [
+        'https://admin.example.com',
+        'http://legacy.example.com',
+      ],
+    })
+
+    expect(productionPolicy('https://post-flow.example.com')).toBe(true)
+    expect(productionPolicy('https://admin.example.com')).toBe(true)
+    expect(productionPolicy('http://legacy.example.com')).toBe(false)
+    expect(
+      productionPolicy(
+        'https://post-flow-git-feature-dranoxs-projects.vercel.app',
+      ),
+    ).toBe(false)
+    expect(productionPolicy('http://localhost:5173')).toBe(false)
   })
 
   it('valida os dados antes de consultar o provedor', async () => {
@@ -97,6 +120,53 @@ describe('autenticação', () => {
     expect(currentUser.status).toBe(200)
     expect(currentUser.body.data.user.displayName).toBe('Aluno PostFlow')
     expect(currentUser.body.data.billingStatus).toBe('active')
+  })
+
+  it('revoga a sessão no provedor e limpa os cookies no logout', async () => {
+    const { app, provider } = testApp()
+    const agent = request.agent(app)
+    await agent.post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    const response = await agent.post('/api/auth/logout')
+    const cookies = response.headers['set-cookie']
+    const serializedCookies = Array.isArray(cookies)
+      ? cookies.join(';')
+      : cookies
+
+    expect(response.status).toBe(204)
+    expect(provider.loggedOutSessions).toEqual([
+      { accessToken: 'test-access-token', refreshToken: 'test-refresh-token' },
+    ])
+    expect(serializedCookies).toContain('postflow_access_token=;')
+    expect(serializedCookies).toContain('postflow_refresh_token=;')
+    expect(serializedCookies).toContain('Expires=Thu, 01 Jan 1970')
+  })
+
+  it('limpa os cookies mesmo quando a revogação remota falha', async () => {
+    const provider = new InMemoryAuthProvider()
+    vi.spyOn(provider, 'logout').mockRejectedValue(
+      new Error('detalhe interno do provedor'),
+    )
+    const { app } = testApp(provider)
+    const agent = request.agent(app)
+    await agent.post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    const response = await agent.post('/api/auth/logout')
+    const cookies = response.headers['set-cookie']
+    const serializedCookies = Array.isArray(cookies)
+      ? cookies.join(';')
+      : cookies
+
+    expect(response.status).toBe(503)
+    expect(response.body.error).not.toContain('detalhe interno')
+    expect(serializedCookies).toContain('postflow_access_token=;')
+    expect(serializedCookies).toContain('postflow_refresh_token=;')
   })
 
   it('permite criar conta e solicitar recuperação de senha', async () => {

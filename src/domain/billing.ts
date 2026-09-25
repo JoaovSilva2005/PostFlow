@@ -26,6 +26,8 @@ export interface UsageSummary {
   period: string
   textUsed: number
   imageUsed: number
+  textReserved: number
+  imageReserved: number
 }
 
 export interface AcademicReceipt {

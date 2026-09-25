@@ -41,10 +41,12 @@ export function CalendarPage() {
   const {
     brand,
     currentWorkspace,
+    availableWorkspaces,
     drafts,
     updateDraft,
     removeDraft,
-    addDrafts,
+    addDraftsForWorkspace,
+    selectWorkspace,
   } = useApp()
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const draftDate = location.state?.draftDate
@@ -128,9 +130,14 @@ export function CalendarPage() {
       if (!generationService.generateBatch) {
         throw new Error('Geração em lote indisponível.')
       }
+      const selectedWorkspace = availableWorkspaces.find(
+        ({ id }) => id === values.brandId,
+      )
+      const selectedBrand = selectedWorkspace?.brand ?? brand
+      const targetWorkspaceId = selectedWorkspace?.id ?? currentWorkspace?.id
       const generated = await generationService.generateBatch(
         {
-          workspaceId: currentWorkspace?.id,
+          workspaceId: targetWorkspaceId,
           prompt: values.prompt,
           dates: values.dates,
           time: values.time,
@@ -138,13 +145,20 @@ export function CalendarPage() {
           format: values.format,
           persona: values.persona,
           platforms: values.platforms,
-          brand,
+          brand: selectedBrand,
         },
         controller.signal,
       )
       controller.signal.throwIfAborted()
       setGenerationPhase('saving')
-      const savedDrafts = await addDrafts(generated)
+      if (!targetWorkspaceId) throw new Error('Selecione uma marca para gerar.')
+      const savedDrafts = await addDraftsForWorkspace(
+        targetWorkspaceId,
+        generated,
+      )
+      if (targetWorkspaceId !== currentWorkspace?.id) {
+        await selectWorkspace(targetWorkspaceId)
+      }
       const generatedDate = new Date(
         `${savedDrafts[0]?.date ?? generated[0]?.date}T12:00:00`,
       )
@@ -413,6 +427,10 @@ export function CalendarPage() {
       {isGeneratorOpen ? (
         <GenerateContentSidebar
           brand={brand}
+          workspaces={availableWorkspaces}
+          initialBrandId={
+            currentWorkspace?.id ?? availableWorkspaces[0]?.id ?? ''
+          }
           initialDate={
             dateTimePartsInZone(new Date(), DEFAULT_POST_TIMEZONE)?.date ??
             toDateKey(new Date())

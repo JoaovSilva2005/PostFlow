@@ -49,94 +49,33 @@ export class SupabaseWorkspaceAccessRepository implements WorkspaceAccessReposit
   }
 
   async ensureDefaultWorkspace(user: WorkspaceIdentity) {
-    const existing = await this.getDefaultWorkspace(user.id)
-    if (existing) return existing
-
     const displayName =
       user.displayName.trim() || user.email.split('@')[0] || 'Usuário PostFlow'
-
-    const { error: legacyUserError } = await this.supabase.from('users').upsert(
-      {
-        id: user.id,
-        email: user.email,
-        display_name: displayName,
-      },
-      { onConflict: 'id' },
-    )
-    if (legacyUserError) {
-      throw new Error(`Falha ao preparar usuário: ${legacyUserError.message}`)
-    }
-
-    const { error: profileError } = await this.supabase
-      .from('profiles')
-      .upsert({ id: user.id, display_name: displayName }, { onConflict: 'id' })
-    if (profileError) {
-      throw new Error(`Falha ao preparar perfil: ${profileError.message}`)
-    }
-
-    const { data: currentBrand, error: currentBrandError } = await this.supabase
-      .from('brands')
-      .select('id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-    if (currentBrandError) {
-      throw new Error(
-        `Falha ao consultar marca inicial: ${currentBrandError.message}`,
-      )
-    }
-
-    let brandId = currentBrand?.id as string | undefined
-    if (!brandId) {
-      const workspaceName =
+    const { data, error } = await this.supabase.rpc('ensure_default_workspace', {
+      p_user_id: user.id,
+      p_email: user.email,
+      p_display_name: displayName,
+      p_brand_name:
         user.brandName?.trim().slice(0, 120) ||
-        `Workspace de ${displayName}`.slice(0, 120)
-      const segment = user.segment?.trim().slice(0, 80) || 'A definir'
-      const { data: createdBrand, error: createBrandError } =
-        await this.supabase
-          .from('brands')
-          .insert({
-            user_id: user.id,
-            name: workspaceName,
-            segment,
-            tone_of_voice: 'Profissional e próximo',
-            primary_color: '#4F46E5',
-          })
-          .select('id')
-          .single()
-      if (createBrandError || !createdBrand) {
-        throw new Error(
-          `Falha ao criar workspace: ${createBrandError?.message ?? 'marca não retornada'}`,
-        )
-      }
-      brandId = createdBrand.id
+        `Workspace de ${displayName}`.slice(0, 120),
+      p_segment: user.segment?.trim().slice(0, 80) || 'A definir',
+    })
+    if (error) {
+      throw new Error(`Falha ao provisionar workspace: ${error.message}`)
     }
 
-    if (!brandId) {
-      throw new Error('Falha ao preparar o identificador do workspace.')
+    const result = (Array.isArray(data) ? data[0] : data) as
+      | { workspace_id?: string; user_id?: string; role?: string }
+      | null
+    if (!result?.workspace_id || !result.user_id || !result.role) {
+      throw new Error('Provisionamento não retornou o membership do workspace.')
     }
 
-    const membership: WorkspaceMembership = {
-      workspaceId: brandId,
-      userId: user.id,
-      role: 'owner',
-    }
-    const { error: membershipError } = await this.supabase
-      .from('brand_members')
-      .upsert(
-        {
-          brand_id: membership.workspaceId,
-          user_id: membership.userId,
-          role: membership.role,
-        },
-        { onConflict: 'brand_id,user_id' },
-      )
-    if (membershipError) {
-      throw new Error(`Falha ao vincular workspace: ${membershipError.message}`)
-    }
-
-    return membership
+    return {
+      workspaceId: result.workspace_id,
+      userId: result.user_id,
+      role: result.role as WorkspaceRole,
+    } satisfies WorkspaceMembership
   }
 
   async getPlatformRole(userId: string) {

@@ -10,6 +10,8 @@ import { InMemoryFinancialRepository } from '../../test/InMemoryFinancialReposit
 import { AuthService } from '../auth/authService.js'
 import { InMemoryWorkspaceAccessRepository } from '../tenancy/workspaceRepository.js'
 import { ContentService } from './contentService.js'
+import { InMemoryContentQuotaService } from '../../test/InMemoryContentQuotaService.js'
+import { HttpError } from '../../shared/HttpError.js'
 import type {
   ContentFormat,
   ContentFormatData,
@@ -72,11 +74,14 @@ const provider: ContentProvider = {
 function setup(
   role: 'editor' | 'viewer' = 'editor',
   billingStatus: 'active' | 'none' = 'active',
+  contentQuotaService = new InMemoryContentQuotaService(),
+  contentProvider: ContentProvider = provider,
 ) {
   return createApp({
     authService: new AuthService(new InMemoryAuthProvider(role)),
     financialRepository: new InMemoryFinancialRepository(),
-    contentService: new ContentService(provider),
+    contentService: new ContentService(contentProvider),
+    contentQuotaService,
     workspaceAccessRepository: new InMemoryWorkspaceAccessRepository(
       'test-workspace',
       role,
@@ -149,6 +154,91 @@ describe('geração de conteúdo', () => {
     })
   })
 
+  it('aceita apenas o nível de imagem e usa padrão seguro no BFF', async () => {
+    const generate = vi.spyOn(provider, 'generate')
+    const app = setup()
+    const standard = await authorize(
+      request(app).post('/api/content/generate'),
+    ).send(validRequest)
+    const quality = await authorize(
+      request(app).post('/api/content/generate'),
+    ).send({ ...validRequest, imageTier: 'quality' })
+    const arbitraryModel = await authorize(
+      request(app).post('/api/content/generate'),
+    ).send({ ...validRequest, imageModel: 'untrusted-model-id' })
+
+    expect(standard.status).toBe(200)
+    expect(quality.status).toBe(200)
+    expect(arbitraryModel.status).toBe(400)
+    expect(generate.mock.calls[0]?.[0].imageTier).toBe('standard')
+    expect(generate.mock.calls[1]?.[0].imageTier).toBe('quality')
+    expect(generate).toHaveBeenCalledTimes(2)
+  })
+
+  it('reserva texto e imagem antes de chamadas simultâneas ao provedor', async () => {
+    const quota = new InMemoryContentQuotaService({ text: 10, image: 1 })
+    const generate = vi.spyOn(provider, 'generate')
+    const app = setup('editor', 'active', quota)
+
+    const responses = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        authorize(request(app).post('/api/content/generate')).send(validRequest),
+      ),
+    )
+
+    expect(responses.filter((response) => response.status === 200)).toHaveLength(
+      1,
+    )
+    expect(responses.filter((response) => response.status === 429)).toHaveLength(
+      4,
+    )
+    expect(generate).toHaveBeenCalledTimes(1)
+    expect(quota.getUsage()).toMatchObject({
+      text: 1,
+      image: 1,
+      textReserved: 0,
+      imageReserved: 0,
+    })
+  })
+
+  it('recusa franquia esgotada sem chamar o provedor', async () => {
+    const quota = new InMemoryContentQuotaService({ text: 0, image: 10 })
+    const generate = vi.spyOn(provider, 'generate')
+    const response = await authorize(
+      request(setup('editor', 'active', quota)).post('/api/content/generate'),
+    ).send(validRequest)
+
+    expect(response.status).toBe(429)
+    expect(generate).not.toHaveBeenCalled()
+    expect(quota.getUsage()).toMatchObject({ text: 0, image: 0 })
+  })
+
+  it('libera a reserva após falha do provedor e permite uma nova tentativa', async () => {
+    const quota = new InMemoryContentQuotaService({ text: 1, image: 1 })
+    const generate = vi
+      .spyOn(provider, 'generate')
+      .mockRejectedValueOnce(new HttpError(502, 'Provedor indisponível.'))
+    const app = setup('editor', 'active', quota)
+
+    const failed = await authorize(
+      request(app).post('/api/content/generate'),
+    ).send(validRequest)
+    expect(failed.status).toBe(502)
+    expect(quota.getUsage()).toMatchObject({
+      text: 0,
+      image: 0,
+      textReserved: 0,
+      imageReserved: 0,
+    })
+
+    const retried = await authorize(
+      request(app).post('/api/content/generate'),
+    ).send(validRequest)
+    expect(retried.status).toBe(200)
+    expect(generate).toHaveBeenCalledTimes(2)
+    expect(quota.getUsage()).toMatchObject({ text: 1, image: 1 })
+  })
+
   it('bloqueia o uso do produto quando o workspace não possui plano', async () => {
     const response = await authorize(
       request(setup('editor', 'none')).post('/api/content/generate'),
@@ -159,9 +249,12 @@ describe('geração de conteúdo', () => {
   })
 
   it('autoriza o lote e devolve uma variação distinta por rede e data', async () => {
+    const quota = new InMemoryContentQuotaService({ text: 10, image: 0 })
     const generateBatch = vi.spyOn(provider, 'generateBatch')
     const generated = await authorize(
-      request(setup()).post('/api/content/generate-batch'),
+      request(setup('editor', 'active', quota)).post(
+        '/api/content/generate-batch',
+      ),
     ).send(validBatchRequest)
 
     expect(generated.status).toBe(200)
@@ -189,6 +282,46 @@ describe('geração de conteúdo', () => {
         }),
       ]),
     )
+    expect(quota.getUsage()).toMatchObject({
+      text: 2,
+      image: 0,
+      textReserved: 0,
+      imageReserved: 0,
+    })
+  })
+
+  it('aceita o maior lote previsto: 7 datas por 6 plataformas', async () => {
+    const dates = Array.from(
+      { length: 7 },
+      (_, index) => `2099-12-${String(index + 1).padStart(2, '0')}`,
+    )
+    const response = await authorize(
+      request(setup()).post('/api/content/generate-batch'),
+    ).send({
+      ...validBatchRequest,
+      dates,
+      platforms: [
+        'Instagram',
+        'Facebook',
+        'X / Twitter',
+        'LinkedIn',
+        'TikTok',
+        'Blog',
+      ],
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toHaveLength(42)
+  })
+
+  it('responde 413 para JSON maior que o teto do BFF', async () => {
+    const oversizedPrompt = 'x'.repeat(8 * 1024 * 1024 + 1)
+    const response = await authorize(
+      request(setup()).post('/api/content/generate'),
+    ).send({ ...validRequest, prompt: oversizedPrompt })
+
+    expect(response.status).toBe(413)
+    expect(response.body.error).toContain('8 MiB')
   })
 
   it('protege a rota em lote e rejeita limites, datas e horários inválidos', async () => {

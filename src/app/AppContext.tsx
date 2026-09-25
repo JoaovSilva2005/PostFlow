@@ -13,7 +13,12 @@ import type {
   RegistrationInput,
   RegistrationResponse,
 } from '../domain/auth'
-import type { AppState, BrandProfile, PostDraft } from '../domain/models'
+import type {
+  AppState,
+  BrandProfile,
+  BrandWorkspace,
+  PostDraft,
+} from '../domain/models'
 import { authApi, type AuthGateway } from '../features/auth/authApi'
 import {
   ApiPostFlowRepository,
@@ -24,6 +29,11 @@ type AppAction =
   | { type: 'AUTH_CHECKING' }
   | { type: 'AUTHENTICATED'; payload: AuthSession }
   | { type: 'AUTH_ANONYMOUS'; payload?: string }
+  | { type: 'WORKSPACES_LOADED'; payload: BrandWorkspace[] }
+  | {
+      type: 'SELECT_WORKSPACE'
+      payload: { workspace: BrandWorkspace; brand: BrandProfile | null }
+    }
   | {
       type: 'DATABASE_CONNECTED'
       payload: { brand: BrandProfile | null; drafts: PostDraft[] }
@@ -41,9 +51,16 @@ interface AppContextValue extends AppState {
   recoverPassword: (email: string) => Promise<string>
   register: (input: RegistrationInput) => Promise<RegistrationResponse>
   refreshSession: () => Promise<AuthSession | null>
+  selectWorkspace: (workspaceId: string) => Promise<void>
+  createWorkspace: (brand: BrandProfile) => Promise<BrandWorkspace>
   saveBrand: (brand: BrandProfile) => Promise<void>
   addDraft: (draft: PostDraft) => Promise<void>
   addDrafts: (drafts: PostDraft[]) => Promise<PostDraft[]>
+  addDraftForWorkspace: (workspaceId: string, draft: PostDraft) => Promise<void>
+  addDraftsForWorkspace: (
+    workspaceId: string,
+    drafts: PostDraft[],
+  ) => Promise<PostDraft[]>
   updateDraft: (draft: PostDraft) => Promise<void>
   removeDraft: (id: string) => Promise<void>
 }
@@ -60,6 +77,7 @@ function createInitialState(): AppState {
     authStatus: 'checking',
     authUser: null,
     currentWorkspace: null,
+    availableWorkspaces: [],
     platformRole: null,
     billingStatus: 'none',
     isAuthenticated: false,
@@ -81,6 +99,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         authStatus: 'authenticated',
         authUser: action.payload.user,
         currentWorkspace: action.payload.workspace,
+        availableWorkspaces: [],
         platformRole: action.payload.platformRole,
         billingStatus: action.payload.billingStatus,
         isAuthenticated: true,
@@ -92,9 +111,31 @@ function appReducer(state: AppState, action: AppAction): AppState {
         authStatus: 'anonymous',
         authUser: null,
         currentWorkspace: null,
+        availableWorkspaces: [],
         platformRole: null,
         billingStatus: 'none',
         isAuthenticated: false,
+      }
+    case 'WORKSPACES_LOADED': {
+      const active = state.currentWorkspace
+        ? action.payload.find(({ id }) => id === state.currentWorkspace?.id)
+        : null
+      return {
+        ...state,
+        availableWorkspaces: action.payload,
+        brand: active?.brand ?? state.brand,
+        billingStatus: active?.billingStatus ?? state.billingStatus,
+      }
+    }
+    case 'SELECT_WORKSPACE':
+      return {
+        ...state,
+        currentWorkspace: action.payload.workspace,
+        billingStatus: action.payload.workspace.billingStatus,
+        brand: action.payload.brand,
+        drafts: [],
+        databaseStatus: 'connecting',
+        databaseError: null,
       }
     case 'DATABASE_CONNECTED':
       return {
@@ -110,7 +151,16 @@ function appReducer(state: AppState, action: AppAction): AppState {
         databaseError: action.payload,
       }
     case 'SAVE_BRAND':
-      return { ...state, brand: action.payload, databaseError: null }
+      return {
+        ...state,
+        brand: action.payload,
+        availableWorkspaces: state.availableWorkspaces.map((workspace) =>
+          workspace.id === state.currentWorkspace?.id
+            ? { ...workspace, brand: action.payload }
+            : workspace,
+        ),
+        databaseError: null,
+      }
     case 'ADD_DRAFT':
       return {
         ...state,
@@ -194,6 +244,28 @@ export function AppProvider({
       isActive = false
     }
   }, [authGateway])
+
+  useEffect(() => {
+    let isActive = true
+    if (state.authStatus !== 'authenticated' || !repository.listWorkspaces) {
+      return () => {
+        isActive = false
+      }
+    }
+    repository
+      .listWorkspaces()
+      .then((workspaces) => {
+        if (isActive)
+          dispatch({ type: 'WORKSPACES_LOADED', payload: workspaces })
+      })
+      .catch((error: unknown) => {
+        if (isActive)
+          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+      })
+    return () => {
+      isActive = false
+    }
+  }, [repository, state.authStatus])
 
   useEffect(() => {
     let isActive = true
@@ -311,6 +383,35 @@ export function AppProvider({
         )
         return session
       },
+      selectWorkspace: async (workspaceId) => {
+        const workspace = state.availableWorkspaces.find(
+          ({ id }) => id === workspaceId,
+        )
+        if (!workspace) throw new Error('Marca não encontrada ou sem acesso.')
+        dispatch({
+          type: 'SELECT_WORKSPACE',
+          payload: { workspace, brand: workspace.brand },
+        })
+      },
+      createWorkspace: async (nextBrand) => {
+        if (!repository.createWorkspace)
+          throw new Error('Criação de marca indisponível.')
+        try {
+          const created = await repository.createWorkspace(nextBrand)
+          dispatch({
+            type: 'WORKSPACES_LOADED',
+            payload: [...state.availableWorkspaces, created],
+          })
+          dispatch({
+            type: 'SELECT_WORKSPACE',
+            payload: { workspace: created, brand: created.brand },
+          })
+          return created
+        } catch (error) {
+          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+          throw error
+        }
+      },
       saveBrand: async (brand) => {
         if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
         try {
@@ -332,6 +433,33 @@ export function AppProvider({
             draft,
           )
           dispatch({ type: 'ADD_DRAFT', payload: createdDraft })
+        } catch (error) {
+          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+          throw error
+        }
+      },
+      addDraftForWorkspace: async (workspaceId, draft) => {
+        try {
+          const createdDraft = await repository.createDraft(workspaceId, draft)
+          if (state.currentWorkspace?.id === workspaceId)
+            dispatch({ type: 'ADD_DRAFT', payload: createdDraft })
+        } catch (error) {
+          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+          throw error
+        }
+      },
+      addDraftsForWorkspace: async (workspaceId, drafts) => {
+        try {
+          const createdDrafts = repository.createDrafts
+            ? await repository.createDrafts(workspaceId, drafts)
+            : await Promise.all(
+                drafts.map((draft) =>
+                  repository.createDraft(workspaceId, draft),
+                ),
+              )
+          if (state.currentWorkspace?.id === workspaceId)
+            dispatch({ type: 'ADD_DRAFTS', payload: createdDrafts })
+          return createdDrafts
         } catch (error) {
           dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
           throw error

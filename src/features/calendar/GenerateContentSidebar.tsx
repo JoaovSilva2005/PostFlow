@@ -21,7 +21,7 @@ import {
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/FormField'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
-import type { BrandProfile } from '../../domain/models'
+import type { BrandProfile, BrandWorkspace } from '../../domain/models'
 import {
   DEFAULT_POST_TIMEZONE,
   dateTimePartsInZone,
@@ -73,10 +73,13 @@ export interface GenerateContentValues {
   persona: string
   format: ContentFormat
   platforms: Platform[]
+  brandId: string
 }
 
 interface GenerateContentSidebarProps {
   brand: BrandProfile | null
+  workspaces: BrandWorkspace[]
+  initialBrandId: string
   initialDate: string
   initialPrompt: string
   phase: 'idle' | 'generating' | 'saving'
@@ -103,6 +106,8 @@ function formatDateLabel(value: string) {
 
 export function GenerateContentSidebar({
   brand,
+  workspaces,
+  initialBrandId,
   initialDate,
   initialPrompt,
   phase,
@@ -115,6 +120,9 @@ export function GenerateContentSidebar({
   const today =
     dateTimePartsInZone(new Date(), DEFAULT_POST_TIMEZONE)?.date ?? initialDate
   const [persona, setPersona] = useState('')
+  const [brandId, setBrandId] = useState(
+    initialBrandId || workspaces[0]?.id || '',
+  )
   const [selectedDates, setSelectedDates] = useState<string[]>([
     initialDate || today,
   ])
@@ -145,6 +153,8 @@ export function GenerateContentSidebar({
     selectedDates.length === nextSevenDays.length &&
     nextSevenDays.every((date) => selectedDates.includes(date))
   const plannedCount = selectedDates.length * platforms.length
+  const selectedBrand =
+    workspaces.find(({ id }) => id === brandId)?.brand ?? brand
 
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null
@@ -243,6 +253,7 @@ export function GenerateContentSidebar({
       persona: persona.trim(),
       format,
       platforms: PLATFORMS.filter((platform) => platforms.includes(platform)),
+      brandId,
     })
   }
 
@@ -281,6 +292,32 @@ export function GenerateContentSidebar({
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.section}>
+            {workspaces.length ? (
+              <label className={styles.brandField}>
+                <span>Marca para este conteúdo</span>
+                <span className={styles.brandControl}>
+                  <span
+                    className={styles.brandSwatch}
+                    style={{
+                      backgroundColor: selectedBrand?.primaryColor ?? '#4F46E5',
+                    }}
+                    aria-hidden="true"
+                  />
+                  <select
+                    value={brandId}
+                    onChange={(event) => setBrandId(event.target.value)}
+                    disabled={isBusy}
+                    aria-label="Marca para este conteúdo"
+                  >
+                    {workspaces.map(({ id, brand: optionBrand }) => (
+                      <option key={id} value={id}>
+                        {optionBrand.name} · {optionBrand.segment}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              </label>
+            ) : null}
             <TextField
               label="Público ou persona (opcional)"
               name="content-persona"
@@ -290,8 +327,8 @@ export function GenerateContentSidebar({
               disabled={isBusy}
             />
             <span className={styles.helper}>
-              {brand
-                ? `Referência da marca: ${brand.segment} · ${brand.toneOfVoice}`
+              {selectedBrand
+                ? `Referência da marca: ${selectedBrand.segment} · ${selectedBrand.toneOfVoice}`
                 : 'A ideia continua aberta a qualquer segmento.'}
             </span>
           </div>

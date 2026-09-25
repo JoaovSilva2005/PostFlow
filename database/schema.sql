@@ -1,9 +1,7 @@
--- PostFlow - PostgreSQL/Supabase schema
--- Execute este arquivo primeiro no SQL Editor do Supabase.
--- Para uma instalação nova, execute também TODAS as migrations em ordem
--- cronológica. O modelo SaaS (memberships, billing e fiscal imutável) é
--- incremental para preservar bases acadêmicas existentes e começa em
--- migrations/20260917_production_tenancy.sql.
+-- PostFlow - baseline acadêmico de PostgreSQL/Supabase.
+-- A instalação SaaS também exige TODOS os arquivos de database/migrations e
+-- supabase/migrations, em ordem lexicográfica dentro de cada diretório.
+-- database/seed.sql é somente para demonstrações acadêmicas; não use no SaaS.
 
 create extension if not exists pgcrypto;
 
@@ -20,7 +18,7 @@ create table if not exists public.users (
 
 create table if not exists public.brands (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null unique,
+  user_id uuid not null,
   name text not null,
   segment text not null,
   tone_of_voice text not null,

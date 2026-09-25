@@ -14,9 +14,11 @@ contrato de um fornecedor.
 `ContentService` depende de `ContentProvider`. O adapter OpenAI chama a
 Responses API no servidor e converte saída estruturada para o contrato interno.
 Depois, o mesmo provider chama a Image Generation API para produzir uma única
-imagem quadrada de prévia. Os padrões são GPT-5.6 Luna para texto e
-`gpt-image-1-mini` com qualidade `medium` e tamanho `1024x1024` para imagem;
-modelo, qualidade e tamanho são configuráveis no ambiente do backend.
+imagem quadrada de prévia. O padrão é GPT-6 Luna para texto e
+`gpt-image-2.5-flare` para imagem, com qualidade `medium` e tamanho `1024x1024`.
+No estúdio individual, a escolha `quality` é validada pelo BFF e mapeada para
+`gpt-image-2.5-sunburst`; o navegador não escolhe nem envia IDs de modelos.
+Modelos, qualidade e tamanho são configuráveis no ambiente do backend.
 
 ## Consequences
 

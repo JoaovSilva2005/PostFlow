@@ -12,12 +12,14 @@ O PostFlow reúne autenticação, configuração da marca, geração de textos, 
 
 - cadastro, confirmação de e-mail, login e recuperação de senha;
 - separação dos dados por workspace e níveis de acesso;
+- seleção de várias marcas como workspaces independentes;
 - configuração da identidade da marca;
 - geração de título, legenda, hashtags, texto visual e arte quadrada por IA;
 - revisão do conteúdo antes de salvar;
 - agenda com criação, edição e exclusão de rascunhos;
 - consulta de plano, consumo, faturas e comprovantes;
 - contratação e pagamento demonstrativos para apresentação acadêmica.
+- franquias de texto e imagem aplicadas no backend e contabilizadas por período.
 
 ### Backoffice
 
@@ -86,31 +88,42 @@ O comando inicia:
 | `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_SECRET_KEY` | Acesso administrativo usado somente pelo backend    |
 | `VITE_API_URL`                                       | URL local da API; use `http://localhost:3001/api`   |
 | `OPENAI_API_KEY`                                     | Credencial server-side para geração de conteúdo     |
-  | `OPENAI_TEXT_MODEL`                                  | Modelo compatível com a Responses API               |
-  | `OPENAI_IMAGE_MODEL`                                 | Modelo compatível com a Image Generation API        |
-  | `OPENAI_IMAGE_QUALITY`                               | Qualidade da imagem: `low`, `medium` ou `high`     |
-  | `OPENAI_IMAGE_SIZE`                                  | Tamanho da imagem, por padrão `1024x1024`          |
+| `OPENAI_TEXT_MODEL`                                  | Modelo de texto; padrão `gpt-6-luna`                |
+| `OPENAI_IMAGE_MODEL`                                 | Modelo de imagem padrão; padrão `gpt-image-2.5-flare` |
+| `OPENAI_IMAGE_QUALITY_MODEL`                         | Modelo opcional de maior qualidade; padrão `gpt-image-2.5-sunburst` |
+| `OPENAI_IMAGE_QUALITY`                               | Qualidade da API de imagens: `low`, `medium` ou `high`; padrão `medium` |
+| `OPENAI_IMAGE_SIZE`                                  | Tamanho da imagem, por padrão `1024x1024`          |
 | `APP_URL`                                            | Origem autorizada e retorno da recuperação de senha |
+| `APP_ALLOWED_ORIGINS`                               | Origens HTTPS adicionais confiáveis, separadas por vírgula |
 
 Nunca use uma chave administrativa do Supabase ou uma chave de IA em variável iniciada com `VITE_`. Em produção, configure também um SMTP próprio no Supabase para evitar o limite reduzido do serviço de e-mail de teste.
+
+Em produção, o CORS aceita somente a origem de `APP_URL` e as origens HTTPS exatas listadas em `APP_ALLOWED_ORIGINS`. URLs de preview da Vercel não são liberadas automaticamente. Em desenvolvimento, `localhost` e `127.0.0.1` continuam disponíveis.
 
 Para uma demonstração local sem IA real, use `VITE_AI_MODE=demo`. O fallback de dados em memória existe somente para desenvolvimento e exige `POSTFLOW_ALLOW_DEMO_FALLBACK=true`.
 
 ## Banco de dados
 
-Em uma instalação nova:
+### Instalação SaaS limpa
 
-1. execute [`database/schema.sql`](database/schema.sql) no SQL Editor do Supabase;
-2. execute [`database/seed.sql`](database/seed.sql);
-3. configure as variáveis de ambiente;
-4. valide a conexão e o CRUD.
+O schema SQL é dividido entre um baseline acadêmico e duas linhagens históricas de migrações. Para uma base descartável vazia:
+
+1. execute [`database/schema.sql`](database/schema.sql);
+2. execute, em ordem lexicográfica, todos os arquivos de [`database/migrations`](database/migrations/);
+3. execute, em ordem lexicográfica, todos os arquivos de [`supabase/migrations`](supabase/migrations/);
+4. configure as variáveis de ambiente e valide a aplicação contra essa base local/descartável.
+
+Confira o inventário com `npm run db:migrations:check`. O manifesto lista cada arquivo e o teste detecta migrações ausentes, extras e referências quebradas. O Supabase CLI aplica automaticamente apenas `supabase/migrations`; esse comando isolado não instala a linhagem histórica mantida em `database/migrations`.
+
+Não execute `database/seed.sql` no caminho SaaS. Esse seed contém personas acadêmicas e serve somente para demonstração do schema acadêmico. A instalação acadêmica isolada usa apenas `database/schema.sql` e `database/seed.sql`, mas não inclui memberships, planos, assinaturas, cobrança, fiscal ou RPCs necessários à aplicação SaaS.
+
+Em um projeto Supabase existente, não reaplique esses arquivos em lote. Primeiro compare o histórico `supabase_migrations.schema_migrations` com o schema real: parte das migrações antigas pode ter sido aplicada manualmente e não constar no histórico do CLI. Faça backup, valide em homologação e reconcilie os registros antes de usar `db push` ou `migration repair`. O repositório não atesta o estado de nenhum banco remoto.
 
 ```bash
-npm run db:verify
-npm run db:test-crud
+npm run db:migrations:check
 ```
 
-As alterações incrementais aplicadas ao projeto hospedado ficam em [`supabase/migrations`](supabase/migrations). Não coloque senhas ou chaves nos arquivos de seed.
+Novas migrações devem ser criadas com `npx supabase migration new nome_da_migracao`, adicionadas ao manifesto e verificadas localmente em banco descartável antes da aplicação. Não mova nem renomeie arquivos históricos. `npm run db:verify` consulta o Supabase configurado; `npm run db:test-crud` grava e remove dados, então use-o somente contra uma base local descartável. Não coloque senhas ou chaves nos arquivos de seed.
 
 ## Scripts de qualidade
 
@@ -144,7 +157,7 @@ src/
 ├── features/    # telas e serviços organizados por funcionalidade
 ├── services/    # cliente HTTP e repositórios
 └── styles/      # tokens e estilos globais
-supabase/        # migrations aplicadas ao Supabase hospedado
+supabase/        # linhagem mais recente de migrations do Supabase CLI
 ```
 
 O frontend acessa os dados pela API Express. A API valida a sessão, o workspace, o plano e as permissões antes de utilizar a chave administrativa do Supabase no servidor. `shared/` não pode depender de React, Express, Supabase ou APIs de ambiente.

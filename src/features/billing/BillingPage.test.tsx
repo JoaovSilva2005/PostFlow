@@ -43,7 +43,13 @@ describe('BillingPage', () => {
         currentPeriodStart: '2026-09-01',
         currentPeriodEnd: '2026-09-30',
       },
-      usage: { period: '2026-09', textUsed: 18, imageUsed: 4 },
+      usage: {
+        period: '2026-09',
+        textUsed: 18,
+        imageUsed: 4,
+        textReserved: 2,
+        imageReserved: 1,
+      },
     })
     vi.mocked(billingApi.invoices).mockResolvedValue([
       {
@@ -95,7 +101,9 @@ describe('BillingPage', () => {
       'brand-1',
       expect.any(AbortSignal),
     )
-    expect(screen.getByText('18 de 100')).toBeInTheDocument()
+    expect(screen.getByText('20 de 100')).toBeInTheDocument()
+    expect(screen.getByText('18 consumidos; 2 em andamento')).toBeInTheDocument()
+    expect(screen.getByText('5 de 30')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ver nota simulada' }))
 
     const receipt = screen.getByRole('region', {
@@ -115,7 +123,13 @@ describe('BillingPage', () => {
       demoMode: true,
       plan: null,
       subscription: null,
-      usage: { period: '2026-09', textUsed: 0, imageUsed: 0 },
+      usage: {
+        period: '2026-09',
+        textUsed: 0,
+        imageUsed: 0,
+        textReserved: 0,
+        imageReserved: 0,
+      },
     })
     vi.mocked(billingApi.subscribe).mockResolvedValue({
       id: 'invoice-2',
@@ -235,7 +249,13 @@ describe('BillingPage', () => {
       demoMode: true,
       plan: null,
       subscription: null,
-      usage: { period: '2026-09', textUsed: 0, imageUsed: 0 },
+      usage: {
+        period: '2026-09',
+        textUsed: 0,
+        imageUsed: 0,
+        textReserved: 0,
+        imageReserved: 0,
+      },
     })
     vi.mocked(billingApi.invoices).mockResolvedValueOnce([
       {
@@ -279,7 +299,13 @@ describe('BillingPage', () => {
       demoMode: true,
       plan: null,
       subscription: null,
-      usage: { period: '2026-09', textUsed: 0, imageUsed: 0 },
+      usage: {
+        period: '2026-09',
+        textUsed: 0,
+        imageUsed: 0,
+        textReserved: 0,
+        imageReserved: 0,
+      },
     })
     authenticateDemo()
     renderApp('/billing')

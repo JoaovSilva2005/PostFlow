@@ -1,8 +1,34 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
+import { AppProvider } from '../../app/AppContext'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
+import { createTestAuthGateway } from '../../test/testAuthGateway'
+import { createTestRepository } from '../../test/testRepository'
+import { apiGenerationService } from './generationService'
+import { ChatPage } from './ChatPage'
 
 describe('ChatPage', () => {
+  it('expõe Flare como padrão e permite selecionar Sunburst no modo API', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/chat']}>
+        <AppProvider
+          authGateway={createTestAuthGateway()}
+          repository={createTestRepository()}
+        >
+          <ChatPage service={apiGenerationService} />
+        </AppProvider>
+      </MemoryRouter>,
+    )
+
+    const imageTier = await screen.findByLabelText('Qualidade da imagem')
+    expect(imageTier).toHaveValue('standard')
+    await user.selectOptions(imageTier, 'quality')
+    expect(imageTier).toHaveValue('quality')
+  })
+
   it('salva os ajustes da revisão e abre a agenda no mês escolhido', async () => {
     authenticateDemo()
     const user = userEvent.setup()

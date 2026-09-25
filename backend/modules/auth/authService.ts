@@ -110,12 +110,7 @@ export class AuthService {
     try {
       return await this.provider.register(input)
     } catch (error) {
-      const providerError = readProviderError(error)
-
-      console.warn('Falha no cadastro pelo provedor de autenticação.', {
-        code: providerError.code || 'unknown',
-        status: providerError.status ?? 'unknown',
-      })
+      console.warn('Falha no cadastro pelo provedor de autenticação.')
 
       throw registrationError(error)
     }
@@ -140,13 +135,16 @@ export class AuthService {
     }
   }
 
-  async logout(accessToken: string | null) {
-    if (!accessToken) return
+  async logout(accessToken: string | null, refreshToken: string | null) {
+    if (!accessToken || !refreshToken) return
 
     try {
-      await this.provider.logout(accessToken)
+      await this.provider.logout(accessToken, refreshToken)
     } catch {
-      // A sessão local ainda é encerrada removendo os cookies.
+      throw new HttpError(
+        503,
+        'Os cookies locais foram removidos, mas não foi possível revogar a sessão agora.',
+      )
     }
   }
 }

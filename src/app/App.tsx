@@ -26,6 +26,17 @@ export function App() {
         }
       />
       <Route
+        path="/brand/new"
+        element={
+          <ProtectedRoute
+            workspaceRoles={['owner', 'admin', 'editor', 'viewer']}
+            requiresActivePlan
+          >
+            <BrandPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/chat"
         element={
           <ProtectedRoute

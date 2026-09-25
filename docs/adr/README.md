@@ -10,3 +10,5 @@
 | [ADR-0006](ADR-0006-ai-image-preview-boundary.md)                     | Arte gerada como preview da revisão   | Accepted |
 | [ADR-0007](ADR-0007-shared-contracts-and-boundaries.md)               | Contratos puros em `shared/`          | Accepted |
 | [ADR-0008](ADR-0008-batched-content-planner.md)                       | Planejador de conteúdo em lote        | Accepted |
+| [ADR-0009](ADR-0009-multi-brand-workspaces.md)                        | Marcas múltiplas como workspaces      | Accepted |
+| [ADR-0010](ADR-0010-atomic-workflows-and-ai-quotas.md)                | RPCs atômicas e franquias de IA        | Accepted |

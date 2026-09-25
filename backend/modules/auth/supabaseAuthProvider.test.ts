@@ -44,4 +44,37 @@ describe('SupabaseAuthProvider', () => {
       segment: 'Serviços profissionais',
     })
   })
+
+  it('restaura os dois tokens da sessão antes de revogar o refresh token local', async () => {
+    const setSession = vi.fn(async () => ({ data: { user: null, session: null }, error: null }))
+    const signOut = vi.fn(async () => ({ error: null }))
+    const client = { auth: { setSession, signOut } } as unknown as SupabaseClient
+    const provider = new SupabaseAuthProvider(() => client)
+
+    await provider.logout('access-token', 'refresh-token')
+
+    expect(setSession).toHaveBeenCalledWith({
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+    })
+    expect(signOut).toHaveBeenCalledWith({ scope: 'local' })
+    expect(setSession.mock.invocationCallOrder[0]).toBeLessThan(
+      signOut.mock.invocationCallOrder[0]!,
+    )
+  })
+
+  it('não chama signOut se o SDK não conseguir restaurar a sessão fornecida', async () => {
+    const setSession = vi.fn(async () => ({
+      data: { user: null, session: null },
+      error: new Error('token inválido'),
+    }))
+    const signOut = vi.fn(async () => ({ error: null }))
+    const client = { auth: { setSession, signOut } } as unknown as SupabaseClient
+    const provider = new SupabaseAuthProvider(() => client)
+
+    await expect(
+      provider.logout('access-token', 'refresh-token'),
+    ).rejects.toThrow('token inválido')
+    expect(signOut).not.toHaveBeenCalled()
+  })
 })

@@ -54,7 +54,13 @@ export interface BillingOverview {
     currentPeriodStart: string
     currentPeriodEnd: string
   } | null
-  usage: { period: string; textUsed: number; imageUsed: number }
+  usage: {
+    period: string
+    textUsed: number
+    imageUsed: number
+    textReserved: number
+    imageReserved: number
+  }
 }
 
 export interface PaymentProvider {

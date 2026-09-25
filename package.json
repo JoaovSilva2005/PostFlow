@@ -15,11 +15,12 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "typecheck": "tsc -b",
-    "test": "vitest run && node scripts/database/testSchema.mjs",
+    "test": "vitest run && node scripts/database/testSchema.mjs && node scripts/database/testMigrationInventory.mjs",
     "test:watch": "vitest",
     "test:responsive": "node scripts/responsive-check.cjs",
     "db:verify": "node scripts/database/verifyConnection.mjs",
     "db:test-crud": "node scripts/database/testCrud.mjs",
+    "db:migrations:check": "node scripts/database/testMigrationInventory.mjs",
     "format:check": "prettier --check .",
     "preview": "vite preview"
   },

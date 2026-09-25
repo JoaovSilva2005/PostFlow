@@ -11,6 +11,9 @@ PostFlow/
 │   ├── config/                # ambiente e cliente Supabase do servidor
 │   ├── modules/auth/          # autenticação, cookies e autorização
 │   ├── modules/tenancy/       # workspace atual, memberships e platform roles
+│   ├── modules/brand/         # seleção e criação de marcas
+│   ├── modules/content/       # geração OpenAI, contratos e franquias
+│   ├── modules/workspace/     # marca e CRUD transacional dos rascunhos
 │   ├── modules/billing/       # planos, assinaturas, consumo e faturas
 │   ├── modules/finance/       # módulo financeiro completo
 │   ├── modules/fiscal/        # projeção fiscal e vendas integradas ao financeiro
@@ -38,7 +41,8 @@ Frontend (src) ───────┐
                       ├──> shared (contratos e regras puras)
 Backend (backend) ────┘
 
-Frontend ───> API Express ───> módulos backend ───> Supabase/PostgreSQL
+Frontend ───> API Express/BFF ───> módulos backend ───> Supabase/PostgreSQL
+                                           └──────────> OpenAI Responses e Images
 ```
 
 `shared/` não conhece React, Express, Supabase, Node ou variáveis de ambiente.
@@ -46,14 +50,24 @@ O backend não importa `src/`. As fachadas em `src/domain` existem apenas para
 preservar os imports atuais do frontend enquanto os contratos comuns são
 centralizados.
 
+## Geração de conteúdo
+
+O estúdio individual envia ao BFF o nível `standard` ou `quality`, nunca um
+identificador de modelo arbitrário. O backend usa GPT-6 Luna para texto e
+GPT Image 2.5 Flare para a imagem padrão; `quality` seleciona GPT Image 2.5
+Sunburst. Esses modelos são padrões configuráveis no ambiente do backend. A
+qualidade e o tamanho da Image Generation API são configurações separadas. O
+planejador em lote continua gerando somente texto estruturado e reserva uma
+unidade de texto por rascunho, sem imagens.
+
 ## Fluxo de uma requisição
 
 ```text
-Login React → authApi → AuthRoutes → Supabase Auth → cookie HttpOnly
-Área do cliente → /workspaces/:id → autenticação + WorkspaceRole
-Área administrativa → /admin/* → autenticação + PlatformRole
-Financeiro → FinancialService → Repository → Supabase/PostgreSQL
-Fiscal ────────────────────────────────┘
+Login React → /api/auth → AuthRoutes → Supabase Auth → cookies HttpOnly
+Área do cliente → BFF → membership + role + assinatura → RPC/queries PostgreSQL
+Geração de conteúdo → reserva de franquia → OpenAI → consumo/liberação da reserva
+Área administrativa → /api/admin/* → autenticação + PlatformRole
+Financeiro/Fiscal → serviços do backend → PostgreSQL (cobrança e fiscal simulados)
 ```
 
 - A **tela** coleta os dados e apresenta o resultado.
@@ -71,10 +85,10 @@ Cada pasta em `src/features` reúne a tela, o estilo, o teste e os auxiliares es
 | Funcionalidade | Frontend                | Backend                   | Banco                                                          |
 | -------------- | ----------------------- | ------------------------- | -------------------------------------------------------------- |
 | Login/cadastro | `src/features/auth`     | `backend/modules/auth`    | Supabase Auth, `users`, `profiles`                             |
-| Marca          | `src/features/brand`    | BFF com contexto de marca | `brands` e `brand_members`                                     |
-| Geração        | `src/features/content`  | IA simulada               | `post_drafts` e `post_hashtags`                                |
-| Agenda         | `src/features/calendar` | Data API do Supabase      | `post_drafts`                                                  |
-| Cobrança       | `src/features/billing`  | `backend/modules/billing` | `plans`, `subscriptions`, `usage_counters`, `billing_invoices` |
+| Marca          | `src/features/brand`    | `backend/modules/brand` e `workspace` | `brands` e `brand_members`                      |
+| Geração        | `src/features/content`  | `backend/modules/content` + OpenAI    | `usage_counters`, reservas, `post_drafts` e hashtags |
+| Agenda         | `src/features/calendar` | `backend/modules/workspace`           | `post_drafts` e `post_hashtags`                     |
+| Cobrança       | `src/features/billing`  | `backend/modules/billing`             | `plans`, `subscriptions`, uso e `billing_invoices`  |
 | Financeiro     | `src/features/finance`  | `backend/modules/finance` | `financial_transactions`                                       |
 | Fiscal         | `src/features/fiscal`   | `backend/modules/fiscal`  | `fiscal_documents` e receitas faturadas                        |
 
@@ -82,13 +96,22 @@ Financeiro, Fiscal e economia do plano são backoffice do PostFlow. Eles não s�
 
 ## Convenção de banco
 
-`database/schema.sql` e `database/seed.sql` formam a base manual da entrega
-acadêmica. As migrações incrementais historicamente usadas nessa entrega ficam
-em `database/migrations`. As migrações mais recentes gerenciadas pelo fluxo do
-Supabase ficam em `supabase/migrations`. Novas migrações devem seguir a trilha
-do Supabase; a trilha antiga deve ser mantida somente para reprodução histórica
-até ser consolidada em uma janela própria, pois testes e ambientes existentes
-referenciam seus caminhos.
+`database/schema.sql` é o baseline acadêmico; `database/seed.sql` cria personas
+demonstrativas e não deve ser usado na instalação SaaS. O SaaS precisa do schema
+e de todas as migrações de `database/migrations` seguidas pelas de
+`supabase/migrations`, cada diretório em ordem lexicográfica. As linhagens foram
+mantidas separadas porque migrações antigas podem já ter sido aplicadas
+manualmente; não se deve mover ou renomear esses arquivos nem presumir que o
+histórico remoto coincide com o repositório.
+
+O manifesto `scripts/database/migration-inventory.json` lista os arquivos das
+duas trilhas. `npm run db:migrations:check` detecta lacunas, extras e referências
+quebradas sem conectar ao banco. Novas migrações são criadas com
+`npx supabase migration new nome`, adicionadas ao manifesto e testadas primeiro
+em uma base local descartável. `supabase db reset` isoladamente não aplica a
+trilha histórica de `database/migrations`. Em projetos existentes, reconcilie o
+histórico do Supabase com o schema real e use homologação antes de sincronizar
+registros ou aplicar migrações.
 
 ## Persistência do cadastro
 
@@ -106,8 +129,12 @@ dados normalizados:
 | Senha               | Supabase Auth, armazenada somente como hash    |
 | Confirmar senha     | Não persiste; existe apenas para validação     |
 
-O workspace inicial recebe o usuário como `owner` em `brand_members`. Contas
-anteriores sem esses metadados continuam usando os valores de fallback.
+O workspace inicial recebe o usuário como `owner` em `brand_members`. A RPC
+`ensure_default_workspace` grava usuário, perfil, marca e membership na mesma
+transação e usa um advisory lock por usuário para impedir duplicatas após a
+remoção da unicidade de `brands.user_id`. A criação de marcas adicionais usa
+`create_brand_with_owner`, que também grava marca e membership atomicamente.
+Contas anteriores sem metadados continuam usando valores de fallback.
 
 ## Autorização em dois contextos
 
@@ -140,6 +167,28 @@ Fatura paga ─────→ uma única receita no Financeiro
 A fatura é a origem da cobrança. O livro financeiro registra o efeito econômico sem duplicar a cobrança. O documento fiscal guarda alíquota e valores calculados no momento da emissão; mudar a configuração posterior não reescreve documentos anteriores.
 
 O servidor calcula valores monetários em centavos e nunca confia em `brand_id`, roles, imposto ou totais enviados pelo frontend. `PaymentProvider` e `FiscalProvider` são portas para integrações futuras; os adapters atuais são demonstrativos. O comprovante acadêmico não é NFS-e e não possui validade fiscal. Consulte `docs/fiscal-and-pricing.md` para hipóteses, fontes e limites. O fluxo de IA está documentado em `docs/content-studio.md`.
+
+### Franquias de IA
+
+O backend lê `text_limit` e `image_limit` do plano ligado à assinatura do
+workspace. Uma geração individual reserva uma unidade de texto e uma de imagem;
+cada item do lote reserva uma unidade de texto e nenhuma imagem, pois o lote
+atual não produz imagens. A RPC bloqueia a linha de uso do período e inclui
+consumo e reservas concorrentes na comparação, portanto a regra funciona entre
+instâncias serverless. Resposta bem-sucedida consome a reserva; falha do
+provedor a libera. Reservas abandonadas por encerramento abrupto expiram após
+uma hora e são liberadas pela cobrança ou quando a próxima reserva do mesmo
+período é solicitada.
+
+A cobrança apresenta unidades consumidas e reservadas do período corrente. O
+backend limita a legenda a 5.000 caracteres, o texto visual a 160 e aplica o
+limite da plataforma ao conjunto legenda + hashtags. A API Express aceita até
+8 MiB por corpo JSON e responde `413` acima desse teto; o lote aceita no máximo
+42 itens.
+
+Em produção, CORS aceita apenas a origem exata de `APP_URL` e as origens HTTPS
+exatas de `APP_ALLOWED_ORIGINS`. Previews da Vercel não são liberados por
+padrão; `localhost` e `127.0.0.1` ficam disponíveis apenas fora de produção.
 
 ## Decisões simples para apresentação
 

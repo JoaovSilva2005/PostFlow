@@ -25,6 +25,10 @@ import { HttpError } from './shared/HttpError.js'
 import { createFiscalRouter } from './modules/fiscal/fiscalRoutes.js'
 import { createContentRouter } from './modules/content/contentRoutes.js'
 import { ContentService } from './modules/content/contentService.js'
+import {
+  SupabaseContentQuotaService,
+  type ContentQuotaService,
+} from './modules/content/contentQuota.js'
 import { OpenAiContentProvider } from './modules/content/openAiContentProvider.js'
 import {
   InMemoryWorkspaceAccessRepository,
@@ -49,11 +53,13 @@ import {
   createBillingRouter,
 } from './modules/billing/billingRoutes.js'
 import { createWorkspaceRouter } from './modules/workspace/workspaceRoutes.js'
+import { createBrandRouter } from './modules/brand/brandRoutes.js'
 
 interface AppOptions {
   authService?: AuthService
   financialRepository?: FinancialTransactionRepository
   contentService?: ContentService
+  contentQuotaService?: ContentQuotaService
   workspaceAccessRepository?: WorkspaceAccessRepository
   billingRepository?: BillingRepository
 }
@@ -98,8 +104,12 @@ export function createApp(options: AppOptions = {}) {
         environment.openAiImageModel,
         environment.openAiImageQuality,
         environment.openAiImageSize,
+        environment.openAiQualityImageModel,
       ),
     )
+  const contentQuotaService =
+    options.contentQuotaService ??
+    new SupabaseContentQuotaService(createSupabaseAdminDataClient())
 
   app.use(
     cors({
@@ -114,7 +124,9 @@ export function createApp(options: AppOptions = {}) {
       },
     }),
   )
-  app.use(express.json())
+  // Permite o maior contrato de request (42 rascunhos e imagem-base64 opcional)
+  // e mantém um teto explícito para o BFF.
+  app.use(express.json({ limit: '8mb' }))
 
   app.get('/api/health', (_request, response) => {
     const storage =
@@ -140,6 +152,11 @@ export function createApp(options: AppOptions = {}) {
 
   app.use('/api/auth', createAuthRouter(authService, workspaceAccess))
   app.use(
+    '/api/brands',
+    requireAuthentication(authService),
+    createBrandRouter(createSupabaseAdminDataClient()),
+  )
+  app.use(
     '/api/content',
     requireAuthentication(authService),
     requireWorkspaceContext(
@@ -149,6 +166,7 @@ export function createApp(options: AppOptions = {}) {
     requireActiveSubscription(workspaceAccess),
     createContentRouter(
       contentService,
+      contentQuotaService,
       requireWorkspaceRole('owner', 'admin', 'editor'),
     ),
   )
@@ -243,13 +261,30 @@ export function createApp(options: AppOptions = {}) {
     _next,
   ) => {
     const isExpectedError = error instanceof HttpError
-    const statusCode = isExpectedError ? error.statusCode : 500
+    const parserErrorType =
+      error && typeof error === 'object' && 'type' in error
+        ? error.type
+        : undefined
+    const isPayloadTooLarge = parserErrorType === 'entity.too.large'
+    const isMalformedJson = parserErrorType === 'entity.parse.failed'
+    const statusCode = isExpectedError
+      ? error.statusCode
+      : isPayloadTooLarge
+        ? 413
+        : isMalformedJson
+          ? 400
+          : 500
     const message = isExpectedError
       ? error.message
-      : 'Erro interno da aplicação.'
+      : isPayloadTooLarge
+        ? 'O corpo da requisição excede o limite de 8 MiB.'
+        : isMalformedJson
+          ? 'O corpo da requisição contém JSON inválido.'
+          : 'Erro interno da aplicação.'
 
-    if (!isExpectedError) {
-      console.error('Erro não tratado na API:', error)
+    if (!isExpectedError && !isPayloadTooLarge && !isMalformedJson) {
+      const errorName = error instanceof Error ? error.name : 'UnknownError'
+      console.error('Erro não tratado na API.', { name: errorName })
     }
 
     response.status(statusCode).json({ error: message })

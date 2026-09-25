@@ -68,26 +68,34 @@ function idempotencyKey() {
 function UsageBar({
   label,
   used,
+  reserved,
   limit,
 }: {
   label: string
   used: number
+  reserved: number
   limit: number
 }) {
-  const percentage = limit > 0 ? Math.min((used / limit) * 100, 100) : 0
+  const total = used + reserved
+  const percentage = limit > 0 ? Math.min((total / limit) * 100, 100) : 0
   return (
     <div className={styles.usageItem}>
       <div>
         <span>{label}</span>
         <strong>
-          {used} de {limit}
+          {total} de {limit}
         </strong>
       </div>
       <progress
-        value={used}
+        value={total}
         max={Math.max(limit, 1)}
-        aria-label={`${label}: ${percentage.toFixed(0)}% utilizado`}
+        aria-label={`${label}: ${percentage.toFixed(0)}% utilizado, incluindo reservas`}
       />
+      {reserved > 0 ? (
+        <small>
+          {used} consumidos; {reserved} em andamento
+        </small>
+      ) : null}
     </div>
   )
 }
@@ -484,11 +492,13 @@ export function BillingPage() {
                 <UsageBar
                   label="Textos gerados"
                   used={overview.usage.textUsed}
+                  reserved={overview.usage.textReserved}
                   limit={overview.plan.limits.text}
                 />
                 <UsageBar
                   label="Imagens geradas"
                   used={overview.usage.imageUsed}
+                  reserved={overview.usage.imageReserved}
                   limit={overview.plan.limits.image}
                 />
               </div>

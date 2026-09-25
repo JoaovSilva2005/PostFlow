@@ -1,4 +1,4 @@
-import type { BrandProfile, PostDraft } from '../domain/models'
+import type { BrandProfile, BrandWorkspace, PostDraft } from '../domain/models'
 import type { PostFlowDataRepository } from '../services/postFlowRepository'
 
 interface TestData {
@@ -16,6 +16,17 @@ export function createTestRepository(initial: TestData = {}): TestRepository {
   let nextId = drafts.length + 1
 
   return {
+    async listWorkspaces(): Promise<BrandWorkspace[]> {
+      return []
+    },
+    async createWorkspace(nextBrand: BrandProfile): Promise<BrandWorkspace> {
+      return {
+        id: 'test-workspace',
+        role: 'owner',
+        billingStatus: 'active',
+        brand: nextBrand,
+      }
+    },
     async load() {
       return { brand, drafts: [...drafts] }
     },

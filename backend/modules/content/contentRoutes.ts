@@ -7,6 +7,7 @@ import {
   type ContentGenerationInput,
 } from './contentTypes.js'
 import { CONTENT_FORMATS } from '../../../shared/domain/contentFormats.js'
+import type { ContentQuotaService, ContentQuotaUnits } from './contentQuota.js'
 import {
   DEFAULT_POST_TIMEZONE,
   dateTimePartsInZone,
@@ -72,6 +73,7 @@ const requestSchema = z
       )
       .max(12),
     previousDraft: generatedDraftSchema.nullable(),
+    imageTier: z.enum(['standard', 'quality']).default('standard'),
   })
   .strict()
 
@@ -98,8 +100,41 @@ const batchRequestSchema = z
 
 const allowGeneration: RequestHandler = (_request, _response, next) => next()
 
+function requestWorkspaceId(request: Parameters<RequestHandler>[0]) {
+  const workspaceId = request.workspaceContext?.workspaceId
+  if (!workspaceId) throw new HttpError(400, 'Contexto de workspace ausente.')
+  return workspaceId
+}
+
+async function generateWithReservation<T>(
+  quota: ContentQuotaService,
+  workspaceId: string,
+  units: ContentQuotaUnits,
+  generate: () => Promise<T>,
+) {
+  const reservationId = await quota.reserve(workspaceId, units)
+  let result: T
+  try {
+    result = await generate()
+  } catch (generationError) {
+    try {
+      await quota.settle(reservationId, false)
+    } catch {
+      throw new HttpError(
+        503,
+        'A geração falhou e a reserva da franquia não pôde ser liberada. Tente novamente.',
+      )
+    }
+    throw generationError
+  }
+
+  await quota.settle(reservationId, true)
+  return result
+}
+
 export function createContentRouter(
   service: ContentService,
+  quota: ContentQuotaService,
   authorizeGeneration: RequestHandler = allowGeneration,
 ) {
   const router = Router()
@@ -127,9 +162,15 @@ export function createContentRouter(
 
     try {
       response.json({
-        data: await service.generate(
-          parsed.data as ContentGenerationInput,
-          abortController.signal,
+        data: await generateWithReservation(
+          quota,
+          requestWorkspaceId(request),
+          { text: 1, image: 1 },
+          () =>
+            service.generate(
+              parsed.data as ContentGenerationInput,
+              abortController.signal,
+            ),
         ),
       })
     } finally {
@@ -180,9 +221,15 @@ export function createContentRouter(
       response.once('close', abortIfDisconnected)
       try {
         response.json({
-          data: await service.generateBatch(
-            { ...parsed.data, items },
-            abortController.signal,
+          data: await generateWithReservation(
+            quota,
+            requestWorkspaceId(request),
+            { text: items.length, image: 0 },
+            () =>
+              service.generateBatch(
+                { ...parsed.data, items },
+                abortController.signal,
+              ),
           ),
         })
       } finally {

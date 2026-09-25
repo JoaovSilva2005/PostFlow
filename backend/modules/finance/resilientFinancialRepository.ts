@@ -63,12 +63,10 @@ export class ResilientFinancialTransactionRepository implements FinancialTransac
 
     try {
       return await operation(this.primary)
-    } catch (error) {
+    } catch {
       this.mode = 'demo'
-      const reason =
-        error instanceof Error ? error.message : 'erro desconhecido'
       console.warn(
-        `Supabase indisponível; modo demonstração ativado: ${reason}`,
+        'Supabase indisponível; modo demonstração ativado.',
       )
       return operation(this.fallback)
     }

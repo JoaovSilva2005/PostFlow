@@ -1,4 +1,4 @@
-import type { BrandProfile, PostDraft } from '../domain/models'
+import type { BrandProfile, BrandWorkspace, PostDraft } from '../domain/models'
 import { apiRequest } from './apiClient'
 
 interface ProjectData {
@@ -7,6 +7,8 @@ interface ProjectData {
 }
 
 export interface PostFlowDataRepository {
+  listWorkspaces?(): Promise<BrandWorkspace[]>
+  createWorkspace?(brand: BrandProfile): Promise<BrandWorkspace>
   load(workspaceId: string): Promise<ProjectData>
   saveBrand(workspaceId: string, brand: BrandProfile): Promise<BrandProfile>
   createDraft(workspaceId: string, draft: PostDraft): Promise<PostDraft>
@@ -20,6 +22,14 @@ function workspacePath(workspaceId: string, suffix: string) {
 }
 
 export const ApiPostFlowRepository: PostFlowDataRepository = {
+  listWorkspaces: () => apiRequest<BrandWorkspace[]>('/brands'),
+
+  createWorkspace: (brand) =>
+    apiRequest<BrandWorkspace>('/brands', {
+      method: 'POST',
+      body: JSON.stringify(brand),
+    }),
+
   async load(workspaceId) {
     const [brand, drafts] = await Promise.all([
       apiRequest<BrandProfile | null>(workspacePath(workspaceId, 'brand')),

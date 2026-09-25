@@ -13,6 +13,7 @@ import { useApp } from '../../app/AppContext'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
+import { BrandSelector } from '../../components/ui/BrandSelector'
 import { DateField } from '../../components/ui/DateField'
 import { PostPreview } from './PostPreview'
 import {
@@ -21,6 +22,7 @@ import {
   localDate,
   PLATFORMS,
   type GenerationService,
+  type ImageGenerationTier,
   type Platform,
 } from './generationService'
 import { useContentStudio } from './useContentStudio'
@@ -53,10 +55,18 @@ export function ChatPage({
   service?: GenerationService
 }) {
   const navigate = useNavigate()
-  const { brand, currentWorkspace, addDraft } = useApp()
+  const {
+    brand,
+    currentWorkspace,
+    availableWorkspaces,
+    addDraftForWorkspace,
+    selectWorkspace,
+  } = useApp()
   const studio = useContentStudio(service)
   const [prompt, setPrompt] = useState('')
   const [platform, setPlatform] = useState<Platform>('Instagram')
+  const [imageTier, setImageTier] = useState<ImageGenerationTier>('standard')
+  const [selectedBrandId, setSelectedBrandId] = useState('')
   const [date, setDate] = useState(localDate)
   const [mobilePanel, setMobilePanel] = useState('conversation')
   const [isAdding, setIsAdding] = useState(false)
@@ -69,6 +79,19 @@ export function ChatPage({
   const lastReviewedMessage = useRef<string | null>(null)
   const busy = studio.isGenerating || isAdding
   const latestMessage = studio.messages[studio.messages.length - 1]
+  const selectedWorkspace = availableWorkspaces.find(
+    ({ id }) => id === selectedBrandId,
+  )
+  const selectedBrand = selectedWorkspace?.brand ?? brand
+
+  useEffect(() => {
+    if (
+      !selectedBrandId &&
+      (currentWorkspace?.id || availableWorkspaces[0]?.id)
+    ) {
+      setSelectedBrandId(currentWorkspace?.id ?? availableWorkspaces[0].id)
+    }
+  }, [availableWorkspaces, currentWorkspace?.id, selectedBrandId])
 
   useEffect(() => {
     if (messagesRef.current && studio.messages.length > 0)
@@ -102,11 +125,12 @@ export function ChatPage({
     setPromptError('')
     setSaveError('')
     void studio.generate({
-      workspaceId: currentWorkspace?.id,
+      workspaceId: selectedBrandId || currentWorkspace?.id,
       prompt: prompt.trim(),
       platform,
+      imageTier,
       date,
-      brand,
+      brand: selectedBrand,
       history: studio.messages
         .slice(-12)
         .map(({ role, content }) => ({ role, content })),
@@ -128,10 +152,15 @@ export function ChatPage({
     setIsAdding(true)
     setSaveError('')
     try {
-      await addDraft({
+      const targetWorkspaceId = selectedBrandId || currentWorkspace?.id
+      if (!targetWorkspaceId) throw new Error('Selecione uma marca.')
+      await addDraftForWorkspace(targetWorkspaceId, {
         ...result.data,
         hashtags: [...new Set(result.data.hashtags)],
       })
+      if (targetWorkspaceId !== currentWorkspace?.id) {
+        await selectWorkspace(targetWorkspaceId)
+      }
       navigate('/calendar', {
         state: { draftDate: result.data.date, createdDraft: true },
       })
@@ -167,22 +196,29 @@ export function ChatPage({
         </span>
       </PageHeader>
       <div className={styles.brief}>
+        <BrandSelector
+          value={selectedBrandId || currentWorkspace?.id || ''}
+          disabled={busy}
+          onChange={setSelectedBrandId}
+        />
         <div className={styles.brandContext}>
-          <span
-            className={styles.brandMark}
-          >
-            {brand?.name.slice(0, 1) || 'P'}
+          <span className={styles.brandMark}>
+            {selectedBrand?.name.slice(0, 1) || 'P'}
           </span>
           <div>
             <strong>
-              {brand?.name || 'Sua marca ainda não foi configurada'}
+              {selectedBrand?.name || 'Sua marca ainda não foi configurada'}
             </strong>
             <span>
-              {brand?.toneOfVoice ||
+              {selectedBrand?.toneOfVoice ||
                 'Configure a marca para personalizar e salvar seus posts.'}
             </span>
           </div>
-          <Link to="/brand" aria-label="Configurar marca" title="Configurar marca">
+          <Link
+            to="/brand"
+            aria-label="Configurar marca"
+            title="Configurar marca"
+          >
             <ArrowUpRight size={18} />
           </Link>
         </div>
@@ -200,11 +236,30 @@ export function ChatPage({
         </label>
         <DateField
           label="Data sugerida"
+          className={styles.briefField}
           value={date}
           required
           disabled={busy}
           onChange={(e) => setDate(e.target.value || localDate())}
         />
+        {service.mode === 'api' ? (
+          <label className={styles.imageTierField}>
+            Qualidade da imagem
+            <select
+              aria-label="Qualidade da imagem"
+              value={imageTier}
+              disabled={busy}
+              onChange={(event) =>
+                setImageTier(event.target.value as ImageGenerationTier)
+              }
+            >
+              <option value="standard">Padrão · GPT Image 2.5 Flare</option>
+              <option value="quality">
+                Mais qualidade · GPT Image 2.5 Sunburst
+              </option>
+            </select>
+          </label>
+        ) : null}
       </div>
       <div className={styles.mobileSwitch} aria-label="Painel do estúdio">
         <button
@@ -395,7 +450,7 @@ export function ChatPage({
           className={`${styles.reviewPanel} ${mobilePanel !== 'draft' ? styles.mobileHidden : ''}`}
         >
           <PostPreview
-            brandName={brand?.name}
+            brandName={selectedBrand?.name}
             draft={studio.draft}
             isAdding={isAdding}
             isGenerating={studio.isGenerating}

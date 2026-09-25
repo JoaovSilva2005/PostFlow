@@ -25,6 +25,10 @@ function session(user = testUser): AuthSession {
 
 export class InMemoryAuthProvider implements AuthProvider {
   readonly recoveredEmails: string[] = []
+  readonly loggedOutSessions: Array<{
+    accessToken: string
+    refreshToken: string
+  }> = []
   readonly users: Map<string, AuthenticatedUser>
   private readonly user: AuthenticatedUser
 
@@ -76,5 +80,7 @@ export class InMemoryAuthProvider implements AuthProvider {
     this.recoveredEmails.push(email)
   }
 
-  async logout() {}
+  async logout(accessToken: string, refreshToken: string) {
+    this.loggedOutSessions.push({ accessToken, refreshToken })
+  }
 }

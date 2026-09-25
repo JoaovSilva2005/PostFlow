@@ -10,7 +10,8 @@ import type {
 
 const TEXT_TIMEOUT_MS = 25_000
 const IMAGE_TIMEOUT_MS = 45_000
-const DEFAULT_IMAGE_MODEL = 'gpt-image-1-mini'
+const DEFAULT_IMAGE_MODEL = 'gpt-image-2.5-flare'
+const DEFAULT_QUALITY_IMAGE_MODEL = 'gpt-image-2.5-sunburst'
 const DEFAULT_IMAGE_QUALITY = 'medium'
 const DEFAULT_IMAGE_SIZE = '1024x1024'
 const IMAGE_OUTPUT_FORMAT = 'webp'
@@ -224,6 +225,7 @@ export class OpenAiContentProvider implements ContentProvider {
   private readonly readApiKey: () => string
   private readonly textModel: string
   private readonly imageModel: string
+  private readonly qualityImageModel: string
   private readonly imageQuality: string
   private readonly imageSize: string
 
@@ -233,10 +235,12 @@ export class OpenAiContentProvider implements ContentProvider {
     imageModel = DEFAULT_IMAGE_MODEL,
     imageQuality = DEFAULT_IMAGE_QUALITY,
     imageSize = DEFAULT_IMAGE_SIZE,
+    qualityImageModel = DEFAULT_QUALITY_IMAGE_MODEL,
   ) {
     this.readApiKey = readApiKey
     this.textModel = textModel
     this.imageModel = imageModel
+    this.qualityImageModel = qualityImageModel
     this.imageQuality = imageQuality
     this.imageSize = imageSize
   }
@@ -506,7 +510,10 @@ export class OpenAiContentProvider implements ContentProvider {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: this.imageModel,
+            model:
+              input.imageTier === 'quality'
+                ? this.qualityImageModel
+                : this.imageModel,
             prompt: [
               'Crie uma imagem quadrada para um post de rede social.',
               'Não inclua texto, logotipos ou marcas d’água legíveis na imagem.',

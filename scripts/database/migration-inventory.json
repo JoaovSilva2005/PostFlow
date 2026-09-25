@@ -1,0 +1,22 @@
+{
+  "database/migrations": [
+    "20260915_financial_module.sql",
+    "20260917_financial_service_role_grant.sql",
+    "20260917_fix_billing_uuid_schema.sql",
+    "20260917_fix_billing_workflow_ambiguity.sql",
+    "20260917_grant_bff_service_role_access.sql",
+    "20260917_harden_rls_and_billing_indexes.sql",
+    "20260917_production_tenancy.sql",
+    "20260917_saas_billing_authorization.sql"
+  ],
+  "supabase/migrations": [
+    "20260918022418_grant_service_role_social_platforms.sql",
+    "20260918141406_simulated_service_invoice_snapshot.sql",
+    "20260918144609_harden_registration_profile_constraints.sql",
+    "20260923210143_postflow_batched_content_planner.sql",
+    "20260924012932_brand_ai_context.sql",
+    "20260924014810_brand_color_palette.sql",
+    "20260924030000_allow_multiple_brands.sql",
+    "20260925024139_transactional_workspace_and_content_quotas.sql"
+  ]
+}

@@ -1,162 +1,100 @@
-# Banco de Dados - Entrega 3
+# Banco de dados do PostFlow
 
-O PostFlow utiliza **Supabase com PostgreSQL**. O módulo financeiro é acessado por uma API Node.js/Express, que usa a biblioteca oficial `@supabase/supabase-js` e as configurações do arquivo `.env`.
+O PostFlow usa Supabase Auth e PostgreSQL. O navegador acessa dados de negócio
+pela API Express/BFF; o backend valida sessão, membership, papel e plano antes
+de consultar o banco com cliente server-side. Esse cliente usa `service_role`,
+que ignora RLS, por isso a autorização no BFF é obrigatória.
 
-## Arquivos
+## Dois caminhos distintos
 
-| Arquivo                                             | Responsabilidade                                                  |
-| --------------------------------------------------- | ----------------------------------------------------------------- |
-| `schema.sql`                                        | Cria tabelas, PKs, FKs, checks, índices, triggers e políticas RLS |
-| `seed.sql`                                          | Cadastra usuários, marcas, plataformas, posts e hashtags de teste |
-| `migrations/20260915_financial_module.sql`          | Cria o incremento financeiro em um banco já existente             |
-| `../backend/modules/finance/financialRepository.ts` | Implementa a persistência financeira usada pela API               |
-| `../backend/modules/finance/financialService.ts`    | Calcula saldo, receitas, despesas e pendências                    |
-| `../backend/config/supabaseServer.ts`              | Cria os clientes server-side usados pela API                       |
-| `../src/services/postFlowRepository.ts`             | Implementa o CRUD usado pelas telas                               |
-| `../scripts/database/verifyConnection.mjs`          | Confirma a conexão e consulta os relacionamentos                  |
-| `../scripts/database/testCrud.mjs`                  | Executa CREATE, READ, UPDATE e DELETE reais                       |
+### Schema acadêmico demonstrativo
 
-## Configuração no Supabase
+[`schema.sql`](schema.sql) cria a estrutura base de apresentação. Para uma
+demonstração acadêmica isolada, execute `schema.sql` e depois [`seed.sql`](seed.sql).
+Esse caminho não inclui tenancy SaaS, memberships, planos, assinaturas, uso,
+cobrança, fiscal imutável ou as RPCs usadas atualmente pela aplicação.
 
-1. Crie um projeto gratuito em [supabase.com](https://supabase.com).
-2. Abra **SQL Editor** e execute `database/schema.sql`.
-3. Execute `database/seed.sql`.
-4. Em **Project Settings > Data API**, copie a URL e a chave publicável.
-5. Na raiz do PostFlow, copie `.env.example` para `.env` e preencha:
+O seed contém personas e registros de exemplo. Não o use em uma base com dados
+reais ou no caminho SaaS.
 
-```env
-VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=SUA_CHAVE_PUBLICAVEL
-VITE_API_URL=http://localhost:3001/api
-API_PORT=3001
+### Instalação limpa da aplicação SaaS
+
+Em um projeto local ou descartável vazio, aplique:
+
+1. [`schema.sql`](schema.sql), como baseline das tabelas comuns;
+2. todos os arquivos de [`migrations/`](migrations/) em ordem lexicográfica;
+3. todos os arquivos de [`../supabase/migrations/`](../supabase/migrations/) em ordem lexicográfica.
+
+As migrações em `database/migrations` criam e endurecem tenancy, memberships,
+perfis, planos, assinaturas, contadores, faturas, fiscal e funções de cobrança.
+As migrações em `supabase/migrations` completam permissões do BFF, snapshots
+fiscais, constraints de cadastro, planejamento em lote, briefing da marca,
+paleta de cores, múltiplas marcas e as RPCs transacionais atuais, incluindo
+franquias atômicas de IA.
+
+O inventário exato dos arquivos fica em
+[`scripts/database/migration-inventory.json`](../scripts/database/migration-inventory.json).
+Valide nomes, referências, lacunas e arquivos não inventariados com:
+
+```bash
+npm run db:migrations:check
 ```
 
-O `.env` é ignorado pelo Git para evitar o versionamento de configurações locais. A chave utilizada no navegador deve ser apenas a **publishable/anon key**. O backend usa `SUPABASE_SERVICE_ROLE_KEY` (ou `SUPABASE_SECRET_KEY`) somente no ambiente server-side para acessar os repositórios; nunca utilize essa chave no frontend. O frontend usa a API Express como BFF e não acessa as tabelas diretamente no fluxo atual.
+O comando é estático e não conecta ao Supabase. O Supabase CLI aplica somente
+`supabase/migrations`; portanto `supabase db reset` sozinho não cria uma
+instalação SaaS completa deste repositório. Não execute `seed.sql` no caminho
+SaaS.
 
-Quando o projeto remoto não responde, somente o módulo financeiro usa uma massa temporária em memória para permitir a apresentação. A interface sinaliza **API demonstração**; esse modo não substitui a aplicação da migração no Supabase.
+## Migrações novas e bases existentes
 
-## Acesso ao backoffice
+Não mova nem renomeie migrações históricas: arquivos em qualquer diretório
+podem já ter sido aplicados manualmente ou pelo CLI. Para uma nova alteração:
 
-No SaaS, o acesso a Financeiro, Fiscal e Planos vem de `public.platform_members`; o papel `admin` em `public.brand_members` administra apenas o workspace e não concede acesso ao backoffice. A migração `supabase/migrations/20260917_saas_billing_authorization.sql` cria a tabela de papéis internos. O seed de personas concede acesso somente a `admin@postflow.test`.
+1. crie o arquivo com `npx supabase migration new nome_da_migracao`;
+2. escreva SQL transacional e idempotente quando possível, com
+   `search_path` seguro e permissões explícitas para funções privilegiadas;
+3. registre o arquivo em `migration-inventory.json` e rode
+   `npm run db:migrations:check`;
+4. aplique e teste primeiro em Supabase local descartável ou homologação;
+5. para uma base existente, confira o histórico registrado e o schema real
+   antes de aplicar ou reparar qualquer registro de migração.
 
-Para conceder acesso a uma conta real, crie-a primeiro no Supabase Auth e execute no SQL Editor para o e-mail confirmado do administrador:
+Parte do histórico anterior fica em `database/migrations`, fora da linhagem
+gerenciada pelo Supabase CLI. Um projeto remoto pode ter recebido esses SQLs
+manualmente e, por isso, seu histórico de migração pode não refletir os arquivos
+do repositório. Antes de `db push` ou `migration repair`, compare
+`supabase_migrations.schema_migrations` com objetos e definições reais, faça
+backup e valide em homologação. Este repositório não confirma que qualquer
+banco remoto esteja atualizado.
 
-```sql
-insert into public.platform_members (user_id, role)
-select id, 'platform_owner'
-from auth.users
-where lower(email) = lower('EMAIL_DO_ADMIN')
-on conflict (user_id) do update
-set role = excluded.role, updated_at = now();
-```
+## Fluxos e integridade
 
-Use esse comando somente para uma conta interna confiável. `platform_owner` dá acesso completo ao backoffice; `finance_admin` e `support` são papéis mais restritos descritos em `docs/user-manual.md`. Confirme que a consulta afetou uma conta e peça ao usuário para recarregar a sessão após a alteração.
+- `brands` são workspaces; `brand_members` é a fonte de autorização.
+- `plans` define `text_limit` e `image_limit`; `subscriptions` guarda o período
+  vigente; `usage_counters` registra consumo e reservas do período.
+- `content_generation_reservations` registra reservas pendentes, consumidas ou
+  liberadas. RPCs bloqueiam a linha do contador antes de comparar limites; a
+  cobrança e novas reservas liberam reservas vencidas após uma hora.
+- `post_drafts` e `post_hashtags` são criados/editados dentro da mesma RPC.
+- `create_brand_with_owner` grava marca e membership numa transação. A RPC
+  `ensure_default_workspace` usa advisory lock por usuário para serializar o
+  provisionamento inicial depois que `brands.user_id` deixou de ser único.
+- Funções usadas pelo BFF têm `search_path` vazio, execução revogada de
+  `public`/`anon`/`authenticated` e grant explícito a `service_role`.
+- Pagamento e emissão fiscal continuam demonstrativos; os comprovantes são
+  acadêmicos, sem validade legal, e não representam uma integração de cobrança
+  real.
 
-## Como validar no CMD
+## Validação de dados
 
-```cmd
-npm install
+```bash
+npm test
 npm run db:verify
 npm run db:test-crud
-npm run dev
 ```
 
-`db:verify` mostra os registros que a aplicação consegue consultar. `db:test-crud` cria um post temporário, consulta, altera, exclui e confirma a exclusão em cascata das hashtags.
-
-## Modelo Entidade-Relacionamento
-
-```mermaid
-erDiagram
-    USERS ||--o| BRANDS : possui
-    BRANDS ||--o{ POST_DRAFTS : cria
-    BRANDS ||--o{ FINANCIAL_TRANSACTIONS : registra
-    SOCIAL_PLATFORMS ||--o{ POST_DRAFTS : recebe
-    POST_DRAFTS ||--o{ POST_HASHTAGS : contem
-
-    USERS {
-        uuid id PK
-        text email UK
-        text display_name
-        timestamptz created_at
-    }
-
-    BRANDS {
-        uuid id PK
-        uuid user_id FK,UK
-        text name
-        text segment
-        text tone_of_voice
-        text primary_color
-    }
-
-    SOCIAL_PLATFORMS {
-        uuid id PK
-        text name UK
-        integer character_limit
-    }
-
-    POST_DRAFTS {
-        uuid id PK
-        uuid brand_id FK
-        uuid platform_id FK
-        text title
-        text caption
-        text visual_text
-        text color
-        timestamptz scheduled_at
-        text status
-    }
-
-    POST_HASHTAGS {
-        uuid post_id PK,FK
-        text hashtag PK
-    }
-
-    FINANCIAL_TRANSACTIONS {
-        uuid id PK
-        uuid brand_id FK
-        text type
-        text category
-        text description
-        numeric amount
-        date due_date
-        text status
-        timestamptz paid_at
-    }
-```
-
-## CRUD demonstrável
-
-- **CREATE:** o chat gera um rascunho e o salva em `post_drafts` e `post_hashtags`;
-- **READ:** a agenda consulta os posts da marca e seus relacionamentos;
-- **UPDATE:** o diálogo da agenda altera título, legenda, data e plataforma;
-- **DELETE:** a agenda exclui o post e o PostgreSQL remove suas hashtags em cascata.
-
-No financeiro, a API executa o mesmo CRUD em `financial_transactions`. O saldo usa somente registros pagos: receitas pagas menos despesas pagas. Registros pendentes ficam separados para evitar que previsões alterem o caixa atual.
-
-## Integridade e segurança
-
-- PKs UUID identificam as entidades;
-- FKs mantêm usuário, marca, plataforma, post e hashtag relacionados;
-- `ON DELETE CASCADE` remove dados dependentes;
-- `ON DELETE RESTRICT` impede excluir uma plataforma em uso;
-- `CHECK` valida cor, status, título, hashtag, tipo financeiro, valor positivo e coerência entre status e data de pagamento;
-- triggers atualizam `updated_at` automaticamente;
-- índices atendem consultas por marca, plataforma, data e status;
-- RLS limita a chave pública aos dados do usuário acadêmico de demonstração.
-
-As políticas são adequadas à demonstração sem autenticação real. Em produção, devem ser substituídas por políticas baseadas em `auth.uid()` e Supabase Auth.
-
-## Massa de testes
-
-O seed cria 2 usuários, 2 marcas, 3 plataformas, 3 posts, 7 hashtags e 4 lançamentos financeiros. Os dados do módulo resultam em R$ 3.500,00 de receitas pagas, R$ 800,00 de despesas pagas, saldo de R$ 2.700,00 e duas pendências.
-
-## Rastreabilidade
-
-- Jira anterior: `SCRUM-38` - banco relacional e carga inicial;
-- Jira atual: [`SCRUM-39`](https://joaovsilva3530.atlassian.net/browse/SCRUM-39) - conexão Supabase e CRUD pela aplicação;
-- [`SCRUM-40`](https://joaovsilva3530.atlassian.net/browse/SCRUM-40) - estrutura financeira no Supabase;
-- [`SCRUM-41`](https://joaovsilva3530.atlassian.net/browse/SCRUM-41) - API REST financeira;
-- [`SCRUM-42`](https://joaovsilva3530.atlassian.net/browse/SCRUM-42) - painel e cálculos;
-- [`SCRUM-43`](https://joaovsilva3530.atlassian.net/browse/SCRUM-43) - testes e documentação;
-- documentação técnica: Confluence do PostFlow.
+`npm test` inclui verificações estáticas de schema e inventário, sem aplicar
+migrações. `db:verify` consulta a URL configurada no ambiente. `db:test-crud`
+cria, altera e exclui um registro temporário, então execute somente contra uma
+base local descartável. Nenhum desses comandos demonstra, por si só, o estado de
+um projeto remoto de produção.

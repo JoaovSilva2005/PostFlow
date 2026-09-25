@@ -9,11 +9,12 @@ import {
   Sparkles,
   X,
 } from 'lucide-react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
+import { BrandSelector } from '../../components/ui/BrandSelector'
 import { SelectField, TextField } from '../../components/ui/FormField'
 import { BRAND_SEGMENT_OPTIONS } from '../../domain/brandCatalog'
 import type { BrandProfile } from '../../domain/models'
@@ -140,10 +141,19 @@ function getPalette(brand: BrandProfile | null | undefined) {
 
 export function BrandPage() {
   const navigate = useNavigate()
-  const { brand, saveBrand } = useApp()
+  const location = useLocation()
+  const {
+    brand,
+    currentWorkspace,
+    saveBrand,
+    createWorkspace,
+    availableWorkspaces,
+    selectWorkspace,
+  } = useApp()
+  const isCreating = location.pathname.endsWith('/new')
   const [form, setForm] = useState<BrandProfile>(() => ({
     ...EMPTY_BRAND_PROFILE,
-    ...brand,
+    ...(isCreating ? {} : (brand ?? {})),
     colorPalette: getPalette(brand),
   }))
   const [activeSection, setActiveSection] = useState<SectionId>('identity')
@@ -153,14 +163,14 @@ export function BrandPage() {
   const [hasChanges, setHasChanges] = useState(false)
 
   useEffect(() => {
-    if (brand && !hasChanges) {
+    if (!isCreating && brand && !hasChanges) {
       setForm({
         ...EMPTY_BRAND_PROFILE,
         ...brand,
         colorPalette: getPalette(brand),
       })
     }
-  }, [brand, hasChanges])
+  }, [brand, hasChanges, isCreating])
 
   function updateFormField<Key extends keyof BrandProfile>(
     field: Key,
@@ -212,13 +222,15 @@ export function BrandPage() {
     setIsSaving(true)
 
     try {
-      await saveBrand({
+      const payload = {
         ...EMPTY_BRAND_PROFILE,
         ...form,
         name: form.name.trim(),
         primaryColor: getPalette(form)[0],
         colorPalette: getPalette(form),
-      })
+      }
+      if (isCreating) await createWorkspace(payload)
+      else await saveBrand(payload)
       navigate('/chat')
     } catch {
       setSaveError('Não foi possível salvar a marca no Supabase.')
@@ -240,9 +252,28 @@ export function BrandPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Configuração da marca"
+        title={isCreating ? 'Criar uma marca' : 'Configuração da marca'}
         description="Organize o briefing da sua marca em poucos passos para a IA criar conteúdos mais precisos."
-      />
+      >
+        {!isCreating && availableWorkspaces.length ? (
+          <BrandSelector
+            value={currentWorkspace?.id ?? availableWorkspaces[0].id}
+            onChange={(id) => {
+              void selectWorkspace(id)
+              setHasChanges(false)
+            }}
+          />
+        ) : null}
+        {!isCreating ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate('/brand/new')}
+          >
+            <Plus size={16} /> Nova marca
+          </Button>
+        ) : null}
+      </PageHeader>
 
       <div className={styles.columns}>
         <form className={styles.formCard} onSubmit={handleSubmit}>

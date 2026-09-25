@@ -40,9 +40,9 @@ const draftSchema = z
     id: z.uuid().optional(),
     platform: socialPlatformSchema,
     title: z.string().trim().min(3).max(240),
-    caption: z.string().trim().min(1),
+    caption: z.string().trim().min(1).max(5000),
     hashtags: z.array(z.string().regex(/^#[^\s#]+$/)).max(30),
-    visualText: z.string().trim().min(1),
+    visualText: z.string().trim().min(1).max(160),
     color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
     date: z.iso.date(),
     status: z.enum(['draft', 'scheduled', 'published']),
@@ -110,15 +110,69 @@ function dbBrand(row: z.infer<typeof brandSchema>) {
   }
   return brand
 }
-async function platformId(supabase: SupabaseClient, platform: string) {
+interface PlatformInfo {
+  id: string
+  name: string
+  character_limit: number
+}
+
+async function platformInfoByName(
+  supabase: SupabaseClient,
+  platform: string,
+): Promise<PlatformInfo> {
   const { data, error } = await supabase
     .from('social_platforms')
-    .select('id')
+    .select('id,name,character_limit')
     .eq('name', platform)
     .maybeSingle()
   if (error) throw new Error(`Falha ao consultar plataforma: ${error.message}`)
   if (!data) throw new HttpError(400, 'Plataforma não encontrada.')
-  return data.id
+  return data as PlatformInfo
+}
+
+async function platformInfoById(supabase: SupabaseClient, platformId: string) {
+  const { data, error } = await supabase
+    .from('social_platforms')
+    .select('id,name,character_limit')
+    .eq('id', platformId)
+    .maybeSingle()
+  if (error) throw new Error(`Falha ao consultar plataforma: ${error.message}`)
+  if (!data) throw new HttpError(400, 'Plataforma não encontrada.')
+  return data as PlatformInfo
+}
+
+function validateCaptionLength(
+  platform: PlatformInfo,
+  caption: string,
+  hashtags: string[],
+) {
+  const composedCaption = `${caption}${hashtags.length ? `\n${hashtags.join(' ')}` : ''}`
+  const characterCount = Array.from(composedCaption).length
+  if (characterCount > platform.character_limit) {
+    throw new HttpError(
+      400,
+      `A legenda e as hashtags excedem o limite de ${platform.character_limit} caracteres de ${platform.name}.`,
+    )
+  }
+}
+
+function throwDraftWriteError(error: unknown, operation: string): never {
+  const details =
+    error && typeof error === 'object'
+      ? (error as { code?: unknown; message?: unknown })
+      : {}
+  if (
+    details.code === '22023' &&
+    details.message === 'platform_character_limit_exceeded'
+  ) {
+    throw new HttpError(
+      400,
+      'A legenda e as hashtags excedem o limite de caracteres da plataforma.',
+    )
+  }
+  throw new Error(
+    `${operation}: ${typeof details.message === 'string' ? details.message : 'erro desconhecido'}`,
+  )
 }
 function dbDraft(
   row: z.infer<typeof draftSchema>,
@@ -250,30 +304,39 @@ export function createWorkspaceRouter(
   })
   router.post('/drafts', authorizeWrite, async (request, response) => {
     const input = parse(draftSchema, request.body)
-    const { data, error } = await supabase
-      .from('post_drafts')
-      .insert(
-        dbDraft(
-          input,
-          workspaceId(request),
-          await platformId(supabase, input.platform),
-        ),
-      )
-      .select('*,social_platforms(name),post_hashtags(hashtag)')
-      .single()
-    if (error) throw new Error(`Falha ao criar post: ${error.message}`)
-    await supabase
-      .from('post_hashtags')
-      .insert(input.hashtags.map((hashtag) => ({ post_id: data.id, hashtag })))
+    const platform = await platformInfoByName(supabase, input.platform)
+    validateCaptionLength(platform, input.caption, input.hashtags)
+    const { data, error } = await supabase.rpc(
+      'create_post_draft_with_hashtags',
+      {
+        p_brand_id: workspaceId(request),
+        p_draft: {
+          ...dbDraft(input, workspaceId(request), platform.id),
+          hashtags: input.hashtags,
+        },
+      },
+    )
+    if (error) throwDraftWriteError(error, 'Falha ao criar post')
+    const created = Array.isArray(data) ? data[0] : data
+    if (!created) throw new Error('A gravação do rascunho não retornou dados.')
     response.status(201).json({
-      data: toDraft({
-        ...data,
-        post_hashtags: input.hashtags.map((hashtag) => ({ hashtag })),
-      }),
+      data: toDraft(created),
     })
   })
   router.post('/drafts/batch', authorizeWrite, async (request, response) => {
     const input = parse(batchDraftSchema, request.body)
+    const platformNames = [...new Set(input.map((draft) => draft.platform))]
+    const platformInfos = await Promise.all(
+      platformNames.map((platform) => platformInfoByName(supabase, platform)),
+    )
+    const platformByName = new Map(
+      platformInfos.map((platform) => [platform.name, platform]),
+    )
+    for (const draft of input) {
+      const platform = platformByName.get(draft.platform)
+      if (!platform) throw new HttpError(400, 'Plataforma não encontrada.')
+      validateCaptionLength(platform, draft.caption, draft.hashtags)
+    }
     const { data: ids, error } = await supabase.rpc(
       'create_post_drafts_batch',
       {
@@ -281,8 +344,7 @@ export function createWorkspaceRouter(
         p_drafts: input,
       },
     )
-    if (error)
-      throw new Error(`Falha ao salvar o lote de posts: ${error.message}`)
+    if (error) throwDraftWriteError(error, 'Falha ao salvar o lote de posts')
     if (
       !ids ||
       ids.length !== input.length ||
@@ -301,29 +363,51 @@ export function createWorkspaceRouter(
         draftSchema.partial().refine((value) => Object.keys(value).length > 0),
         request.body,
       )
+      const id = parse(z.uuid(), request.params.draftId)
+      const { data: current, error: currentError } = await supabase
+        .from('post_drafts')
+        .select(
+          'scheduled_at,schedule_timezone,caption,platform_id,post_hashtags(hashtag)',
+        )
+        .eq('id', id)
+        .eq('brand_id', workspaceId(request))
+        .maybeSingle()
+      if (currentError)
+        throw new Error(`Falha ao consultar rascunho: ${currentError.message}`)
+      if (!current) throw new HttpError(404, 'Post não encontrado.')
+
       const patch: Record<string, unknown> = {}
-      if (input.platform !== undefined)
-        patch.platform_id = await platformId(supabase, input.platform)
+      let targetPlatform: PlatformInfo | undefined
+      if (input.platform !== undefined) {
+        targetPlatform = await platformInfoByName(supabase, input.platform)
+        patch.platform_id = targetPlatform.id
+      }
       if (input.title !== undefined) patch.title = input.title
       if (input.caption !== undefined) patch.caption = input.caption
       if (input.visualText !== undefined) patch.visual_text = input.visualText
       if (input.color !== undefined) patch.color = input.color
       if (
+        input.caption !== undefined ||
+        input.platform !== undefined ||
+        input.hashtags !== undefined
+      ) {
+        const platform =
+          targetPlatform ??
+          (await platformInfoById(supabase, current.platform_id))
+        const currentHashtags = (current.post_hashtags ?? []).map(
+          (tag: { hashtag: string }) => tag.hashtag,
+        )
+        validateCaptionLength(
+          platform,
+          input.caption ?? current.caption,
+          input.hashtags ?? currentHashtags,
+        )
+      }
+      if (
         input.date !== undefined ||
         input.time !== undefined ||
         input.timezone !== undefined
       ) {
-        const { data: current, error: currentError } = await supabase
-          .from('post_drafts')
-          .select('scheduled_at,schedule_timezone')
-          .eq('id', request.params.draftId)
-          .eq('brand_id', workspaceId(request))
-          .maybeSingle()
-        if (currentError)
-          throw new Error(
-            `Falha ao consultar horário do post: ${currentError.message}`,
-          )
-        if (!current) throw new HttpError(404, 'Post não encontrado.')
         const timezone =
           input.timezone ?? current.schedule_timezone ?? DEFAULT_POST_TIMEZONE
         const currentParts = dateTimePartsInZone(
@@ -343,30 +427,20 @@ export function createWorkspaceRouter(
       if (input.formatData !== undefined) patch.format_data = input.formatData
       if (input.persona !== undefined) patch.audience_persona = input.persona
       if (input.status !== undefined) patch.status = input.status
-      const id = parse(z.uuid(), request.params.draftId)
-      const { data, error } = await supabase
-        .from('post_drafts')
-        .update(patch)
-        .eq('id', id)
-        .eq('brand_id', workspaceId(request))
-        .select('*,social_platforms(name),post_hashtags(hashtag)')
-        .maybeSingle()
-      if (error) throw new Error(`Falha ao atualizar post: ${error.message}`)
-      if (!data) throw new HttpError(404, 'Post não encontrado.')
-      if (input.hashtags !== undefined) {
-        await supabase.from('post_hashtags').delete().eq('post_id', id)
-        if (input.hashtags.length)
-          await supabase
-            .from('post_hashtags')
-            .insert(input.hashtags.map((hashtag) => ({ post_id: id, hashtag })))
-      }
+      const { data, error } = await supabase.rpc(
+        'update_post_draft_with_hashtags',
+        {
+          p_brand_id: workspaceId(request),
+          p_post_id: id,
+          p_patch: patch,
+          p_hashtags: input.hashtags ?? null,
+        },
+      )
+      if (error) throwDraftWriteError(error, 'Falha ao atualizar post')
+      const updated = Array.isArray(data) ? data[0] : data
+      if (!updated) throw new HttpError(404, 'Post não encontrado.')
       response.json({
-        data: toDraft({
-          ...data,
-          post_hashtags:
-            input.hashtags?.map((hashtag) => ({ hashtag })) ??
-            data.post_hashtags,
-        }),
+        data: toDraft(updated),
       })
     },
   )

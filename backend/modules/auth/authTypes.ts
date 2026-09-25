@@ -29,7 +29,7 @@ export interface RegistrationResult {
 export interface AuthProvider {
   authenticate(accessToken: string): Promise<AuthenticatedUser | null>
   login(email: string, password: string): Promise<AuthSession>
-  logout(accessToken: string): Promise<void>
+  logout(accessToken: string, refreshToken: string): Promise<void>
   recoverPassword(email: string, redirectUrl: string): Promise<void>
   refresh(refreshToken: string): Promise<AuthSession>
   register(input: RegistrationDetails): Promise<RegistrationResult>

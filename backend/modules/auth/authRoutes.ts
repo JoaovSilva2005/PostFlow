@@ -151,8 +151,14 @@ export function createAuthRouter(
   })
 
   router.post('/logout', async (request, response) => {
-    await service.logout(readAccessToken(request))
-    clearSessionCookies(response)
+    try {
+      await service.logout(
+        readAccessToken(request),
+        readRefreshToken(request),
+      )
+    } finally {
+      clearSessionCookies(response)
+    }
     response.status(204).send()
   })
 
