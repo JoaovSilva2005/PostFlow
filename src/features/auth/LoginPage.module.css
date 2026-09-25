@@ -232,8 +232,7 @@
 .backdrop {
   position: absolute;
   inset: 0;
-  background: rgb(7 9 8 / 68%);
-  backdrop-filter: blur(2px);
+  background: rgb(7 9 8 / 82%);
 }
 
 .loginArea {

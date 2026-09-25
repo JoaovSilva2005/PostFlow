@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { memo, useState, type FormEvent } from 'react'
 import {
   BarChart3,
   Bell,
@@ -34,7 +34,7 @@ const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
 
 const calendarDays = Array.from({ length: 35 }, (_, index) => index + 1)
 
-function WorkspaceBackdrop() {
+function WorkspaceBackdropView() {
   return (
     <div className={styles.workspace} aria-hidden="true">
       <aside className={styles.workspaceSidebar}>
@@ -128,6 +128,8 @@ function WorkspaceBackdrop() {
     </div>
   )
 }
+
+const WorkspaceBackdrop = memo(WorkspaceBackdropView)
 
 function validateLogin(email: string, password: string): FormErrors {
   const errors: FormErrors = {}

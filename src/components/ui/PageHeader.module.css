@@ -24,7 +24,9 @@
 .actions {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
 }
 @media (max-width: 1000px) {
   .header {
@@ -32,9 +34,16 @@
     flex-wrap: wrap;
     gap: 16px;
   }
+  .actions {
+    width: 100%;
+  }
 }
 @media (max-width: 560px) {
   .copy h1 {
     font-size: 26px;
+  }
+  .actions > * {
+    flex: 1 1 100%;
+    min-width: 0;
   }
 }

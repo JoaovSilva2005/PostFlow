@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { Buffer } from 'node:buffer'
 import { HttpError } from '../../shared/HttpError.js'
 import {
   contentFormatDataSchema,
@@ -57,6 +58,32 @@ const draftSchema = z
   })
   .strict()
 
+const draftCreateSchema = draftSchema.extend({
+  imageUrl: z
+    .string()
+    .max(6_000_000)
+    .refine(
+      (value) =>
+        /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value) ||
+        /^https:\/\//.test(value),
+      'A imagem gerada possui um formato inválido.',
+    )
+    .optional(),
+})
+const draftImageSchema = z
+  .object({
+    imageUrl: z
+      .string()
+      .max(6_000_000)
+      .refine(
+        (value) =>
+          /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value) ||
+          /^https:\/\//.test(value),
+        'A imagem gerada possui um formato inválido.',
+      ),
+  })
+  .strict()
+
 const batchDraftSchema = z
   .array(
     draftSchema.extend({
@@ -72,6 +99,11 @@ const batchDraftSchema = z
   )
   .min(1)
   .max(42)
+
+const DRAFT_IMAGE_BUCKET = 'post-draft-images'
+const SIGNED_IMAGE_URL_TTL_SECONDS = 60 * 60
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 function parse<T>(schema: z.ZodType<T>, value: unknown) {
   const result = schema.safeParse(value)
   if (!result.success)
@@ -178,10 +210,12 @@ function dbDraft(
   row: z.infer<typeof draftSchema>,
   brandId: string,
   platformId: string,
+  imagePath?: string,
 ) {
   const timezone = row.timezone ?? DEFAULT_POST_TIMEZONE
   const format = row.format ?? 'static'
   return {
+    id: row.id,
     brand_id: brandId,
     platform_id: platformId,
     title: row.title,
@@ -198,6 +232,7 @@ function dbDraft(
       headline: row.visualText.slice(0, 120),
       visualDirection: row.visualText,
     },
+    image_path: imagePath ?? null,
   }
 }
 function toDraft(row: any) {
@@ -219,6 +254,8 @@ function toDraft(row: any) {
     status: row.status,
     visualText: row.visual_text,
     color: row.color,
+    imageAvailable:
+      typeof row.image_path === 'string' && row.image_path.length > 0,
     format,
     persona: row.audience_persona ?? '',
     formatData: formatData.success
@@ -229,6 +266,109 @@ function toDraft(row: any) {
           visualDirection: row.visual_text ?? '',
         },
   }
+}
+
+async function imageBytes(imageUrl: string) {
+  const dataUrl =
+    /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(imageUrl)
+  if (dataUrl) {
+    const bytes = Buffer.from(dataUrl[2], 'base64')
+    if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) {
+      throw new HttpError(413, 'A imagem gerada excede o tamanho permitido.')
+    }
+    return { bytes, contentType: dataUrl[1] }
+  }
+
+  let source: URL
+  try {
+    source = new URL(imageUrl)
+  } catch {
+    throw new HttpError(400, 'A imagem gerada possui um endereço inválido.')
+  }
+  if (
+    source.protocol !== 'https:' ||
+    source.hostname !== 'oaidalleapiprodscus.blob.core.windows.net' ||
+    source.username ||
+    source.password
+  ) {
+    throw new HttpError(400, 'O endereço da imagem gerada não é permitido.')
+  }
+
+  let response: Response
+  try {
+    response = await fetch(source, {
+      signal: AbortSignal.timeout(10_000),
+      redirect: 'error',
+    })
+  } catch {
+    throw new HttpError(502, 'Não foi possível baixar a imagem gerada.')
+  }
+  if (!response.ok) {
+    throw new HttpError(502, 'Não foi possível baixar a imagem gerada.')
+  }
+
+  const contentType = response.headers
+    .get('content-type')
+    ?.split(';', 1)[0]
+    .trim()
+  if (!contentType || !IMAGE_MIME_TYPES.has(contentType)) {
+    throw new HttpError(400, 'O formato da imagem gerada não é permitido.')
+  }
+  const declaredLength = Number(response.headers.get('content-length') ?? 0)
+  if (declaredLength > MAX_IMAGE_BYTES) {
+    throw new HttpError(413, 'A imagem gerada excede o tamanho permitido.')
+  }
+
+  const reader = response.body?.getReader()
+  if (!reader) throw new HttpError(502, 'A imagem gerada veio vazia.')
+  const chunks: Uint8Array[] = []
+  let size = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > MAX_IMAGE_BYTES) {
+      await reader.cancel()
+      throw new HttpError(413, 'A imagem gerada excede o tamanho permitido.')
+    }
+    chunks.push(value)
+  }
+  if (!size) throw new HttpError(502, 'A imagem gerada veio vazia.')
+  return { bytes: Buffer.concat(chunks), contentType }
+}
+
+async function uploadDraftImage(
+  supabase: SupabaseClient,
+  path: string,
+  imageUrl: string,
+) {
+  const image = await imageBytes(imageUrl)
+  const { error } = await supabase.storage
+    .from(DRAFT_IMAGE_BUCKET)
+    .upload(path, image.bytes, {
+      contentType: image.contentType,
+      cacheControl: '3600',
+      upsert: false,
+    })
+  if (error)
+    throw new HttpError(503, 'Não foi possível salvar a imagem do post.')
+}
+
+async function removeDraftImage(supabase: SupabaseClient, path: string) {
+  const { error } = await supabase.storage
+    .from(DRAFT_IMAGE_BUCKET)
+    .remove([path])
+  if (error) console.error('Falha ao limpar imagem de post removido.')
+}
+
+async function toDraftWithImage(supabase: SupabaseClient, row: any) {
+  const draft = toDraft(row)
+  if (typeof row.image_path !== 'string' || !row.image_path) return draft
+  const { data, error } = await supabase.storage
+    .from(DRAFT_IMAGE_BUCKET)
+    .createSignedUrl(row.image_path, SIGNED_IMAGE_URL_TTL_SECONDS)
+  if (error || !data?.signedUrl) return draft
+  return { ...draft, imageUrl: data.signedUrl }
 }
 
 export function createWorkspaceRouter(
@@ -300,27 +440,124 @@ export function createWorkspaceRouter(
       .eq('brand_id', workspaceId(request))
       .order('scheduled_at')
     if (error) throw new Error(`Falha ao listar posts: ${error.message}`)
-    response.json({ data: (data ?? []).map(toDraft) })
+    response.json({
+      data: await Promise.all(
+        (data ?? []).map((row) => toDraftWithImage(supabase, row)),
+      ),
+    })
   })
+  router.get('/drafts/:draftId/image-url', async (request, response) => {
+    const id = parse(z.uuid(), request.params.draftId)
+    const { data, error } = await supabase
+      .from('post_drafts')
+      .select('image_path')
+      .eq('id', id)
+      .eq('brand_id', workspaceId(request))
+      .maybeSingle()
+    if (error)
+      throw new Error(`Falha ao consultar imagem do post: ${error.message}`)
+    if (!data) throw new HttpError(404, 'Post não encontrado.')
+    if (typeof data.image_path !== 'string' || !data.image_path) {
+      response.json({ data: { imageUrl: null } })
+      return
+    }
+    const { data: signed, error: signingError } = await supabase.storage
+      .from(DRAFT_IMAGE_BUCKET)
+      .createSignedUrl(data.image_path, SIGNED_IMAGE_URL_TTL_SECONDS)
+    if (signingError || !signed?.signedUrl) {
+      throw new HttpError(
+        503,
+        'Não foi possível carregar a imagem salva do post.',
+      )
+    }
+    response.json({ data: { imageUrl: signed.signedUrl } })
+  })
+  router.put(
+    '/drafts/:draftId/image',
+    authorizeWrite,
+    async (request, response) => {
+      const id = parse(z.uuid(), request.params.draftId)
+      const { imageUrl } = parse(draftImageSchema, request.body)
+      const brandId = workspaceId(request)
+      const { data: current, error: currentError } = await supabase
+        .from('post_drafts')
+        .select('image_path')
+        .eq('id', id)
+        .eq('brand_id', brandId)
+        .maybeSingle()
+      if (currentError)
+        throw new Error(`Falha ao consultar post: ${currentError.message}`)
+      if (!current) throw new HttpError(404, 'Post não encontrado.')
+
+      const nextImagePath = `${brandId}/${id}/${crypto.randomUUID()}`
+      await uploadDraftImage(supabase, nextImagePath, imageUrl)
+      const { data: updated, error: updateError } = await supabase
+        .from('post_drafts')
+        .update({ image_path: nextImagePath })
+        .eq('id', id)
+        .eq('brand_id', brandId)
+        .select('*,social_platforms(name),post_hashtags(hashtag)')
+        .maybeSingle()
+      if (updateError || !updated) {
+        await removeDraftImage(supabase, nextImagePath)
+        if (updateError)
+          throw new Error(
+            `Falha ao salvar imagem do post: ${updateError.message}`,
+          )
+        throw new HttpError(404, 'Post não encontrado.')
+      }
+
+      const previousImagePath = current.image_path
+      if (
+        typeof previousImagePath === 'string' &&
+        previousImagePath &&
+        previousImagePath !== nextImagePath
+      ) {
+        await removeDraftImage(supabase, previousImagePath)
+      }
+      response.json({ data: await toDraftWithImage(supabase, updated) })
+    },
+  )
   router.post('/drafts', authorizeWrite, async (request, response) => {
-    const input = parse(draftSchema, request.body)
+    const input = parse(draftCreateSchema, request.body)
     const platform = await platformInfoByName(supabase, input.platform)
     validateCaptionLength(platform, input.caption, input.hashtags)
-    const { data, error } = await supabase.rpc(
-      'create_post_draft_with_hashtags',
-      {
-        p_brand_id: workspaceId(request),
-        p_draft: {
-          ...dbDraft(input, workspaceId(request), platform.id),
-          hashtags: input.hashtags,
+    const id = input.id ?? crypto.randomUUID()
+    const draftToSave = { ...input, id }
+    const imagePath = input.imageUrl
+      ? `${workspaceId(request)}/${id}`
+      : undefined
+    if (imagePath && input.imageUrl) {
+      await uploadDraftImage(supabase, imagePath, input.imageUrl)
+    }
+
+    let created: unknown
+    try {
+      const { data, error } = await supabase.rpc(
+        'create_post_draft_with_hashtags',
+        {
+          p_brand_id: workspaceId(request),
+          p_draft: {
+            ...dbDraft(
+              draftToSave,
+              workspaceId(request),
+              platform.id,
+              imagePath,
+            ),
+            hashtags: input.hashtags,
+          },
         },
-      },
-    )
-    if (error) throwDraftWriteError(error, 'Falha ao criar post')
-    const created = Array.isArray(data) ? data[0] : data
-    if (!created) throw new Error('A gravação do rascunho não retornou dados.')
+      )
+      if (error) throwDraftWriteError(error, 'Falha ao criar post')
+      created = Array.isArray(data) ? data[0] : data
+      if (!created)
+        throw new Error('A gravação do rascunho não retornou dados.')
+    } catch (error) {
+      if (imagePath) await removeDraftImage(supabase, imagePath)
+      throw error
+    }
     response.status(201).json({
-      data: toDraft(created),
+      data: await toDraftWithImage(supabase, created),
     })
   })
   router.post('/drafts/batch', authorizeWrite, async (request, response) => {
@@ -439,9 +676,7 @@ export function createWorkspaceRouter(
       if (error) throwDraftWriteError(error, 'Falha ao atualizar post')
       const updated = Array.isArray(data) ? data[0] : data
       if (!updated) throw new HttpError(404, 'Post não encontrado.')
-      response.json({
-        data: toDraft(updated),
-      })
+      response.json({ data: await toDraftWithImage(supabase, updated) })
     },
   )
   router.delete(
@@ -454,9 +689,12 @@ export function createWorkspaceRouter(
         .delete()
         .eq('id', id)
         .eq('brand_id', workspaceId(request))
-        .select('id')
+        .select('id,image_path')
       if (error) throw new Error(`Falha ao excluir post: ${error.message}`)
       if (!data?.length) throw new HttpError(404, 'Post não encontrado.')
+      const imagePath = data[0].image_path
+      if (typeof imagePath === 'string' && imagePath)
+        await removeDraftImage(supabase, imagePath)
       response.status(204).send()
     },
   )

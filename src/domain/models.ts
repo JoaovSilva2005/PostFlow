@@ -43,8 +43,10 @@ export interface PostDraft {
   status: PostStatus
   visualText: string
   color: string
-  /** Imagem gerada para a revisão atual; a agenda persiste o conteúdo textual. */
+  /** URL temporária assinada para a imagem privada salva com o rascunho. */
   imageUrl?: string
+  /** Informa se o backend tem uma imagem salva, mesmo quando a URL expirou. */
+  imageAvailable?: boolean
   /** Metadata from the batch planner; absent in older drafts. */
   format?: ContentFormat
   formatData?: ContentFormatData

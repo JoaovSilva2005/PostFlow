@@ -499,7 +499,7 @@ export class OpenAiContentProvider implements ContentProvider {
     }
   }
 
-  private async generateImage(
+  async generateImage(
     input: ContentGenerationInput,
     visualText: string,
     parentSignal?: AbortSignal,

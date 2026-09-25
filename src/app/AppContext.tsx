@@ -61,6 +61,8 @@ interface AppContextValue extends AppState {
     workspaceId: string,
     drafts: PostDraft[],
   ) => Promise<PostDraft[]>
+  refreshDraftImageUrl: (draftId: string) => Promise<string | null>
+  saveDraftImage: (draftId: string, imageUrl: string) => Promise<PostDraft>
   updateDraft: (draft: PostDraft) => Promise<void>
   removeDraft: (id: string) => Promise<void>
 }
@@ -477,6 +479,42 @@ export function AppProvider({
               )
           dispatch({ type: 'ADD_DRAFTS', payload: createdDrafts })
           return createdDrafts
+        } catch (error) {
+          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+          throw error
+        }
+      },
+      refreshDraftImageUrl: async (draftId) => {
+        const workspaceId = state.currentWorkspace?.id
+        if (!workspaceId || !repository.refreshDraftImageUrl) return null
+        const imageUrl = await repository.refreshDraftImageUrl(
+          workspaceId,
+          draftId,
+        )
+        if (imageUrl) {
+          const draft = state.drafts.find((item) => item.id === draftId)
+          if (draft) {
+            dispatch({
+              type: 'UPDATE_DRAFT',
+              payload: { ...draft, imageUrl, imageAvailable: true },
+            })
+          }
+        }
+        return imageUrl
+      },
+      saveDraftImage: async (draftId, imageUrl) => {
+        const workspaceId = state.currentWorkspace?.id
+        if (!workspaceId || !repository.saveDraftImage) {
+          throw new Error('Não foi possível salvar a imagem neste workspace.')
+        }
+        try {
+          const updatedDraft = await repository.saveDraftImage(
+            workspaceId,
+            draftId,
+            imageUrl,
+          )
+          dispatch({ type: 'UPDATE_DRAFT', payload: updatedDraft })
+          return updatedDraft
         } catch (error) {
           dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
           throw error

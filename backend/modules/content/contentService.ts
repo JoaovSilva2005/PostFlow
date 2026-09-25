@@ -18,6 +18,10 @@ type BatchContentProvider = {
   generateBatch: NonNullable<ContentProvider['generateBatch']>
 }
 
+type ImageContentProvider = {
+  generateImage: NonNullable<ContentProvider['generateImage']>
+}
+
 export class ContentService {
   private readonly provider: ContentProvider
 
@@ -40,6 +44,26 @@ export class ContentService {
       status: 'draft',
       color: input.brand?.primaryColor ?? '#4F46E5',
     }
+  }
+
+  async generateImage(
+    input: ContentGenerationInput,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const provider = this.provider as ContentProvider &
+      Partial<ImageContentProvider>
+    if (!provider.generateImage) {
+      throw new HttpError(
+        503,
+        'Geração de imagem não está disponível neste provedor.',
+      )
+    }
+    return provider.generateImage.call(
+      this.provider,
+      input,
+      input.previousDraft?.visualText ?? input.prompt,
+      signal,
+    )
   }
 
   async generateBatch(

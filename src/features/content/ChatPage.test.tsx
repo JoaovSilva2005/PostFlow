@@ -87,4 +87,56 @@ describe('ChatPage', () => {
       platform: 'Instagram',
     })
   }, 10_000)
+
+  it('gera e salva um rascunho separado para cada rede selecionada', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const { repository } = renderApp('/chat')
+
+    await user.click(
+      await screen.findByText('Instagram', { selector: 'summary span' }),
+    )
+    await user.click(screen.getByRole('checkbox', { name: 'Facebook' }))
+    await user.click(screen.getByRole('checkbox', { name: 'LinkedIn' }))
+    expect(screen.getByText('3 redes selecionadas')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Data sugerida'), {
+      target: { value: '2026-10-10' },
+    })
+    await user.type(
+      screen.getByLabelText('Pedido para a IA'),
+      'Novidade da marca',
+    )
+    await user.click(screen.getByRole('button', { name: 'Gerar 3 posts' }))
+
+    await screen.findByText(/3 rascunhos gerados/, {}, { timeout: 3000 })
+    await user.click(
+      screen.getByRole('button', { name: 'Revisar rascunho de Facebook' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Editar conteúdo' }))
+    const title = screen.getByLabelText('Título do post')
+    await user.clear(title)
+    await user.type(title, 'Novidade para Facebook')
+    await user.click(
+      screen.getByRole('button', { name: 'Adicionar 3 à agenda' }),
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Outubro 2026' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '3 rascunhos adicionados à agenda',
+    )
+    const saved = repository.snapshot().drafts
+    expect(saved).toHaveLength(3)
+    expect(saved.map(({ platform }) => platform)).toEqual([
+      'Instagram',
+      'Facebook',
+      'LinkedIn',
+    ])
+    expect(saved.every(({ date }) => date === '2026-10-10')).toBe(true)
+    expect(new Set(saved.map(({ id }) => id)).size).toBe(3)
+    expect(saved.find(({ platform }) => platform === 'Facebook')?.title).toBe(
+      'Novidade para Facebook',
+    )
+  }, 15_000)
 })

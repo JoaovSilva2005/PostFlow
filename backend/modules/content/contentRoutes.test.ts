@@ -59,6 +59,9 @@ const provider: ContentProvider = {
       imageUrl: 'data:image/webp;base64,aW1hZ2U=',
     }
   },
+  async generateImage(_input, visualText) {
+    return `data:image/webp;base64,${Buffer.from(visualText).toString('base64')}`
+  },
   async generateBatch(input) {
     return input.items.map((item) => ({
       key: item.key,
@@ -182,16 +185,18 @@ describe('geração de conteúdo', () => {
 
     const responses = await Promise.all(
       Array.from({ length: 5 }, () =>
-        authorize(request(app).post('/api/content/generate')).send(validRequest),
+        authorize(request(app).post('/api/content/generate')).send(
+          validRequest,
+        ),
       ),
     )
 
-    expect(responses.filter((response) => response.status === 200)).toHaveLength(
-      1,
-    )
-    expect(responses.filter((response) => response.status === 429)).toHaveLength(
-      4,
-    )
+    expect(
+      responses.filter((response) => response.status === 200),
+    ).toHaveLength(1)
+    expect(
+      responses.filter((response) => response.status === 429),
+    ).toHaveLength(4)
     expect(generate).toHaveBeenCalledTimes(1)
     expect(quota.getUsage()).toMatchObject({
       text: 1,
@@ -211,6 +216,41 @@ describe('geração de conteúdo', () => {
     expect(response.status).toBe(429)
     expect(generate).not.toHaveBeenCalled()
     expect(quota.getUsage()).toMatchObject({ text: 0, image: 0 })
+  })
+
+  it('gera somente a imagem e consome apenas uma cota de imagem', async () => {
+    const quota = new InMemoryContentQuotaService({ text: 0, image: 1 })
+    const generateImage = vi.spyOn(provider, 'generateImage')
+    const previousDraft = {
+      id: 'draft-image-only',
+      title: 'Uma ideia para a marca',
+      caption: 'Uma legenda curta para a prévia.',
+      hashtags: ['#PostFlow'],
+      platform: 'Instagram',
+      date: '2026-09-18',
+      status: 'draft',
+      visualText: 'Uma dica prática',
+      color: '#4F46E5',
+    }
+    const response = await authorize(
+      request(setup('editor', 'active', quota)).post(
+        '/api/content/generate-image',
+      ),
+    ).send({ ...validRequest, previousDraft })
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toContain('data:image/webp;base64,')
+    expect(generateImage).toHaveBeenCalledWith(
+      expect.objectContaining({ previousDraft }),
+      'Uma dica prática',
+      expect.any(AbortSignal),
+    )
+    expect(quota.getUsage()).toMatchObject({
+      text: 0,
+      image: 1,
+      textReserved: 0,
+      imageReserved: 0,
+    })
   })
 
   it('libera a reserva após falha do provedor e permite uma nova tentativa', async () => {

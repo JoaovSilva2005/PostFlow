@@ -91,7 +91,7 @@ O comando inicia:
 | `OPENAI_TEXT_MODEL`                                  | Modelo de texto; padrão `gpt-6-luna`                |
 | `OPENAI_IMAGE_MODEL`                                 | Modelo de imagem padrão; padrão `gpt-image-2.5-flare` |
 | `OPENAI_IMAGE_QUALITY_MODEL`                         | Modelo opcional de maior qualidade; padrão `gpt-image-2.5-sunburst` |
-| `OPENAI_IMAGE_QUALITY`                               | Qualidade da API de imagens: `low`, `medium` ou `high`; padrão `medium` |
+| `OPENAI_IMAGE_QUALITY`                               | Qualidade da API de imagens: `low`, `medium`, `high`, `xhigh`, `max` ou `auto`; padrão `medium` |
 | `OPENAI_IMAGE_SIZE`                                  | Tamanho da imagem, por padrão `1024x1024`          |
 | `APP_URL`                                            | Origem autorizada e retorno da recuperação de senha |
 | `APP_ALLOWED_ORIGINS`                               | Origens HTTPS adicionais confiáveis, separadas por vírgula |

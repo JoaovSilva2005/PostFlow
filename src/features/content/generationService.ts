@@ -51,6 +51,7 @@ export interface BatchContentRequest {
 export interface GenerationService {
   mode: 'demo' | 'api'
   generate(request: ContentRequest, signal: AbortSignal): Promise<PostDraft>
+  generateImage?(request: ContentRequest, signal: AbortSignal): Promise<string>
   generateBatch?(
     request: BatchContentRequest,
     signal: AbortSignal,
@@ -100,6 +101,8 @@ export function generationError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401)
       return 'Sua sessão expirou. Entre novamente para gerar conteúdo.'
+    if (error.status === 402)
+      return 'Um plano ativo é necessário para gerar conteúdo. Acesse Assinatura e cobrança.'
     if (error.status === 429)
       return 'Limite de geração atingido. Aguarde um pouco e tente novamente.'
     if (error.status === 404 || error.status === 503)
@@ -276,6 +279,39 @@ export const apiGenerationService: GenerationService = {
       signal,
     })
     return draftSchema.parse(result)
+  },
+  async generateImage(request, signal) {
+    const {
+      workspaceId,
+      previousDraft,
+      imageTier = 'standard',
+      ...requestWithoutWorkspace
+    } = request
+    const result = await apiRequest<unknown>('/content/generate-image', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...requestWithoutWorkspace,
+        previousDraft: previousDraft
+          ? (({
+              imageUrl: _imageUrl,
+              imageAvailable: _imageAvailable,
+              ...draft
+            }) => ({ ...draft, status: 'draft' as const }))(previousDraft)
+          : null,
+        imageTier,
+      }),
+      headers: workspaceId ? { 'X-Workspace-Id': workspaceId } : undefined,
+      signal,
+    })
+    return z
+      .string()
+      .max(6_000_000)
+      .refine(
+        (value) =>
+          /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value) ||
+          /^https:\/\//.test(value),
+      )
+      .parse(result)
   },
   async generateBatch(request, signal) {
     const { workspaceId, ...contentRequest } = request

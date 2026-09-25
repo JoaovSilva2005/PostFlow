@@ -68,6 +68,8 @@ As chaves privilegiadas não podem ter prefixo `VITE_`, não devem aparecer no f
 - `modules/workspace` valida limites de legenda, texto visual e caracteres da
   plataforma. Criação/edição individual de rascunho mais hashtags usa RPC
   transacional; a persistência em lote continua usando `create_post_drafts_batch`.
+- Ao criar um post com imagem, o backend a armazena no bucket privado
+  `post-draft-images`, registra o caminho e devolve uma URL assinada temporária.
 - `modules/brand` cria a marca e seu membership `owner` em uma única RPC.
 - `modules/tenancy` provisiona o workspace inicial com lock transacional por
   usuário, evitando marcas duplicadas mesmo sem unicidade em `brands.user_id`.

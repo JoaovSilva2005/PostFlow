@@ -1,4 +1,30 @@
-const API_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
+const DEFAULT_API_URL = '/api'
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
+const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+function resolveApiUrl() {
+  if (!configuredApiUrl) return DEFAULT_API_URL
+
+  const normalizedUrl = configuredApiUrl.replace(/\/$/, '')
+
+  // VITE_API_URL is compiled into the frontend. If a local development URL
+  // was present during a production build, use the same-origin Vercel API.
+  if (typeof window !== 'undefined') {
+    try {
+      const configuredUrl = new URL(normalizedUrl, window.location.origin)
+      const appIsLocal = loopbackHosts.has(window.location.hostname)
+      const apiIsLocal = loopbackHosts.has(configuredUrl.hostname)
+
+      if (apiIsLocal && !appIsLocal) return DEFAULT_API_URL
+    } catch {
+      return DEFAULT_API_URL
+    }
+  }
+
+  return normalizedUrl
+}
+
+const API_URL = resolveApiUrl()
 
 interface ApiResponse<T> {
   data: T

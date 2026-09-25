@@ -182,6 +182,54 @@ export function createContentRouter(
   })
 
   router.post(
+    '/generate-image',
+    authorizeGeneration,
+    async (request, response) => {
+      const parsed = requestSchema.safeParse(request.body)
+      if (!parsed.success) {
+        throw new HttpError(
+          400,
+          parsed.error.issues[0]?.message ?? 'Pedido de imagem inválido.',
+        )
+      }
+      if (!parsed.data.previousDraft) {
+        throw new HttpError(400, 'Selecione um rascunho para gerar a imagem.')
+      }
+
+      const abortController = new AbortController()
+      const abortIfDisconnected = () => {
+        if (!response.writableEnded) abortController.abort()
+      }
+      const onRequestClose = () => {
+        if (!request.complete) abortIfDisconnected()
+      }
+
+      request.once('aborted', abortIfDisconnected)
+      request.once('close', onRequestClose)
+      response.once('close', abortIfDisconnected)
+
+      try {
+        response.json({
+          data: await generateWithReservation(
+            quota,
+            requestWorkspaceId(request),
+            { text: 0, image: 1 },
+            () =>
+              service.generateImage(
+                parsed.data as ContentGenerationInput,
+                abortController.signal,
+              ),
+          ),
+        })
+      } finally {
+        request.off('aborted', abortIfDisconnected)
+        request.off('close', onRequestClose)
+        response.off('close', abortIfDisconnected)
+      }
+    },
+  )
+
+  router.post(
     '/generate-batch',
     authorizeGeneration,
     async (request, response) => {

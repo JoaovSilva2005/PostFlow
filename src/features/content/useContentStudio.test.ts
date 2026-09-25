@@ -94,4 +94,39 @@ describe('Estúdio de criação', () => {
     await waitFor(() => expect(result.current.isGenerating).toBe(false))
     expect(generate).toHaveBeenCalledTimes(1)
   })
+  it('mantém as redes concluídas e repete apenas a geração que falhou', async () => {
+    let linkedinAttempts = 0
+    const generate = vi.fn(async (input: ContentRequest) => {
+      if (input.platform === 'LinkedIn' && linkedinAttempts++ === 0)
+        throw new Error('Falha temporária')
+      return {
+        ...draft,
+        id: input.platform,
+        platform: input.platform,
+      }
+    })
+    const { result } = renderHook(() =>
+      useContentStudio({ mode: 'demo', generate }),
+    )
+    await act(() =>
+      result.current.generateMany([
+        request,
+        { ...request, platform: 'LinkedIn' },
+      ]),
+    )
+    expect(result.current.drafts.map(({ platform }) => platform)).toEqual([
+      'Instagram',
+    ])
+    expect(result.current.error).toContain('LinkedIn')
+    await act(() => result.current.retry!())
+    expect(result.current.drafts.map(({ platform }) => platform)).toEqual([
+      'Instagram',
+      'LinkedIn',
+    ])
+    expect(result.current.error).toBe('')
+    expect(generate).toHaveBeenCalledTimes(3)
+    expect(
+      result.current.messages.filter((message) => message.role === 'user'),
+    ).toHaveLength(1)
+  })
 })

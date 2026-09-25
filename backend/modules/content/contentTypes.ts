@@ -91,6 +91,11 @@ export interface ContentProvider {
   ): Promise<
     Omit<GeneratedDraft, 'id' | 'date' | 'platform' | 'status' | 'color'>
   >
+  generateImage?(
+    input: ContentGenerationInput,
+    visualText: string,
+    signal?: AbortSignal,
+  ): Promise<string>
   generateBatch?(
     input: BatchContentGenerationInput,
     signal?: AbortSignal,

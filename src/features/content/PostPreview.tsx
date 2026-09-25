@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CalendarPlus, Image, MoreHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { DateField } from '../../components/ui/DateField'
@@ -11,6 +11,12 @@ interface PostPreviewProps {
   error?: string
   brandName?: string
   draft: PostDraft | null
+  drafts: PostDraft[]
+  activePlatform: PostDraft['platform'] | null
+  onSelectPlatform: (platform: PostDraft['platform']) => void
+  pendingCount: number
+  generationIssue?: string
+  onRetry: (() => Promise<void>) | null
   isAdding: boolean
   isGenerating: boolean
   onAdd: () => Promise<void>
@@ -21,6 +27,12 @@ export function PostPreview({
   error,
   brandName,
   draft,
+  drafts,
+  activePlatform,
+  onSelectPlatform,
+  pendingCount,
+  generationIssue,
+  onRetry,
   isAdding,
   isGenerating,
   onAdd,
@@ -28,6 +40,9 @@ export function PostPreview({
 }: PostPreviewProps) {
   const [view, setView] = useState('preview')
   const disabled = isAdding || isGenerating
+  useEffect(() => {
+    if (!draft) setView('preview')
+  }, [draft])
   return (
     <aside
       id="post-preview"
@@ -36,11 +51,36 @@ export function PostPreview({
       aria-label="Prévia do post gerado"
     >
       <header className={styles.panelHeader}>
-        <h2>{draft ? 'Revise seu rascunho' : 'Seu rascunho'}</h2>
+        <h2>
+          {draft
+            ? drafts.length > 1
+              ? 'Revise seus rascunhos'
+              : 'Revise seu rascunho'
+            : 'Seu rascunho'}
+        </h2>
         <span className={styles.unpublished}>Não publicado</span>
       </header>
       {draft ? (
         <>
+          {drafts.length > 1 ? (
+            <div
+              className={styles.platformTabs}
+              aria-label="Rascunhos por rede"
+            >
+              {drafts.map((item) => (
+                <button
+                  key={item.platform}
+                  type="button"
+                  aria-label={`Revisar rascunho de ${item.platform}`}
+                  aria-pressed={activePlatform === item.platform}
+                  onClick={() => onSelectPlatform(item.platform)}
+                >
+                  <SocialPlatformIcon platform={item.platform} size={15} />
+                  {item.platform}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div
             className={styles.previewSwitch}
             aria-label="Visualização do rascunho"
@@ -190,13 +230,41 @@ export function PostPreview({
                 </button>
               </p>
             )}
-            <Button fullWidth disabled={disabled} onClick={() => void onAdd()}>
+            {pendingCount > 0 ? (
+              <>
+                <p className={styles.pendingDrafts}>
+                  Faltam {pendingCount} {pendingCount === 1 ? 'rede' : 'redes'}.
+                  {generationIssue
+                    ? ` ${generationIssue}`
+                    : ' Conclua a geração antes de salvar.'}
+                </p>
+                {onRetry ? (
+                  <Button
+                    fullWidth
+                    variant="secondary"
+                    disabled={disabled}
+                    onClick={() => void onRetry()}
+                  >
+                    Tentar gerar novamente
+                  </Button>
+                ) : null}
+              </>
+            ) : null}
+            <Button
+              fullWidth
+              disabled={disabled || pendingCount > 0}
+              onClick={() => void onAdd()}
+            >
               <CalendarPlus size={16} />
-              {isAdding ? 'Salvando...' : 'Adicionar à agenda'}
+              {isAdding
+                ? 'Salvando...'
+                : drafts.length > 1
+                  ? `Adicionar ${drafts.length} à agenda`
+                  : 'Adicionar à agenda'}
             </Button>
             <p>
-              Ao adicionar, o post será salvo como rascunho. Nada será
-              publicado.
+              Ao adicionar, cada rede terá um rascunho separado na agenda. Nada
+              será publicado automaticamente.
             </p>
           </footer>
         </>

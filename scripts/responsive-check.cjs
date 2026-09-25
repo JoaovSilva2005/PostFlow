@@ -39,6 +39,13 @@ const drafts = [
     social_platforms: { name: 'LinkedIn' },
   },
   {
+    id: 'draft-4',
+    title: 'Uma dica para compartilhar',
+    scheduled_at: dateInCurrentMonth(14) + 'T15:00:00Z',
+    status: 'scheduled',
+    social_platforms: { name: 'Facebook' },
+  },
+  {
     id: 'draft-3',
     title: 'Ideias que conectam',
     scheduled_at: dateInCurrentMonth(26) + 'T12:00:00Z',
@@ -96,7 +103,7 @@ async function mockNetwork(page, name) {
     const path = new URL(route.request().url()).pathname
     let data
     if (path.includes('/auth/')) {
-      if (name === 'login')
+      if (name.startsWith('login'))
         return route.fulfill({
           status: 401,
           json: { error: 'Sessão de teste anônima' },
@@ -114,6 +121,31 @@ async function mockNetwork(page, name) {
       }
     } else if (path.endsWith('/health'))
       data = { status: 'ok', storage: 'supabase' }
+    else if (path.endsWith('/brands'))
+      data = [
+        {
+          id: 'workspace-qa',
+          role: 'owner',
+          billingStatus: 'active',
+          brand: {
+            name: 'PostFlow Administração',
+            segment: 'Tecnologia',
+            toneOfVoice: 'Profissional e objetivo',
+            primaryColor: '#4F46E5',
+          },
+        },
+        {
+          id: 'workspace-qa-2',
+          role: 'owner',
+          billingStatus: 'none',
+          brand: {
+            name: 'Studio Aurora',
+            segment: 'Tecnologia',
+            toneOfVoice: 'Profissional e objetivo',
+            primaryColor: '#4F46E5',
+          },
+        },
+      ]
     else if (path.includes('/workspaces/') && path.endsWith('/brand'))
       data = {
         name: brand.name,
@@ -124,6 +156,27 @@ async function mockNetwork(page, name) {
     else if (path.includes('/workspaces/') && path.endsWith('/drafts/batch')) {
       state.persistedBatch = JSON.parse(route.request().postData() || '[]')
       data = state.persistedBatch
+    } else if (
+      path.includes('/workspaces/') &&
+      /\/drafts\/[^/]+$/.test(path) &&
+      route.request().method() === 'PATCH'
+    ) {
+      state.updatedDraft = JSON.parse(route.request().postData() || '{}')
+      const original = drafts.find(({ id }) => path.endsWith(`/drafts/${id}`))
+      data = {
+        id: original?.id,
+        title: original?.title,
+        caption: original?.caption,
+        hashtags: original?.post_hashtags.map((tag) => tag.hashtag) ?? [],
+        platform: original?.social_platforms.name,
+        date: original?.scheduled_at.slice(0, 10),
+        time: '12:00',
+        timezone: 'America/Sao_Paulo',
+        status: original?.status,
+        visualText: original?.visual_text,
+        color: original?.color,
+        ...state.updatedDraft,
+      }
     } else if (path.includes('/workspaces/') && path.endsWith('/drafts'))
       data = drafts.map((draft) => ({
         id: draft.id,
@@ -136,6 +189,62 @@ async function mockNetwork(page, name) {
         visualText: draft.visual_text,
         color: draft.color,
       }))
+    else if (path.endsWith('/billing/plans'))
+      data = [
+        {
+          id: 'plan-qa',
+          code: 'professional',
+          name: 'Profissional',
+          price: 99,
+          limits: { text: 100, image: 20 },
+        },
+      ]
+    else if (path.endsWith('/billing'))
+      data = {
+        workspaceId: 'workspace-qa',
+        demoMode: true,
+        plan:
+          name === 'billing-empty'
+            ? null
+            : {
+                id: 'plan-qa',
+                code: 'professional',
+                name: 'Profissional',
+                price: 99,
+                limits: { text: 100, image: 20 },
+              },
+        subscription:
+          name === 'billing-empty'
+            ? null
+            : {
+                id: 'subscription-qa',
+                status: 'active',
+                currentPeriodStart: '2026-09-01',
+                currentPeriodEnd: '2026-10-01',
+              },
+        usage: {
+          period: '2026-09',
+          textUsed: 12,
+          imageUsed: 3,
+          textReserved: 0,
+          imageReserved: 0,
+        },
+      }
+    else if (path.endsWith('/invoices'))
+      data =
+        name === 'billing-empty'
+          ? []
+          : [
+              {
+                id: 'invoice-qa',
+                number: 'PF-2026-001',
+                amount: 99,
+                status: 'paid',
+                dueDate: '2026-09-10',
+                paidAt: '2026-09-09',
+                receipt: null,
+              },
+            ]
     else if (path.endsWith('/finance/summary')) data = summary
     else if (path.endsWith('/finance/transactions')) data = transactions
     else if (path.endsWith('/content/generate-batch')) {
@@ -183,19 +292,20 @@ async function mockNetwork(page, name) {
         })),
       )
       data = state.generatedBatch
-    } else if (path.endsWith('/content/generate'))
+    } else if (path.endsWith('/content/generate')) {
+      const input = JSON.parse(route.request().postData() || '{}')
       data = {
-        id: 'generated-qa',
-        title: 'Uma nova forma de criar',
-        caption: 'Conheça uma nova forma de criar conteúdo para sua marca.',
+        id: `generated-${input.platform}`,
+        title: `Uma nova forma de criar para ${input.platform}`,
+        caption: `Conheça uma nova forma de criar conteúdo para ${input.platform}.`,
         hashtags: ['#PostFlow', '#Conteúdo'],
-        platform: 'Instagram',
-        date: '2026-09-22',
+        platform: input.platform,
+        date: input.date,
         status: 'draft',
         visualText: 'Ideias que conectam.',
         color: '#4F46E5',
       }
-    else if (path.endsWith('/fiscal/report'))
+    } else if (path.endsWith('/fiscal/report'))
       data = {
         period: '2026-09',
         taxRate: 6,
@@ -252,7 +362,7 @@ async function mockNetwork(page, name) {
       .map(Number)) {
       for (const name of (
         process.env.QA_PAGES ||
-        'login,brand,chat,calendar,finance,fiscal,admin-plans'
+        'login,login-register,brand,brand-new,chat,calendar,finance,fiscal,billing,billing-empty,admin-plans'
       ).split(',')) {
         const page = await browser.newPage({
           viewport: { width, height: 900 },
@@ -262,9 +372,22 @@ async function mockNetwork(page, name) {
         const errors = []
         page.on('pageerror', (error) => errors.push(error.message))
         const mock = await mockNetwork(page, name)
-        const routePath = name === 'admin-plans' ? 'admin/plans' : name
+        const routePath =
+          name === 'admin-plans'
+            ? 'admin/plans'
+            : name === 'billing-empty'
+              ? 'billing'
+              : name === 'login-register'
+                ? 'login'
+                : name === 'brand-new'
+                  ? 'brand/new'
+                  : name
         console.log(`QA ${width}px · ${name}`)
-        await page.goto('http://127.0.0.1:5173/' + routePath)
+        await page.goto(
+          (process.env.QA_BASE_URL || 'http://127.0.0.1:5173') +
+            '/' +
+            routePath,
+        )
         try {
           await page.locator('h1').waitFor({ timeout: 10_000 })
         } catch (error) {
@@ -280,9 +403,9 @@ async function mockNetwork(page, name) {
           )
         }
         await page.evaluate(() => document.fonts.ready)
-        if (name !== 'login') {
+        if (!name.startsWith('login')) {
           let navigation = page
-          if (width <= 760) {
+          if (width <= 900) {
             await page.getByRole('button', { name: 'Abrir menu' }).click()
             navigation = page.getByRole('dialog', { name: 'Menu principal' })
           }
@@ -292,7 +415,7 @@ async function mockNetwork(page, name) {
           await navigation
             .getByRole('link', { name: 'Fiscal', exact: true })
             .waitFor()
-          if (width <= 760) {
+          if (width <= 900) {
             await page.keyboard.press('Escape')
             await page.getByRole('button', { name: 'Abrir menu' }).waitFor()
           }
@@ -301,6 +424,10 @@ async function mockNetwork(page, name) {
           await page
             .getByText('Consultoria de conteúdo', { exact: true })
             .waitFor()
+        if (name === 'login-register') {
+          await page.getByRole('button', { name: 'Criar conta' }).click()
+          await page.getByRole('heading', { name: 'Criar conta' }).waitFor()
+        }
         if (name === 'calendar')
           await page
             .getByRole('button', { name: /Uma nova forma de criar/ })
@@ -367,8 +494,114 @@ async function mockNetwork(page, name) {
             ).size,
             14,
           )
+
+          await page
+            .getByRole('button', { name: /Uma nova forma de criar/ })
+            .click()
+          const postDialog = page.getByRole('dialog')
+          assert.equal(await postDialog.getByRole('article').count(), 2)
+          const postPositions = await postDialog
+            .getByRole('article')
+            .evaluateAll((cards) =>
+              cards.map((card) => card.getBoundingClientRect().top),
+            )
+          assert.ok(
+            postPositions[1] > postPositions[0],
+            'posts do mesmo dia devem aparecer um abaixo do outro em ' + width,
+          )
+          const dayListMetrics = await postDialog
+            .locator('[class*="_dayPosts_"]')
+            .evaluate((list) => ({
+              clientHeight: list.clientHeight,
+              scrollHeight: list.scrollHeight,
+            }))
+          assert.ok(
+            dayListMetrics.scrollHeight > dayListMetrics.clientHeight,
+            'lista de posts da data deve rolar em ' + width,
+          )
+          const activePost = postDialog.locator('[data-draft-id="draft-1"]')
+          const firstPost = postDialog.getByRole('article').first()
+          await activePost
+            .getByRole('textbox', { name: 'Legenda', exact: true })
+            .waitFor()
+          await firstPost.getByText('Prévia', { exact: true }).waitFor()
+          const previewBox = await firstPost
+            .getByLabel('Prévia do post')
+            .boundingBox()
+          assert.ok(
+            previewBox && previewBox.y >= 0 && previewBox.y < 900,
+            'prévia do post visível ao abrir em ' + width,
+          )
+          await page.screenshot({
+            path: output + '/calendar-post-detail-open-' + width + '.png',
+            fullPage: false,
+          })
+          const tomorrow = new Date()
+          tomorrow.setDate(tomorrow.getDate() + 1)
+          const tomorrowKey = [
+            tomorrow.getFullYear(),
+            String(tomorrow.getMonth() + 1).padStart(2, '0'),
+            String(tomorrow.getDate()).padStart(2, '0'),
+          ].join('-')
+          await activePost.locator('input[type="date"]').fill(tomorrowKey)
+          await activePost.locator('input[type="time"]').fill('16:45')
+          await activePost
+            .getByRole('button', { name: 'Salvar como agendado' })
+            .click()
+          await activePost.locator('[data-status="scheduled"]').waitFor()
+          assert.equal(mock.updatedDraft.date, tomorrowKey)
+          assert.equal(mock.updatedDraft.time, '16:45')
+          assert.equal(mock.updatedDraft.status, 'scheduled')
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth > innerWidth,
+            ),
+            false,
+            'detalhes do post: overflow em ' + width,
+          )
+          await page.screenshot({
+            path: output + '/calendar-post-detail-' + width + '.png',
+            fullPage: false,
+          })
+          await postDialog
+            .getByRole('button', { name: 'Fechar detalhes do dia' })
+            .click()
         }
         if (name === 'chat') {
+          const briefLayout = await page
+            .locator('[class*="_brief_"]')
+            .first()
+            .evaluate((brief) => {
+              const boxes = [...brief.children].map((child) => {
+                const { left, top, right, bottom, width, height } =
+                  child.getBoundingClientRect()
+                return { left, top, right, bottom, width, height }
+              })
+              const collisions = []
+              for (let i = 0; i < boxes.length; i++) {
+                if (boxes[i].width < 40) collisions.push(`item ${i} comprimido`)
+                for (let j = i + 1; j < boxes.length; j++) {
+                  const horizontal =
+                    Math.min(boxes[i].right, boxes[j].right) -
+                    Math.max(boxes[i].left, boxes[j].left)
+                  const vertical =
+                    Math.min(boxes[i].bottom, boxes[j].bottom) -
+                    Math.max(boxes[i].top, boxes[j].top)
+                  if (horizontal > 2 && vertical > 2)
+                    collisions.push(`itens ${i} e ${j} sobrepostos`)
+                }
+              }
+              return collisions
+            })
+          assert.equal(
+            await page
+              .locator('[class*="_brief_"]')
+              .first()
+              .locator(':scope > *')
+              .count(),
+            5,
+          )
+          assert.deepEqual(briefLayout, [], `configuração da IA em ${width}px`)
           await page.screenshot({
             path: output + '/chat-empty-' + width + '.png',
             fullPage: true,
@@ -396,6 +629,8 @@ async function mockNetwork(page, name) {
         }
         if (name === 'fiscal')
           await page.getByRole('button', { name: /Ver comprovante/ }).waitFor()
+        if (name === 'billing' || name === 'billing-empty')
+          await page.getByRole('heading', { name: 'Faturas' }).waitFor()
         if (name === 'brand') {
           await page.getByRole('tab', { name: /Contexto da IA/ }).click()
           await page
@@ -441,6 +676,23 @@ async function mockNetwork(page, name) {
           path: output + '/' + name + '-' + width + '.png',
           fullPage: true,
         })
+        if (name === 'billing-empty') {
+          await page
+            .getByRole('button', { name: 'Escolher Profissional' })
+            .click()
+          await page.getByRole('button', { name: 'Ver resumo' }).click()
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth > innerWidth,
+            ),
+            false,
+            'resumo de assinatura: overflow em ' + width,
+          )
+          await page.screenshot({
+            path: output + '/billing-checkout-' + width + '.png',
+            fullPage: true,
+          })
+        }
         if (name === 'chat') {
           await page.getByRole('button', { name: 'Editar conteúdo' }).click()
           await page.getByLabel('Título do post').fill('Conteúdo revisado')
@@ -454,6 +706,47 @@ async function mockNetwork(page, name) {
             ),
             false,
           )
+          if (width === 390) {
+            await page
+              .getByRole('button', { name: 'Conversa', exact: true })
+              .click()
+            await page.getByRole('button', { name: 'Nova criação' }).click()
+            await page
+              .getByRole('button', { name: 'Descartar e começar' })
+              .click()
+            await page.locator('[class*="_platformPicker_"] summary').click()
+            await page.getByRole('checkbox', { name: 'Facebook' }).check()
+            await page.getByRole('checkbox', { name: 'LinkedIn' }).check()
+            await page.screenshot({
+              path: output + '/chat-platforms-' + width + '.png',
+              fullPage: true,
+            })
+            await page.locator('[class*="_platformPicker_"] summary').click()
+            await page.getByLabel('Pedido para a IA').fill('Uma dica da marca')
+            await page.getByRole('button', { name: 'Gerar 3 posts' }).click()
+            await page
+              .getByRole('heading', { name: 'Revise seus rascunhos' })
+              .waitFor()
+            await page
+              .getByRole('button', { name: 'Revisar rascunho de LinkedIn' })
+              .click()
+            await page.screenshot({
+              path: output + '/chat-multi-' + width + '.png',
+              fullPage: true,
+            })
+            await page
+              .getByRole('button', { name: 'Adicionar 3 à agenda' })
+              .click()
+            await page.getByText(/3 rascunhos adicionados à agenda/).waitFor()
+            assert.deepEqual(
+              mock.persistedBatch.map((draft) => draft.platform),
+              ['Instagram', 'Facebook', 'LinkedIn'],
+            )
+            assert.equal(
+              new Set(mock.persistedBatch.map((draft) => draft.id)).size,
+              3,
+            )
+          }
         }
         if (name === 'fiscal') {
           await page.getByRole('button', { name: /Ver comprovante/ }).click()

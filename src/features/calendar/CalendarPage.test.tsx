@@ -1,8 +1,9 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { PostDraft } from '../../domain/models'
 import { createTestRepository } from '../../test/testRepository'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
+import { generationService } from '../content/generationService'
 import { toDateKey } from './calendarUtils'
 
 function dateInCurrentMonth(day: number) {
@@ -149,10 +150,245 @@ describe('CalendarPage', () => {
       'true',
     )
     await user.click(screen.getByRole('button', { name: /Café especial/ }))
-    expect(screen.getByLabelText('Título')).toHaveFocus()
+    expect(screen.getByRole('dialog')).toHaveFocus()
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Café especial/ })).toHaveFocus()
+  })
+
+  it('agrupa posts do mesmo dia e navega entre datas com conteúdo', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const groupedDrafts: PostDraft[] = [
+      drafts[0],
+      {
+        ...drafts[0],
+        id: 'draft-facebook',
+        title: 'Post no Facebook',
+        caption: 'Legenda para Facebook',
+        platform: 'Facebook',
+        time: '17:30',
+      },
+      drafts[1],
+    ]
+    renderApp('/calendar', createTestRepository({ drafts: groupedDrafts }))
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    const dialog = screen.getByRole('dialog')
+    expect(
+      within(dialog).getByRole('heading', { name: 'Instagram' }),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('heading', { name: 'Facebook' }),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText('2 posts nesta data')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Título')).not.toBeInTheDocument()
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Próximo dia' }),
+    )
+    expect(
+      within(dialog).getByRole('heading', { name: 'LinkedIn' }),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('heading', { name: 'Instagram' }),
+    ).not.toBeInTheDocument()
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Dia anterior' }),
+    )
+    expect(
+      within(dialog).getByRole('heading', { name: 'Instagram' }),
+    ).toBeInTheDocument()
+  })
+
+  it('move a data imediatamente sem salvar legenda ou horário não confirmados', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const repository = createTestRepository({ drafts })
+    renderApp('/calendar', repository)
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    const nextDate = dateInCurrentMonth(16)
+    await user.clear(screen.getByLabelText('Legenda'))
+    await user.type(screen.getByLabelText('Legenda'), 'Rascunho não salvo')
+    fireEvent.change(screen.getByLabelText('Data'), {
+      target: { value: nextDate },
+    })
+
+    await waitFor(() =>
+      expect(repository.snapshot().drafts[0]).toMatchObject({
+        caption: 'Legenda original',
+        date: nextDate,
+      }),
+    )
+    expect(screen.getByLabelText('Legenda')).toHaveValue('Rascunho não salvo')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Post movido para a nova data na agenda.',
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'Fechar detalhes do dia' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Lista' }))
+    const movedCard = screen.getByRole('button', { name: /Café especial/ })
+    expect(within(movedCard).getByText('16')).toBeInTheDocument()
+
+    await user.click(movedCard)
+    fireEvent.change(screen.getByLabelText('Horário'), {
+      target: { value: '16:30' },
+    })
+    await user.selectOptions(screen.getByLabelText('Situação'), 'scheduled')
+    await user.clear(screen.getByLabelText('Legenda'))
+    await user.type(screen.getByLabelText('Legenda'), 'Legenda revisada')
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Alterações salvas.',
+    )
+    expect(repository.snapshot().drafts[0]).toMatchObject({
+      caption: 'Legenda revisada',
+      date: nextDate,
+      time: '16:30',
+      status: 'scheduled',
+    })
+  })
+
+  it('exibe a imagem gerada do post na prévia', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const draftWithImage = {
+      ...drafts[0],
+      imageUrl: 'data:image/webp;base64,aW1hZ2U=',
+    }
+    renderApp('/calendar', createTestRepository({ drafts: [draftWithImage] }))
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+
+    expect(screen.getByAltText('Imagem gerada para o post')).toHaveAttribute(
+      'src',
+      'data:image/webp;base64,aW1hZ2U=',
+    )
+    expect(
+      screen.getByText('Imagem gerada e salva na agenda.'),
+    ).toBeInTheDocument()
+  })
+
+  it('gera e salva a imagem diretamente na prévia do agendamento', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const repository = createTestRepository({ drafts })
+    const previousGenerateImage = generationService.generateImage
+    generationService.generateImage = async () =>
+      'data:image/webp;base64,aW1hZ2U='
+
+    try {
+      renderApp('/calendar', repository)
+
+      await user.click(
+        await screen.findByRole('button', { name: /Café especial/ }),
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'Gerar imagem com IA' }),
+      )
+
+      await waitFor(() =>
+        expect(repository.snapshot().drafts[0]).toMatchObject({
+          imageUrl: 'data:image/webp;base64,aW1hZ2U=',
+          imageAvailable: true,
+        }),
+      )
+      expect(screen.getByAltText('Imagem gerada para o post')).toHaveAttribute(
+        'src',
+        'data:image/webp;base64,aW1hZ2U=',
+      )
+    } finally {
+      generationService.generateImage = previousGenerateImage
+    }
+  })
+
+  it('renova um link de imagem expirado ao abrir a prévia', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const repository = createTestRepository({
+      drafts: [
+        {
+          ...drafts[0],
+          imageUrl: 'https://storage.example/expired',
+          imageAvailable: true,
+        },
+      ],
+    })
+    repository.refreshDraftImageUrl = async () =>
+      'https://storage.example/fresh'
+    renderApp('/calendar', repository)
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    const image = screen.getByAltText('Imagem gerada para o post')
+    fireEvent.error(image)
+
+    await waitFor(() =>
+      expect(screen.getByAltText('Imagem gerada para o post')).toHaveAttribute(
+        'src',
+        'https://storage.example/fresh',
+      ),
+    )
+  })
+
+  it('adiciona e remove hashtags no editor do agendamento', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const repository = createTestRepository({ drafts })
+    renderApp('/calendar', repository)
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    await user.type(screen.getByLabelText('Adicionar hashtag'), 'CafeLocal')
+    await user.click(screen.getByRole('button', { name: 'Adicionar' }))
+    expect(
+      screen.getByRole('button', { name: 'Remover hashtag #CafeLocal' }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'Remover hashtag #cafe' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    await waitFor(() =>
+      expect(repository.snapshot().drafts[0]?.hashtags).toEqual(['#CafeLocal']),
+    )
+  })
+
+  it('duplica o post com uma nova identidade e situação de rascunho', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const repository = createTestRepository({ drafts })
+    renderApp('/calendar', repository)
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'Duplicar como rascunho' }),
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Cópia criada como rascunho.',
+    )
+    const saved = repository.snapshot().drafts
+    expect(saved).toHaveLength(3)
+    expect(saved[2]).toMatchObject({
+      title: 'Café especial (cópia)',
+      platform: 'Instagram',
+      status: 'draft',
+    })
+    expect(saved[2].id).not.toBe('draft-1')
   })
 
   beforeEach(() => {
@@ -181,21 +417,24 @@ describe('CalendarPage', () => {
     await user.click(
       await screen.findByRole('button', { name: /Café especial/ }),
     )
-    const title = screen.getByLabelText('Título')
-    await user.clear(title)
-    await user.type(title, 'Café de sábado')
+    const caption = screen.getByLabelText('Legenda')
+    await user.clear(caption)
+    await user.type(caption, 'Legenda do café de sábado')
     await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
     let saved = repository.snapshot().drafts
     expect(
       saved.find((draft: PostDraft) => draft.id === 'draft-1'),
-    ).toMatchObject({ title: 'Café de sábado' })
+    ).toMatchObject({ caption: 'Legenda do café de sábado' })
     expect(
       saved.find((draft: PostDraft) => draft.id === 'draft-2'),
     ).toMatchObject({ caption: 'Não deve mudar' })
 
-    await user.click(screen.getByRole('button', { name: /Café de sábado/ }))
-    await user.click(screen.getByRole('button', { name: 'Excluir' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Fechar detalhes do dia' }),
+    )
+    await user.click(screen.getByRole('button', { name: /Café especial/ }))
+    await user.click(screen.getByRole('button', { name: 'Excluir post' }))
     saved = repository.snapshot().drafts
     expect(saved.map((draft: PostDraft) => draft.id)).toEqual(['draft-2'])
     expect(

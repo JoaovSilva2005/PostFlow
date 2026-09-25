@@ -1,9 +1,11 @@
 import {
   apiGenerationService,
   demoGenerationService,
+  generationError,
   type BatchContentRequest,
   type ContentRequest,
 } from './generationService'
+import { ApiError } from '../../services/apiClient'
 import { vi } from 'vitest'
 
 const input: ContentRequest = {
@@ -34,6 +36,16 @@ const batchInput: BatchContentRequest = {
 
 describe('Contrato de geração', () => {
   afterEach(() => vi.unstubAllGlobals())
+  it('explica quando a geração exige um plano ativo', () => {
+    expect(
+      generationError(
+        new ApiError('Um plano ativo é necessário para utilizar esta funcionalidade.', 402),
+      ),
+    ).toBe(
+      'Um plano ativo é necessário para gerar conteúdo. Acesse Assinatura e cobrança.',
+    )
+  })
+
   it('usa marca, data e rede na demonstração', async () => {
     const draft = await demoGenerationService.generate(
       input,

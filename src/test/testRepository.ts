@@ -45,6 +45,19 @@ export function createTestRepository(initial: TestData = {}): TestRepository {
       )
       return updatedDraft
     },
+    async saveDraftImage(_workspaceId, id, imageUrl) {
+      const currentDraft = drafts.find((draft) => draft.id === id)
+      if (!currentDraft) throw new Error('Post não encontrado.')
+      const updatedDraft = {
+        ...currentDraft,
+        imageUrl,
+        imageAvailable: true,
+      }
+      drafts = drafts.map((draft) =>
+        draft.id === updatedDraft.id ? updatedDraft : draft,
+      )
+      return updatedDraft
+    },
     async deleteDraft(_workspaceId, id) {
       drafts = drafts.filter((draft) => draft.id !== id)
     },

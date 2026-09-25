@@ -10,6 +10,7 @@ import type { PostDraft } from '../../domain/models'
 import {
   generationError,
   generationService,
+  type Platform,
 } from '../content/generationService'
 import {
   DEFAULT_POST_TIMEZONE,
@@ -47,6 +48,8 @@ export function CalendarPage() {
     removeDraft,
     addDraftsForWorkspace,
     selectWorkspace,
+    refreshDraftImageUrl,
+    saveDraftImage,
   } = useApp()
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const draftDate = location.state?.draftDate
@@ -60,7 +63,7 @@ export function CalendarPage() {
     }
     return INITIAL_VISIBLE_MONTH
   })
-  const [selectedDraft, setSelectedDraft] = useState<PostDraft | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [view, setView] = useState<'month' | 'list'>(() =>
     window.matchMedia?.('(max-width: 560px)').matches ? 'list' : 'month',
   )
@@ -73,11 +76,14 @@ export function CalendarPage() {
   const isGenerating = generationPhase !== 'idle'
   const [generationNotice, setGenerationNotice] = useState('')
   const generationController = useRef<AbortController | null>(null)
-  const monthDrafts = drafts
-    .filter((draft) =>
-      draft.date.startsWith(toDateKey(visibleMonth).slice(0, 7)),
-    )
-    .sort((left, right) => left.date.localeCompare(right.date))
+  const visibleMonthKey = toDateKey(visibleMonth).slice(0, 7)
+  const monthDrafts = useMemo(
+    () =>
+      drafts
+        .filter((draft) => draft.date.startsWith(visibleMonthKey))
+        .sort((left, right) => left.date.localeCompare(right.date)),
+    [drafts, visibleMonthKey],
+  )
   const calendarCells = useMemo(
     () => buildCalendar(visibleMonth.getFullYear(), visibleMonth.getMonth()),
     [visibleMonth],
@@ -92,6 +98,29 @@ export function CalendarPage() {
 
     return groupedDrafts
   }, [drafts])
+  const orderedDrafts = useMemo(
+    () =>
+      [...drafts].sort((left, right) => {
+        const leftSchedule = `${left.date}T${left.time ?? '12:00'}`
+        const rightSchedule = `${right.date}T${right.time ?? '12:00'}`
+        return (
+          leftSchedule.localeCompare(rightSchedule) ||
+          left.platform.localeCompare(right.platform) ||
+          left.id.localeCompare(right.id)
+        )
+      }),
+    [drafts],
+  )
+  const availableDates = useMemo(
+    () => [...new Set(orderedDrafts.map((draft) => draft.date))],
+    [orderedDrafts],
+  )
+  const selectedDayDrafts = selectedDate
+    ? orderedDrafts.filter((draft) => draft.date === selectedDate)
+    : []
+  const selectedDateIndex = selectedDate
+    ? availableDates.indexOf(selectedDate)
+    : -1
 
   function changeMonth(offset: number) {
     setVisibleMonth(
@@ -104,15 +133,102 @@ export function CalendarPage() {
     )
   }
 
-  async function handleSaveDraft(updatedDraft: PostDraft) {
-    await updateDraft(updatedDraft)
-    setSelectedDraft(null)
-  }
+  const handleSaveDraft = useCallback(
+    async (updatedDraft: PostDraft) => {
+      await updateDraft(updatedDraft)
+    },
+    [updateDraft],
+  )
 
-  async function handleDeleteDraft(draftId: string) {
-    await removeDraft(draftId)
-    setSelectedDraft(null)
-  }
+  const handleDraftDateChange = useCallback(
+    async (draft: PostDraft, date: string) => {
+      // Use the last persisted post as the base so unsaved caption/time/status
+      // edits in the open dialog are not included in this automatic update.
+      const updatedDraft = { ...draft, date }
+      await updateDraft(updatedDraft)
+      setSelectedDate(date)
+    },
+    [updateDraft],
+  )
+
+  const handleGenerateDraftImage = useCallback(
+    async (draft: PostDraft) => {
+      if (!currentWorkspace?.id || !generationService.generateImage) {
+        throw new Error('Geração de imagem indisponível neste momento.')
+      }
+      const controller = new AbortController()
+      const timeout = window.setTimeout(() => controller.abort(), 90_000)
+      try {
+        const imageUrl = await generationService.generateImage(
+          {
+            workspaceId: currentWorkspace.id,
+            prompt: `${draft.title}\n\n${draft.caption}`,
+            platform: draft.platform as Platform,
+            date: draft.date,
+            brand,
+            history: [],
+            previousDraft: draft,
+            imageTier: 'standard',
+          },
+          controller.signal,
+        )
+        const savedDraft = await saveDraftImage(draft.id, imageUrl)
+        return savedDraft.imageUrl ?? null
+      } finally {
+        window.clearTimeout(timeout)
+      }
+    },
+    [brand, currentWorkspace, saveDraftImage],
+  )
+
+  const handleDeleteDraft = useCallback(
+    async (draftId: string) => {
+      await removeDraft(draftId)
+      setSelectedDate((currentDate) => {
+        if (!currentDate) return null
+        const remainingDrafts = orderedDrafts.filter(
+          (draft) => draft.id !== draftId,
+        )
+        if (remainingDrafts.some((draft) => draft.date === currentDate))
+          return currentDate
+        const remainingDates = [
+          ...new Set(remainingDrafts.map((draft) => draft.date)),
+        ]
+        if (remainingDates.includes(currentDate)) return currentDate
+        if (remainingDates.length === 0) return null
+        const currentDatePosition = availableDates.indexOf(currentDate)
+        const nextDate = availableDates
+          .slice(currentDatePosition + 1)
+          .find((date) => remainingDates.includes(date))
+        const previousDate = availableDates
+          .slice(0, currentDatePosition)
+          .reverse()
+          .find((date) => remainingDates.includes(date))
+        return nextDate ?? previousDate ?? remainingDates[0]
+      })
+    },
+    [availableDates, orderedDrafts, removeDraft],
+  )
+
+  const handleDuplicateDraft = useCallback(
+    async (draft: PostDraft) => {
+      if (!currentWorkspace)
+        throw new Error('Selecione uma marca para duplicar.')
+      const duplicate: PostDraft = {
+        ...draft,
+        id: crypto.randomUUID(),
+        title: `${draft.title} (cópia)`.slice(0, 160),
+        status: 'draft',
+        imageUrl: undefined,
+      }
+      const [createdDraft] = await addDraftsForWorkspace(currentWorkspace.id, [
+        duplicate,
+      ])
+      if (!createdDraft) throw new Error('A cópia do post não foi criada.')
+      return createdDraft
+    },
+    [addDraftsForWorkspace, currentWorkspace],
+  )
 
   useEffect(() => {
     return () => generationController.current?.abort()
@@ -252,8 +368,9 @@ export function CalendarPage() {
 
       {location.state?.createdDraft ? (
         <p className={styles.savedNotice} role="status">
-          Rascunho adicionado à agenda. Selecione o post para fazer novos
-          ajustes.
+          {location.state.createdDraftCount > 1
+            ? `${location.state.createdDraftCount} rascunhos adicionados à agenda, um por rede social. Selecione cada post para fazer novos ajustes.`
+            : 'Rascunho adicionado à agenda. Selecione o post para fazer novos ajustes.'}
         </p>
       ) : null}
       <section className={styles.calendarCard} aria-label="Calendário mensal">
@@ -335,7 +452,7 @@ export function CalendarPage() {
                           type="button"
                           className={styles.draft}
                           data-status={draft.status}
-                          onClick={() => setSelectedDraft(draft)}
+                          onClick={() => setSelectedDate(draft.date)}
                         >
                           <span />
                           <div>
@@ -374,7 +491,7 @@ export function CalendarPage() {
                   key={draft.id}
                   type="button"
                   className={styles.agendaEntry}
-                  onClick={() => setSelectedDraft(draft)}
+                  onClick={() => setSelectedDate(draft.date)}
                 >
                   <time dateTime={draft.date}>{draft.date.slice(-2)}</time>
                   <div>
@@ -411,12 +528,31 @@ export function CalendarPage() {
         )}
       </section>
 
-      {selectedDraft ? (
+      {selectedDate ? (
         <EditDraftDialog
-          draft={selectedDraft}
-          onClose={() => setSelectedDraft(null)}
+          drafts={selectedDayDrafts}
+          date={selectedDate}
+          previousDate={
+            selectedDateIndex > 0 ? availableDates[selectedDateIndex - 1] : null
+          }
+          nextDate={
+            selectedDateIndex >= 0 &&
+            selectedDateIndex < availableDates.length - 1
+              ? availableDates[selectedDateIndex + 1]
+              : null
+          }
+          onNavigate={setSelectedDate}
+          onClose={() => setSelectedDate(null)}
           onSave={handleSaveDraft}
+          onDateChange={handleDraftDateChange}
+          onRefreshImage={refreshDraftImageUrl}
+          onGenerateImage={
+            generationService.generateImage
+              ? handleGenerateDraftImage
+              : undefined
+          }
           onDelete={handleDeleteDraft}
+          onDuplicate={handleDuplicateDraft}
         />
       ) : null}
       {generationNotice ? (

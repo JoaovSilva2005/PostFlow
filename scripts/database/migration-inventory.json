@@ -17,6 +17,7 @@
     "20260924012932_brand_ai_context.sql",
     "20260924014810_brand_color_palette.sql",
     "20260924030000_allow_multiple_brands.sql",
-    "20260925024139_transactional_workspace_and_content_quotas.sql"
+    "20260925024139_transactional_workspace_and_content_quotas.sql",
+    "20260925160228_persist_draft_images.sql"
   ]
 }

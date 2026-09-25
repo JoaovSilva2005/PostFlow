@@ -46,19 +46,40 @@ function savedDraft(input = draft) {
   }
 }
 
+type SavedDraftRow = ReturnType<typeof savedDraft> & { image_path?: string }
+
 function createSupabaseMock(
   rpcResult: { data: unknown; error: unknown },
-  currentDraft = savedDraft(),
+  currentDraft: SavedDraftRow = savedDraft(),
 ) {
   const rpc = vi.fn().mockResolvedValue(rpcResult)
+  const storageBucket = {
+    upload: vi.fn().mockResolvedValue({ error: null }),
+    createSignedUrl: vi.fn().mockResolvedValue({
+      data: { signedUrl: 'https://storage.example/signed/post.webp' },
+      error: null,
+    }),
+    remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+  }
+  const storage = { from: vi.fn(() => storageBucket) }
   const from = vi.fn((table: string) => {
     const filters = new Map<string, unknown>()
+    let selectedColumns = ''
+    let updatedRow: SavedDraftRow | null = null
     const chain = {
-      select: vi.fn(() => chain),
+      select: vi.fn((columns: string) => {
+        selectedColumns = columns
+        return chain
+      }),
       eq: vi.fn((column: string, value: unknown) => {
         filters.set(column, value)
         return chain
       }),
+      update: vi.fn((values: Record<string, unknown>) => {
+        updatedRow = { ...currentDraft, ...values } as SavedDraftRow
+        return chain
+      }),
+      order: vi.fn(async () => ({ data: [currentDraft], error: null })),
       async maybeSingle() {
         if (table === 'social_platforms') {
           const name = filters.get('name')
@@ -67,8 +88,24 @@ function createSupabaseMock(
               ? { id: 'platform-x', name, character_limit: 280 }
               : name === 'Blog'
                 ? { id: 'platform-blog', name, character_limit: 30000 }
-                : { id: 'platform-instagram', name: 'Instagram', character_limit: 2200 }
+                : {
+                    id: 'platform-instagram',
+                    name: 'Instagram',
+                    character_limit: 2200,
+                  }
           return { data: platform, error: null }
+        }
+        if (table === 'post_drafts' && selectedColumns === 'image_path') {
+          return {
+            data: { image_path: currentDraft.image_path ?? null },
+            error: null,
+          }
+        }
+        if (
+          table === 'post_drafts' &&
+          selectedColumns === '*,social_platforms(name),post_hashtags(hashtag)'
+        ) {
+          return { data: updatedRow ?? currentDraft, error: null }
         }
         return {
           data: {
@@ -84,7 +121,13 @@ function createSupabaseMock(
     }
     return chain
   })
-  return { client: { rpc, from } as unknown as SupabaseClient, rpc, from }
+  return {
+    client: { rpc, from, storage } as unknown as SupabaseClient,
+    rpc,
+    from,
+    storage,
+    storageBucket,
+  }
 }
 
 function createTestApp(
@@ -116,7 +159,10 @@ function createTestApp(
 
 describe('persistência em lote de rascunhos', () => {
   it('envia o lote completo com hora, fuso e formato para a função transacional', async () => {
-    const { client, rpc } = createSupabaseMock({ data: [draft.id], error: null })
+    const { client, rpc } = createSupabaseMock({
+      data: [draft.id],
+      error: null,
+    })
     const app = createTestApp(client)
 
     const response = await request(app)
@@ -156,7 +202,10 @@ describe('persistência em lote de rascunhos', () => {
   })
 
   it('rejeita um lote inválido antes de consultar o banco', async () => {
-    const { client, rpc, from } = createSupabaseMock({ data: null, error: null })
+    const { client, rpc, from } = createSupabaseMock({
+      data: null,
+      error: null,
+    })
     const app = createTestApp(client)
 
     const response = await request(app)
@@ -243,6 +292,110 @@ describe('persistência atômica de rascunhos individuais', () => {
     )
     expect(from).toHaveBeenCalledTimes(1)
     expect(response.body.data.hashtags).toEqual(draft.hashtags)
+  })
+
+  it('salva a imagem em bucket privado e devolve URL assinada para a prévia', async () => {
+    const imagePath = `${workspaceId}/${draft.id}`
+    const created = { ...savedDraft(), image_path: imagePath }
+    const { client, rpc, storage, storageBucket } = createSupabaseMock({
+      data: created,
+      error: null,
+    })
+    const app = createTestApp(client)
+
+    const response = await request(app)
+      .post(`/api/workspaces/${workspaceId}/drafts`)
+      .send({ ...draft, imageUrl: 'data:image/webp;base64,aW1hZ2U=' })
+
+    expect(response.status).toBe(201)
+    expect(storage.from).toHaveBeenCalledWith('post-draft-images')
+    expect(storageBucket.upload).toHaveBeenCalledWith(
+      imagePath,
+      Buffer.from('aW1hZ2U=', 'base64'),
+      expect.objectContaining({ contentType: 'image/webp', upsert: false }),
+    )
+    expect(rpc).toHaveBeenCalledWith(
+      'create_post_draft_with_hashtags',
+      expect.objectContaining({
+        p_draft: expect.objectContaining({
+          id: draft.id,
+          image_path: imagePath,
+        }),
+      }),
+    )
+    expect(response.body.data.imageUrl).toBe(
+      'https://storage.example/signed/post.webp',
+    )
+  })
+
+  it('gera um novo link temporário ao carregar a agenda e oculta o caminho interno', async () => {
+    const imagePath = `${workspaceId}/${draft.id}`
+    const { client, storageBucket } = createSupabaseMock(
+      { data: null, error: null },
+      { ...savedDraft(), image_path: imagePath },
+    )
+    const app = createTestApp(client)
+
+    const response = await request(app).get(
+      `/api/workspaces/${workspaceId}/drafts`,
+    )
+
+    expect(response.status).toBe(200)
+    expect(storageBucket.createSignedUrl).toHaveBeenCalledWith(
+      imagePath,
+      60 * 60,
+    )
+    expect(response.body.data[0].imageUrl).toBe(
+      'https://storage.example/signed/post.webp',
+    )
+    expect(response.body.data[0]).not.toHaveProperty('image_path')
+    expect(response.body.data[0].imageAvailable).toBe(true)
+  })
+
+  it('renova o link assinado de uma imagem salva para a prévia', async () => {
+    const imagePath = `${workspaceId}/${draft.id}`
+    const { client, from, storageBucket } = createSupabaseMock(
+      { data: null, error: null },
+      { ...savedDraft(), image_path: imagePath },
+    )
+    const app = createTestApp(client)
+
+    const response = await request(app).get(
+      `/api/workspaces/${workspaceId}/drafts/${draft.id}/image-url`,
+    )
+
+    expect(response.status).toBe(200)
+    expect(from).toHaveBeenCalledWith('post_drafts')
+    expect(storageBucket.createSignedUrl).toHaveBeenCalledWith(
+      imagePath,
+      60 * 60,
+    )
+    expect(response.body.data.imageUrl).toBe(
+      'https://storage.example/signed/post.webp',
+    )
+  })
+
+  it('salva uma imagem gerada depois que o post já foi criado', async () => {
+    const { client, storageBucket } = createSupabaseMock({
+      data: null,
+      error: null,
+    })
+    const app = createTestApp(client)
+
+    const response = await request(app)
+      .put(`/api/workspaces/${workspaceId}/drafts/${draft.id}/image`)
+      .send({ imageUrl: 'data:image/webp;base64,aW1hZ2U=' })
+
+    expect(response.status).toBe(200)
+    expect(storageBucket.upload).toHaveBeenCalledWith(
+      expect.stringMatching(new RegExp(`^${workspaceId}/${draft.id}/`)),
+      Buffer.from('aW1hZ2U=', 'base64'),
+      expect.objectContaining({ contentType: 'image/webp', upsert: false }),
+    )
+    expect(response.body.data.imageAvailable).toBe(true)
+    expect(response.body.data.imageUrl).toBe(
+      'https://storage.example/signed/post.webp',
+    )
   })
 
   it('não responde sucesso se a gravação transacional falhar', async () => {
