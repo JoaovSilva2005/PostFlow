@@ -1,0 +1,159 @@
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+.links a {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.note {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 20px 0;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 24px 0;
+}
+.toolbar label {
+  display: grid;
+  gap: 8px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.toolbar input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  padding: 10px;
+  min-width: 0;
+}
+.report {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 24px;
+  min-width: 0;
+}
+.report h2 {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 24px;
+}
+.report dl {
+  margin: 0;
+}
+.report dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 0;
+  border-top: 1px solid var(--color-border);
+}
+.report dt {
+  color: var(--color-muted);
+}
+.report dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.report .result {
+  font-size: 22px;
+  font-weight: 600;
+}
+.result dt {
+  color: var(--color-text);
+}
+.result[data-outcome='profit'] dd {
+  color: #70d4a6;
+}
+.result[data-outcome='loss'] dd,
+.error {
+  color: #f1938a;
+}
+.error {
+  line-height: 1.7;
+}
+.tableWrapper {
+  overflow-x: auto;
+}
+.report table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.report th,
+.report td {
+  text-align: left;
+  padding: 14px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+.report th {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+@media (max-width: 600px) {
+  .report {
+    padding: 16px;
+  }
+  .report dl > div {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .report dd {
+    margin-left: auto;
+  }
+  .report .result {
+    font-size: 18px;
+  }
+}
+@media print {
+  :global(html):has(.printRoot),
+  :global(body):has(.printRoot) {
+    background: white;
+  }
+  :global(body):has(.printRoot) * {
+    visibility: hidden;
+  }
+  .printRoot,
+  .printRoot * {
+    visibility: visible !important;
+  }
+  .printRoot {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+    color: black;
+    padding: 24px;
+  }
+  .toolbar,
+  .links {
+    display: none;
+  }
+  .report {
+    break-inside: avoid;
+    background: white;
+    color: black;
+    border-color: #aaa;
+  }
+  .report dt,
+  .report th,
+  .note {
+    color: #444;
+  }
+  .result dt,
+  .result dd {
+    color: black !important;
+  }
+}

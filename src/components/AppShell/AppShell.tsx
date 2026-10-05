@@ -10,6 +10,7 @@ import {
   Search,
   WalletCards,
   ReceiptText,
+  ChartNoAxesCombined,
   ShieldCheck,
   BadgeDollarSign,
   X,
@@ -93,6 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           links: [
             { to: '/admin/finance', label: 'Financeiro', icon: WalletCards },
             { to: '/admin/fiscal', label: 'Fiscal', icon: ReceiptText },
+            { to: '/admin/accounting', label: 'Contábil', icon: ChartNoAxesCombined },
             {
               to: '/admin/plans',
               label: 'Planos e custos',

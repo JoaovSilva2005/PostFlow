@@ -5,6 +5,7 @@ import { CalendarPage } from '../features/calendar/CalendarPage'
 import { ChatPage } from '../features/content/ChatPage'
 import { FinancePage } from '../features/finance/FinancePage'
 import { FiscalPage } from '../features/fiscal/FiscalPage'
+import { AccountingPage } from '../features/accounting/AccountingPage'
 import { BillingPage } from '../features/billing/BillingPage'
 import { AdminPlansPage } from '../features/admin/AdminPlansPage'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -85,6 +86,14 @@ export function App() {
             platformRoles={['platform_owner', 'finance_admin', 'support']}
           >
             <FiscalPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/accounting"
+        element={
+          <ProtectedRoute platformRoles={['platform_owner', 'finance_admin', 'support']}>
+            <AccountingPage />
           </ProtectedRoute>
         }
       />
