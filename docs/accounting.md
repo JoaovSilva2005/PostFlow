@@ -51,6 +51,8 @@ npx tsx scripts/api/verifyAccounting.ts
 # Inicie o frontend na porta 5174 antes da verificação visual:
 npx vite --host 127.0.0.1 --port 5174 --strictPort
 node scripts/accounting-ui-check.cjs
+# Fluxo completo no navegador com API e banco reais:
+npx tsx scripts/api/verifyAccountingBrowser.ts
 ```
 
 A verificação real usa a service role somente no servidor, rotas reais e
@@ -58,6 +60,12 @@ autenticação controlada para não depender de credenciais pessoais. Cria dois
 registros temporários em dezembro de 2099, verifica cálculo/edição/status e
 remove somente esses IDs no `finally`. O teste visual usa fixtures de rede;
 a prova de persistência real é o verificador PostgreSQL separado.
+
+O verificador `verifyAccountingBrowser.ts` integra navegador, API Express e
+PostgreSQL reais. Cadastre e edite venda/despesa pela tela, confira a DRE, altere
+status e exclua somente os registros de teste. O script usa dezembro de 2098 e
+confere que os totais retornam ao estado anterior. Sessão e lista de marcas usam
+fixtures de autenticação; as operações financeiras não usam fixtures.
 
 ## Rastreabilidade
 

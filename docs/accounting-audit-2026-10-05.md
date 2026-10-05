@@ -60,3 +60,24 @@ Commits locais na branch `main`; publicação e push não executados. A implemen
 nesta entrega não comprova que o vídeo/apresentação ou as demais atividades finais
 do curso estejam concluídos. Critérios e limitações da DRE: [manual](accounting.md)
 e [ADR-0011](adr/ADR-0011-derived-accounting-report.md).
+
+## Revalidação solicitada pelo usuário
+
+Nova execução em 05/10/2026: 232 testes em 48 arquivos aprovados, contratos SQL
+e inventário de 21 migrações válidos. Build e lint do escopo alterado aprovados.
+O verificador PostgreSQL e a verificação visual nas quatro larguras passaram
+novamente. Não foram encontradas falhas funcionais nos cenários executados.
+
+Acrescentado `scripts/api/verifyAccountingBrowser.ts`, com fluxo completo
+navegador → Express → Supabase/PostgreSQL, sem fixtures para Financeiro, Fiscal
+ou Contábil. O teste cadastra venda de R$ 100 no Fiscal e despesa de R$ 50 no
+Financeiro pelas telas, consulta DRE com incremento de R$ 44 e imposto de R$ 6,
+edita a despesa para R$ 150, marca a venda como paga e confere incremento de
+−R$ 56. Exclui os dois registros pela interface e comprova que os totais
+retornam ao estado anterior. Nenhum erro de execução do navegador foi encontrado.
+
+A sessão e a lista de marcas usam fixtures de autenticação; o teste não verifica
+login externo no Supabase Auth. Os registros da execução usam um identificador
+único e competência 2098-12, com limpeza defensiva no `finally`. Captura de tela
+local: `output/accounting-retest/browser-real-database.png`. Logs da nova suíte
+e build: `output/accounting-retest/`. Publicação em produção não foi testada.
