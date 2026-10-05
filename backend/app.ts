@@ -23,6 +23,7 @@ import {
 import { ResilientFinancialTransactionRepository } from './modules/finance/resilientFinancialRepository.js'
 import { HttpError } from './shared/HttpError.js'
 import { createFiscalRouter } from './modules/fiscal/fiscalRoutes.js'
+import { createAccountingRouter } from './modules/accounting/accountingRoutes.js'
 import { createContentRouter } from './modules/content/contentRoutes.js'
 import { ContentService } from './modules/content/contentService.js'
 import {
@@ -198,6 +199,21 @@ export function createApp(options: AppOptions = {}) {
       financialService,
       requirePlatformRole(workspaceAccess, 'platform_owner', 'finance_admin'),
       () => null,
+    ),
+  )
+  app.use(
+    '/api/admin/accounting',
+    requireAuthentication(authService),
+    requirePlatformRole(
+      workspaceAccess,
+      'platform_owner',
+      'finance_admin',
+      'support',
+    ),
+    createAccountingRouter(financialService, () =>
+      financialRepository instanceof ResilientFinancialTransactionRepository
+        ? financialRepository.getMode()
+        : options.financialRepository ? 'test' : 'supabase',
     ),
   )
   // Compatibilidade exclusiva para os testes unitários que injetam o

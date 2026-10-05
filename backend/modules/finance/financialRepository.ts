@@ -87,15 +87,23 @@ export class SupabaseFinancialTransactionRepository implements FinancialTransact
   }
 
   async list(workspaceId: string | null) {
-    let query = this.supabase
-      .from('financial_transactions')
-      .select('*')
-      .order('due_date', { ascending: false })
-    if (workspaceId) query = query.eq('brand_id', workspaceId)
-    const { data, error } = await query
-
-    if (error) throw new Error(`Falha ao listar lançamentos: ${error.message}`)
-    return (data as FinancialTransactionRow[]).map(toDomain)
+    const transactions: FinancialTransaction[] = []
+    const pageSize = 500
+    for (let offset = 0; ; offset += pageSize) {
+      let query = this.supabase
+        .from('financial_transactions')
+        .select('*')
+        .order('due_date', { ascending: false })
+        .order('id', { ascending: true })
+        .range(offset, offset + pageSize - 1)
+      if (workspaceId) query = query.eq('brand_id', workspaceId)
+      const { data, error } = await query
+      if (error)
+        throw new Error(`Falha ao listar lançamentos: ${error.message}`)
+      const rows = data as FinancialTransactionRow[]
+      transactions.push(...rows.map(toDomain))
+      if (rows.length < pageSize) return transactions
+    }
   }
 
   async findById(id: string, workspaceId: string | null) {
