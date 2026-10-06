@@ -114,6 +114,10 @@ certificação de prontidão para clientes reais.
 
 ## Roteiro
 
+Auditoria também registrada no [Confluence](https://joaovsilva3530.atlassian.net/wiki/spaces/DDS/pages/24838145).
+Publicação da DRE e validação administrativa em sessão nova são acompanhadas
+em [SCRUM-65](https://joaovsilva3530.atlassian.net/browse/SCRUM-65).
+
 Mostre login, menus administrativos, Financeiro, Fiscal em setembro, comprovante
 e DRE no mesmo mês depois de publicar. Explique a diferença entre caixa e
 resultado. Use [o roteiro detalhado](roteiro-apresentacao-financeiro-fiscal-contabil.md)
