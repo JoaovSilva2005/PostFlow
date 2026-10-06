@@ -38,8 +38,7 @@ governança no Jira/Confluence e **Vídeo + Apresentação**; indica atividades
 em 05/10 e 06/10 e data de entrega em **05/10/2026**. A duração de dez minutos
 aparece na linha 6 da P1, não na linha da entrega final.
 
-O Contábil está implementado e testado localmente, mas continua ausente na
-publicação observada em 06/10. Consulte a [auditoria da entrega](entrega-final-2026-10-06.md)
+O Contábil foi publicado e conferido com dados reais em 06/10/2026. Consulte a [auditoria da entrega](entrega-final-2026-10-06.md)
 e o [manual contábil](accounting.md). A seção comercial abaixo é um registro
 histórico de pesquisa, não a configuração atual do provedor OpenAI no código.
 

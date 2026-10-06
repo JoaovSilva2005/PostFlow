@@ -28,9 +28,9 @@ O PostFlow reúne autenticação, configuração da marca, geração de textos, 
 - emissão de comprovante fiscal simulado, sem validade legal;
 - configuração e análise econômica do plano;
 - acesso protegido por papéis internos da plataforma.
-- DRE mensal integrada ao Financeiro e Fiscal, implementada localmente.
+- DRE mensal integrada ao Financeiro e Fiscal, publicada e conferida com dados reais.
 
-A publicação observada em 06/10/2026 ainda não contém Contábil. Consulte
+Contábil foi publicado e verificado em 06/10/2026. Consulte
 [a auditoria da entrega](docs/entrega-final-2026-10-06.md) para os estados de
 código, publicação, testes de login e material de apresentação.
 

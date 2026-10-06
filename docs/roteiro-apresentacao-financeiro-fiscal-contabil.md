@@ -1,6 +1,6 @@
 # Roteiro de conferência para a apresentação
 
-Verificação em 05/10/2026 no endereço https://post-flow-ochre.vercel.app/.
+Verificações em 05/10 e 06/10/2026 no endereço https://post-flow-ochre.vercel.app/.
 Navegação feita em sessão administrativa existente, sem simular as respostas da
 API e sem cadastrar, editar ou excluir lançamentos nesta verificação.
 
@@ -27,32 +27,28 @@ não entram no Fiscal nem nas vendas da DRE. Há registros antigos descritos
 como serviços/assinaturas que continuam classificados como `manual`; esta
 verificação não reclassificou esses dados.
 
-## Conferir a DRE após publicar a versão que contém Contábil
+## Conferir a DRE publicada
 
-Na publicação observada, **Contábil** não aparece no menu e o endereço
-`/admin/accounting` redireciona para Minha marca. Assim, a DRE ainda não pode
-ser demonstrada nessa publicação. A interface Contábil precisa estar presente
-no deployment usado na apresentação.
+**Contábil** foi publicado em 06/10/2026. Abra `/admin/accounting`, selecione
+**09/2026** e, se necessário, use **Sincronizar**. A tela consultou a API e
+o PostgreSQL reais, em sessão administrativa existente, e retornou:
 
-A API do código local, conectada ao mesmo PostgreSQL e com autenticação de
-teste controlada, retornou para **09/2026**:
-
-| Item | Valor |
-| --- | ---: |
-| Vendas | R$ 559,30 |
-| Impostos | R$ 33,53 |
-| Receita após imposto | R$ 525,77 |
+| Item                        |       Valor |
+| --------------------------- | ----------: |
+| Vendas                      |   R$ 559,30 |
+| Impostos                    |    R$ 33,53 |
+| Receita após imposto        |   R$ 525,77 |
 | Despesas, pagas e pendentes | R$ 1.250,00 |
-| Resultado | −R$ 724,23 |
-| Receitas manuais excluídas | R$ 4.779,90 |
+| Resultado                   |  −R$ 724,23 |
+| Receitas manuais excluídas  | R$ 4.779,90 |
 
-Esses valores devem ser conferidos novamente no deployment atualizado.
+Esses valores foram conferidos no deployment publicado em 06/10/2026.
 Saldo de caixa e resultado da DRE diferem pelas receitas excluídas e pela
 inclusão de despesas pendentes na competência por vencimento.
 
 ## Demonstrar uma nova venda e uma despesa
 
-Depois de publicar Contábil, em um mês reservado para demonstração:
+Em um mês reservado para demonstração:
 
 1. No Fiscal, registre uma venda de serviço de R$ 100,00, com descrição clara
    de demonstração e vencimento no mês escolhido. Ela deve aparecer também

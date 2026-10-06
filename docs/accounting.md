@@ -76,5 +76,15 @@ fixtures de autenticação; as operações financeiras não usam fixtures.
 - [Confluence: Módulo Contábil e Auditoria](https://joaovsilva3530.atlassian.net/wiki/spaces/DDS/pages/24281089)
 - [Evidências locais](accounting-audit-2026-10-05.md)
 
-Implementação e validação locais. A publicação em produção não foi realizada
-nesta entrega; os dados de validação real foram removidos do banco.
+Publicado em 06/10/2026 em https://post-flow-ochre.vercel.app/admin/accounting.
+Menu, período de setembro, totais reais, sincronização e acesso direto foram
+conferidos em sessão administrativa existente. Dados temporários de testes
+anteriores foram removidos. Login real em sessão nova aprovado com
+`admin@postflow.test`, incluindo os três menus e sessão após recarregar.
+A conta pessoal não foi testada por esquecimento da senha.
+
+PDF A4 de setembro renderizado e conferido em duas páginas: totais e nove
+lançamentos de origem legíveis. Comando: `npx tsx scripts/api/verifyAccountingPrint.ts`.
+Esse verificador usa o frontend publicado e um snapshot de leitura PostgreSQL,
+com fixture de autenticação apenas para revisar impressão. Não cria lançamentos
+nem substitui o teste de login real. Saída em `output/pdf/dre-setembro-2026.pdf`.
