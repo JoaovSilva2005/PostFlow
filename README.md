@@ -2,7 +2,7 @@
 
 Plataforma SaaS para criar, revisar e organizar conteúdo de redes sociais com apoio de inteligência artificial.
 
-O PostFlow reúne autenticação, configuração da marca, geração de textos, agenda editorial, assinatura do cliente e um backoffice financeiro e fiscal. O projeto foi desenvolvido para o **Projeto Multidisciplinar VI**.
+O PostFlow reúne autenticação, configuração da marca, geração de textos, agenda editorial, assinatura do cliente e um backoffice financeiro, fiscal e contábil. O projeto foi desenvolvido para o **Projeto Multidisciplinar VI**.
 
 [Acessar aplicação publicada](https://post-flow-ochre.vercel.app)
 
@@ -28,6 +28,11 @@ O PostFlow reúne autenticação, configuração da marca, geração de textos, 
 - emissão de comprovante fiscal simulado, sem validade legal;
 - configuração e análise econômica do plano;
 - acesso protegido por papéis internos da plataforma.
+- DRE mensal integrada ao Financeiro e Fiscal, implementada localmente.
+
+A publicação observada em 06/10/2026 ainda não contém Contábil. Consulte
+[a auditoria da entrega](docs/entrega-final-2026-10-06.md) para os estados de
+código, publicação, testes de login e material de apresentação.
 
 ## Acesso e permissões
 
@@ -36,7 +41,7 @@ O PostFlow reúne autenticação, configuração da marca, geração de textos, 
 | Autenticação       | `/login`                                          | Pública                                         |
 | Assinatura         | `/billing`                                        | Usuário autenticado                             |
 | Marca, IA e agenda | `/brand`, `/chat`, `/calendar`                    | Membro do workspace com plano ativo ou em teste |
-| Administração      | `/admin/finance`, `/admin/fiscal`, `/admin/plans` | Membro interno autorizado                       |
+| Administração      | `/admin/finance`, `/admin/fiscal`, `/admin/accounting`, `/admin/plans` | Membro interno autorizado                       |
 
 Contas sem plano são direcionadas para a página de assinatura. Os papéis do workspace (`owner`, `admin`, `editor`, `viewer`) são independentes dos papéis internos da plataforma (`platform_owner`, `finance_admin`, `support`).
 
@@ -183,7 +188,7 @@ Depois do deploy, valide:
 
 ## Limitações atuais
 
-- a imagem gerada fica disponível na revisão atual, mas ainda não é persistida no Storage;
+- imagens aprovadas e salvas na agenda são persistidas no Storage privado; prévias ainda não salvas permanecem na revisão;
 - pagamento e emissão fiscal usam adapters demonstrativos e não movimentam dinheiro real;
 - o comprovante fiscal é acadêmico e não substitui NFS-e;
 - publicação automática em redes sociais ainda não foi implementada.
@@ -193,6 +198,8 @@ Depois do deploy, valide:
 - [Arquitetura e autorização](docs/architecture.md)
 - [Estúdio de conteúdo e contrato da IA](docs/content-studio.md)
 - [Fiscal e precificação](docs/fiscal-and-pricing.md)
+- [Contábil e DRE simples](docs/accounting.md)
+- [Auditoria da entrega de 06/10/2026](docs/entrega-final-2026-10-06.md)
 - [Manual do usuário](docs/user-manual.md)
 - [Auditoria para produção](docs/production-readiness-audit.md)
 - [Documentação do banco](database/README.md)

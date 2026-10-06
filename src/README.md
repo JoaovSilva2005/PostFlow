@@ -8,7 +8,7 @@ O frontend usa React, TypeScript e Vite. A organização é orientada a funciona
 | `components` | componentes visuais reutilizáveis                |
 | `domain`     | tipos centrais do PostFlow                       |
 | `features`   | telas, estilos, serviços específicos e testes    |
-| `services`   | Supabase, persistência e sessão compartilhados   |
+| `services`   | cliente HTTP e persistência via API/BFF          |
 | `styles`     | tokens visuais e estilos globais                 |
 | `test`       | configuração e utilitários de testes             |
 

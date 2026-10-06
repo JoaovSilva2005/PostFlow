@@ -23,7 +23,25 @@ No celular, lista em cartões descritivos e formulário abaixo, sem colunas comp
 
 A fatura de assinatura é a origem da cobrança. Sua confirmação de pagamento cria ou atualiza exatamente uma receita em `financial_transactions`, usando uma chave idempotente. Apenas receitas marcadas como venda ou serviço faturado alimentam o Fiscal. Despesas, empréstimos, aportes e outras receitas não geram imposto automaticamente.
 
-Alíquota didática configurada inicialmente em 6%, não informada pela professora e não representativa de um enquadramento legal. Imposto calculado no backend, em centavos, incluído no preço bruto. Valor após imposto = bruto − imposto; não é lucro. Imposto calculado não significa imposto recolhido e não altera o saldo de caixa. O comprovante guarda um snapshot de alíquota, bruto, imposto e líquido para que documentos antigos não mudem quando a configuração mudar.
+Alíquota didática configurada inicialmente em 6%, não informada pela professora e não representativa de um enquadramento legal. Imposto calculado no backend, em centavos, incluído no preço bruto. Valor após imposto = bruto − imposto; não é lucro. Imposto calculado não significa imposto recolhido e não altera o saldo de caixa.
+
+Os documentos de cobrança em `fiscal_documents` guardam um snapshot de alíquota,
+bruto, imposto e líquido. Já **Ver comprovante** na lista fiscal apresenta o
+lançamento financeiro atual: alterações no lançamento mudam essa visualização
+após sincronizar. São duas representações diferentes.
+
+## Entrega final e DRE
+
+A linha 7 do cronograma pede a DRE alimentada automaticamente pelo Financeiro
+e Fiscal. A linha 8 pede auditoria do fluxo, testes de ponta a ponta,
+governança no Jira/Confluence e **Vídeo + Apresentação**; indica atividades
+em 05/10 e 06/10 e data de entrega em **05/10/2026**. A duração de dez minutos
+aparece na linha 6 da P1, não na linha da entrega final.
+
+O Contábil está implementado e testado localmente, mas continua ausente na
+publicação observada em 06/10. Consulte a [auditoria da entrega](entrega-final-2026-10-06.md)
+e o [manual contábil](accounting.md). A seção comercial abaixo é um registro
+histórico de pesquisa, não a configuração atual do provedor OpenAI no código.
 
 APIs `/api/admin/finance` e `/api/admin/fiscal` exigem `PlatformRole`. `platform_owner` e `finance_admin` escrevem; `support` recebe somente leitura. Clientes consultam exclusivamente `/api/workspaces/:workspaceId/billing` e `/invoices`, depois de o backend validar `brand_members`. O modo demonstrativo é identificado na interface. Após o pagamento simulado, o sistema persiste e apresenta uma NFS-e simulada com emitente, tomador, serviço, valores e código de verificação fictícios. Não existe transmissão a órgão público, autorização municipal ou validade legal.
 

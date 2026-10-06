@@ -17,6 +17,7 @@ PostFlow/
 │   ├── modules/billing/       # planos, assinaturas, consumo e faturas
 │   ├── modules/finance/       # módulo financeiro completo
 │   ├── modules/fiscal/        # projeção fiscal e vendas integradas ao financeiro
+│   ├── modules/accounting/    # DRE derivada das receitas e despesas
 │   ├── shared/                # recursos compartilhados pelo backend
 │   └── test/                  # apoios reutilizáveis para testes
 ├── database/                  # schema, migrations, seed e documentação
@@ -82,17 +83,24 @@ Essa separação permite trocar a interface ou a persistência sem reescrever as
 
 Cada pasta em `src/features` reúne a tela, o estilo, o teste e os auxiliares específicos daquela funcionalidade:
 
-| Funcionalidade | Frontend                | Backend                   | Banco                                                          |
-| -------------- | ----------------------- | ------------------------- | -------------------------------------------------------------- |
-| Login/cadastro | `src/features/auth`     | `backend/modules/auth`    | Supabase Auth, `users`, `profiles`                             |
-| Marca          | `src/features/brand`    | `backend/modules/brand` e `workspace` | `brands` e `brand_members`                      |
-| Geração        | `src/features/content`  | `backend/modules/content` + OpenAI    | `usage_counters`, reservas, `post_drafts` e hashtags |
-| Agenda         | `src/features/calendar` | `backend/modules/workspace`           | `post_drafts` e `post_hashtags`                     |
-| Cobrança       | `src/features/billing`  | `backend/modules/billing`             | `plans`, `subscriptions`, uso e `billing_invoices`  |
-| Financeiro     | `src/features/finance`  | `backend/modules/finance` | `financial_transactions`                                       |
-| Fiscal         | `src/features/fiscal`   | `backend/modules/fiscal`  | `fiscal_documents` e receitas faturadas                        |
+| Funcionalidade | Frontend                  | Backend                               | Banco                                                          |
+| -------------- | ------------------------- | ------------------------------------- | -------------------------------------------------------------- |
+| Login/cadastro | `src/features/auth`       | `backend/modules/auth`                | Supabase Auth, `users`, `profiles`                             |
+| Marca          | `src/features/brand`      | `backend/modules/brand` e `workspace` | `brands` e `brand_members`                                     |
+| Geração        | `src/features/content`    | `backend/modules/content` + OpenAI    | `usage_counters`, reservas, `post_drafts` e hashtags           |
+| Agenda         | `src/features/calendar`   | `backend/modules/workspace`           | `post_drafts` e `post_hashtags`                                |
+| Cobrança       | `src/features/billing`    | `backend/modules/billing`             | `plans`, `subscriptions`, uso e `billing_invoices`             |
+| Financeiro     | `src/features/finance`    | `backend/modules/finance`             | `financial_transactions`                                       |
+| Fiscal         | `src/features/fiscal`     | `backend/modules/fiscal`              | `fiscal_documents` e receitas faturadas                        |
+| Contábil       | `src/features/accounting` | `backend/modules/accounting`          | DRE derivada de `financial_transactions`, sem tabela adicional |
 
 Financeiro, Fiscal e economia do plano são backoffice do PostFlow. Eles não são produtos disponíveis a clientes comuns. A área `Assinatura e cobrança` apresenta somente o plano, consumo, faturas e comprovantes do workspace autenticado.
+
+Contábil também pertence ao backoffice. A DRE usa o mês do vencimento,
+receitas `sale_service`/`subscription_revenue`, impostos fiscais por venda e
+despesas pagas ou pendentes. A decisão está em [ADR-0011](adr/ADR-0011-derived-accounting-report.md).
+Código implementado e publicação observada são estados distintos; consulte
+[a auditoria de 06/10/2026](entrega-final-2026-10-06.md).
 
 ## Convenção de banco
 

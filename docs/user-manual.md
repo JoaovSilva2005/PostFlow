@@ -31,6 +31,7 @@ A seção **Administração** aparece apenas para membros internos da plataforma
 
 - **Financeiro** — receitas, despesas, saldo, pendências e pagamentos da empresa PostFlow.
 - **Fiscal** — vendas e serviços faturados, imposto didático e comprovantes acadêmicos.
+- **Contábil** — DRE mensal: vendas menos impostos e despesas, com os lançamentos de origem. Implementado no código local; a publicação observada em 06/10/2026 ainda não contém essa tela.
 - **Planos e custos** — premissas de preço, franquias, APIs e margem de contribuição estimada.
 
 `platform_owner` possui acesso completo. `finance_admin` administra Financeiro e Fiscal. `support` consulta informações, mas não recebe botões de criação, edição, exclusão ou mudança de status.
@@ -50,6 +51,25 @@ Esses papéis não concedem acesso à Administração do PostFlow.
 - **403 / acesso não autorizado**: a conta está autenticada, mas não possui o papel exigido.
 - **Indisponibilidade**: a tela mantém totais desconhecidos como `—` e permite tentar novamente; não inventa valores zero.
 - **Estado vazio**: a tela explica que ainda não há faturas ou lançamentos.
+
+## Apresentar em outro computador
+
+Use https://post-flow-ochre.vercel.app/login e entre com a mesma conta
+administrativa cadastrada. Não é necessário instalar Node, copiar `.env` ou
+usar o projeto local. As permissões vêm do banco por `/api/auth/me`, não do
+computador. `owner` de uma marca não equivale a `platform_owner` da plataforma.
+
+Antes de apresentar, entre em janela anônima ou em outro navegador, confira
+Financeiro e Fiscal no menu e recarregue a página. No Fiscal, selecione
+**09/2026**: a base observada contém sete receitas, bruto de R$ 559,30,
+imposto de R$ 33,53 e líquido de R$ 525,77. Outubro está vazio. Receitas
+financeiras `manual` não são automaticamente vendas tributáveis.
+
+Se uma conta administrativa não tiver workspace, abra diretamente
+`/admin/finance`; as telas do produto exigem uma associação à marca. Falhas
+de rede, autenticação e permissão devem ser distinguidas de períodos vazios.
+O teste com senha real numa sessão limpa ainda precisa ser concluído para
+atestar a conta da apresentação. Consulte a [auditoria da entrega](entrega-final-2026-10-06.md).
 
 ## Limitações acadêmicas
 
