@@ -7,7 +7,10 @@ import {
   type BatchContentGenerationInput,
   type ContentGenerationInput,
 } from './contentTypes.js'
-import { CONTENT_FORMATS } from '../../../shared/domain/contentFormats.js'
+import {
+  CONTENT_FORMATS,
+  contentFormatDataSchema,
+} from '../../../shared/domain/contentFormats.js'
 import type { ContentQuotaService, ContentQuotaUnits } from './contentQuota.js'
 import {
   DEFAULT_POST_TIMEZONE,
@@ -15,7 +18,19 @@ import {
   isValidTimeZone,
 } from '../../../shared/domain/contentTime.js'
 
+const editorialMetadata = {
+  format: z.enum(CONTENT_FORMATS).optional(),
+  formatData: contentFormatDataSchema.optional(),
+  persona: z.string().trim().max(160).optional(),
+  time: z
+    .string()
+    .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
+    .optional(),
+  timezone: z.string().refine(isValidTimeZone).optional(),
+}
+
 const generatedDraftSchema = z.object({
+  ...editorialMetadata,
   id: z.string().min(1),
   title: z.string().trim().min(3).max(160),
   caption: z.string().trim().min(1).max(5000),
@@ -62,6 +77,7 @@ const brandContextSchema = z
 const requestSchema = z
   .object({
     prompt: z.string().trim().min(3).max(4000),
+    ...editorialMetadata,
     platform: z.enum(CONTENT_PLATFORMS),
     date: z.iso.date(),
     brand: brandContextSchema.nullable(),

@@ -436,6 +436,11 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+.plannedCount small {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.45;
+}
 
 @keyframes enter {
   from {

@@ -99,6 +99,12 @@ function throwIfCancelled(signal: AbortSignal | undefined) {
 }
 
 function providerHttpError(target: 'texto' | 'imagem', status: number) {
+  if (status === 401) {
+    return new HttpError(
+      503,
+      'A conexão com o serviço de IA precisa ser reconfigurada. Avise o responsável pelo sistema.',
+    )
+  }
   if (status === 429) {
     return new HttpError(
       429,
@@ -372,9 +378,11 @@ export class OpenAiContentProvider implements ContentProvider {
               content: [
                 'Você é o redator do PostFlow. Escreva em português brasileiro e adapte cada rascunho à rede indicada.',
                 'A marca pode pertencer a qualquer segmento. Use segmento e tom apenas como contexto; nunca invente fatos, preços, promoções, depoimentos ou resultados.',
+                'Não afirme notícias, tendências ou acontecimentos da semana atual sem fatos e fontes fornecidos no briefing.',
                 'Use descrição, público, produtos ou serviços, diferenciais, objetivos, palavras-chave, temas a evitar, chamada padrão e paleta de cores da marca como briefing quando estiverem preenchidos. Não invente dados para completar campos vazios.',
-                'Produza uma variação distinta para cada item. Não repita a mesma legenda com apenas uma troca de rede ou data.',
-                'Respeite o limite de texto da rede: X / Twitter até 280 caracteres; demais canais, legendas concisas e adequadas ao formato.',
+                'Preserve em todos os itens a mesma tese, os mesmos fatos fornecidos e a mesma chamada para ação do briefing. Adapte abertura, vocabulário, extensão e execução ao canal, sem acrescentar alegações.',
+                'Produza uma variação distinta por item sem mudar a mensagem central. Não repita a mesma legenda com apenas uma troca de rede ou data.',
+                'Respeite o limite de texto da rede: no X / Twitter, legenda e hashtags juntas devem ter até 280 caracteres, incluindo espaços e a quebra de linha antes das hashtags; demais canais, legendas concisas e adequadas ao formato.',
                 'Os resultados são rascunhos para revisão, não afirmações de que foram publicados.',
                 input.format === 'carousel'
                   ? 'Cada Carrossel precisa ter de 3 a 5 slides, com progressão clara, título, texto curto e direção visual por slide.'
@@ -472,6 +480,16 @@ export class OpenAiContentProvider implements ContentProvider {
         )
       }
       return parsed.data.items.map((item) => {
+        const platform = input.items.find(
+          ({ key }) => key === item.key,
+        )?.platform
+        const caption = `${item.caption}${item.hashtags.length ? `\n${item.hashtags.join(' ')}` : ''}`
+        if (platform === 'X / Twitter' && Array.from(caption).length > 280) {
+          throw new HttpError(
+            502,
+            'A IA retornou uma legenda maior que o limite do X / Twitter. Tente novamente.',
+          )
+        }
         if (item.formatData === undefined) {
           throw new HttpError(
             502,
@@ -505,6 +523,15 @@ export class OpenAiContentProvider implements ContentProvider {
     parentSignal?: AbortSignal,
   ): Promise<string> {
     const requestSignal = createRequestSignal(parentSignal, IMAGE_TIMEOUT_MS)
+    const formatData = input.previousDraft?.formatData
+    const formatVisualDirection =
+      formatData?.kind === 'static'
+        ? formatData.visualDirection
+        : formatData?.kind === 'carousel'
+          ? formatData.slides[0]?.visualDirection
+          : formatData?.kind === 'reels'
+            ? formatData.scenes[0]?.shot
+            : undefined
 
     try {
       throwIfCancelled(parentSignal)
@@ -526,15 +553,25 @@ export class OpenAiContentProvider implements ContentProvider {
               'Crie uma imagem quadrada para um post de rede social.',
               'Não inclua texto, logotipos ou marcas d’água legíveis na imagem.',
               'Use uma direção visual editorial, limpa e coerente com a marca.',
+              'Mantenha a mesma ideia central e identidade visual entre as redes; adapte apenas a composição da peça quadrada.',
+              'Não invente fatos, produtos, promoções, resultados, notícias ou tendências atuais ausentes do briefing.',
               `Marca: ${input.brand?.name ?? 'marca independente'}.`,
               `Segmento: ${input.brand?.segment ?? 'não informado'}.`,
               `Tom: ${input.brand?.toneOfVoice ?? 'profissional e próximo'}.`,
               `Paleta de cores: ${(input.brand?.colorPalette ?? []).join(', ') || 'não informada'}.`,
               `Contexto da marca: ${input.brand?.description ?? 'não informado'}.`,
               `Público: ${input.brand?.targetAudience ?? 'não informado'}.`,
+              `Produtos ou serviços: ${input.brand?.productsOrServices ?? 'não informado'}.`,
               `Diferenciais: ${input.brand?.differentials ?? 'não informado'}.`,
+              `Objetivos de conteúdo: ${input.brand?.contentGoals ?? 'não informado'}.`,
+              `Palavras-chave: ${input.brand?.keywords ?? 'não informadas'}.`,
+              `Temas a evitar: ${input.brand?.avoidTopics ?? 'não informados'}.`,
+              `Chamada padrão: ${input.brand?.defaultCta ?? 'não informada'}.`,
               `Pedido do usuário: ${input.prompt}.`,
               `Ideia central da arte: ${visualText}.`,
+              ...(formatVisualDirection
+                ? [`Direção do formato: ${formatVisualDirection}.`]
+                : []),
             ].join('\n'),
             size: this.imageSize,
             quality: this.imageQuality,

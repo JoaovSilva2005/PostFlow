@@ -1,5 +1,9 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type {
+  ContentFormat,
+  ContentFormatData,
+} from '../../../shared/domain/contentFormats.js'
 import { OpenAiContentProvider } from './openAiContentProvider.js'
 
 const input = {
@@ -48,6 +52,40 @@ const carouselCopy = (key: string) => ({
   },
 })
 
+const formatDataForTest = (format: ContentFormat): ContentFormatData => {
+  if (format === 'carousel') {
+    return {
+      kind: 'carousel',
+      slides: [1, 2, 3].map((slide) => ({
+        headline: `Slide ${slide}`,
+        copy: 'Uma explicação curta.',
+        visualDirection:
+          slide === 1
+            ? 'Primeira direção visual do carrossel.'
+            : 'Continuação visual.',
+      })),
+    }
+  }
+  if (format === 'reels') {
+    return {
+      kind: 'reels',
+      hook: 'Uma abertura direta.',
+      durationSeconds: 20,
+      scenes: [1, 2, 3].map((scene) => ({
+        shot: scene === 1 ? 'Primeiro plano do roteiro.' : 'Cena seguinte.',
+        narration: 'Uma fala curta.',
+        onScreenText: 'Texto breve',
+      })),
+      closingCta: 'Conte sua experiência.',
+    }
+  }
+  return {
+    kind: 'static',
+    headline: 'Uma pausa com intenção',
+    visualDirection: 'Direção visual da peça estática.',
+  }
+}
+
 const textResponse = () =>
   new Response(
     JSON.stringify({
@@ -61,6 +99,45 @@ const textResponse = () =>
   )
 
 describe('OpenAiContentProvider', () => {
+  it('informa falha de credencial do provedor sem expor a chave nem expirar a sessão do usuário', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response('private provider error', { status: 401 }),
+        ),
+    )
+    await expect(
+      new OpenAiContentProvider(() => 'private-key', 'text-model').generate(
+        input,
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      message: expect.stringContaining('precisa ser reconfigurada'),
+    })
+  })
+  it('rejeita legenda do X que excede o limite ao acrescentar hashtags', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            output_text: JSON.stringify({
+              items: [{ ...carouselCopy('0'), caption: 'a'.repeat(276) }],
+            }),
+          }),
+        ),
+      ),
+    )
+    await expect(
+      new OpenAiContentProvider(() => 'test-key', 'text-model').generateBatch({
+        ...batchInput,
+        platforms: ['X / Twitter'],
+        items: [{ key: '0', platform: 'X / Twitter', date: '2099-12-30' }],
+      }),
+    ).rejects.toMatchObject({ statusCode: 502 })
+  })
   afterEach(() => {
     vi.useRealTimers()
     vi.restoreAllMocks()
@@ -311,6 +388,110 @@ describe('OpenAiContentProvider', () => {
       },
     })
   })
+
+  it.each(['static', 'carousel', 'reels'] as const)(
+    'inclui política de briefing comum, adaptação por rede e instrução de formato para %s',
+    async (format) => {
+      const fetch = vi.fn().mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            output_text: JSON.stringify({
+              items: batchInput.items.map(({ key }) => ({
+                key,
+                title: 'Café com intenção',
+                caption: 'Uma pausa com intenção.',
+                hashtags: ['#Cafe'],
+                visualText: 'Uma pausa com presença',
+                formatData: formatDataForTest(format),
+              })),
+            }),
+          }),
+        ),
+      )
+      vi.stubGlobal('fetch', fetch)
+
+      await new OpenAiContentProvider(
+        () => 'test-key',
+        'text-model',
+      ).generateBatch({ ...batchInput, format })
+
+      const body = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))
+      const systemPrompt = body.input[0].content as string
+      expect(systemPrompt).toContain('adapte cada rascunho à rede indicada')
+      expect(systemPrompt).toContain(
+        'mesma tese, os mesmos fatos fornecidos e a mesma chamada para ação',
+      )
+      expect(systemPrompt).toContain('sem fatos e fontes fornecidos')
+      expect(systemPrompt).toContain(
+        format === 'static'
+          ? 'Cada Estático precisa ter uma chamada curta'
+          : format === 'carousel'
+            ? 'Cada Carrossel precisa ter de 3 a 5 slides'
+            : 'Cada Reels precisa ter gancho, de 3 a 6 cenas',
+      )
+    },
+  )
+
+  it.each([
+    ['static', 'Direção visual da peça estática.'],
+    ['carousel', 'Primeira direção visual do carrossel.'],
+    ['reels', 'Primeiro plano do roteiro.'],
+  ] as const)(
+    'usa a direção de %s no prompt da imagem e preserva a imagem quadrada',
+    async (format, direction) => {
+      const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ data: [{ b64_json: 'aW1hZ2U=' }] })),
+        )
+      vi.stubGlobal('fetch', fetch)
+      const previousDraft = {
+        id: 'draft-1',
+        title: 'Café com intenção',
+        caption: 'Uma pausa com intenção.',
+        hashtags: ['#Cafe'],
+        platform: 'Instagram' as const,
+        date: '2026-09-20',
+        status: 'draft' as const,
+        visualText: 'Uma pausa com presença',
+        color: '#123456',
+        format,
+        formatData: formatDataForTest(format),
+      }
+      const imageInput = {
+        ...input,
+        previousDraft,
+        brand: {
+          ...input.brand,
+          productsOrServices: 'Café especial',
+          contentGoals: 'Educar sobre preparo',
+          keywords: 'origem, preparo',
+          avoidTopics: 'promessas de saúde',
+          defaultCta: 'Conheça os cafés disponíveis',
+        },
+      }
+
+      await new OpenAiContentProvider(
+        () => 'test-key',
+        'text-model',
+      ).generateImage(imageInput, 'A mesma ideia central')
+
+      const body = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))
+      expect(body.size).toBe('1024x1024')
+      expect(body.prompt).toContain(`Direção do formato: ${direction}.`)
+      expect(body.prompt).toContain('Produtos ou serviços: Café especial.')
+      expect(body.prompt).toContain(
+        'Objetivos de conteúdo: Educar sobre preparo.',
+      )
+      expect(body.prompt).toContain('Temas a evitar: promessas de saúde.')
+      expect(body.prompt).toContain(
+        'Chamada padrão: Conheça os cafés disponíveis.',
+      )
+      expect(body.prompt).toContain(
+        'Não invente fatos, produtos, promoções, resultados, notícias ou tendências atuais',
+      )
+    },
+  )
 
   it('rejeita itens duplicados ou ausentes no retorno do lote', async () => {
     const duplicate = carouselCopy('0')

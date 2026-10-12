@@ -5,9 +5,9 @@ import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import styles from './CalendarPage.module.css'
 
 const FORMAT_LABELS: Record<string, string> = {
-  carousel: 'Carrossel',
+  carousel: 'Carrossel · capa',
   static: 'Post estático',
-  reels: 'Reels / vídeo curto',
+  reels: 'Reels · capa do roteiro',
 }
 
 interface PostCreativePreviewProps {

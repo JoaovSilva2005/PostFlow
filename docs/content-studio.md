@@ -42,6 +42,36 @@ A composição visual usa `visualText` e `color` no modo demonstrativo. No modo 
 
 ## Franquias aplicadas no backend
 
+### Agenda: posts com imagem em um clique (SCRUM-66)
+
+Em **Gerar conteúdo**, informe a ideia, marca, público, datas, horário, formato e
+redes. **Gerar rascunhos e imagens** produz uma legenda por combinação data ×
+rede, gera uma arte por data e salva todos os posts com essa arte no banco e
+Storage privado. Instagram, Facebook e X reutilizam a mesma imagem do dia.
+O progresso distingue textos, imagens e salvamento. Agendar e publicar continuam
+sendo ações de revisão do usuário.
+
+Estático contém uma peça; carrossel contém a estrutura de 3–5 slides e uma capa;
+Reels contém roteiro e capa, sem arquivo de vídeo. A prévia mantém a arte inteira.
+Notícias e números precisam ser fornecidos no briefing; a IA não deve inventar
+acontecimentos recentes.
+
+O endpoint de imagem preserva `format`, `formatData`, persona, horário e fuso do
+rascunho. Cada texto consome uma unidade e cada data consome uma unidade de imagem.
+Uma nova tentativa na mesma sidebar reaproveita textos e imagens já concluídos;
+fechar, editar a ideia ou mudar configurações descarta essa tentativa em memória.
+Falhas antes do salvamento não anunciam sucesso. No modo demonstração, a interface
+informa que gera apenas textos. A geração manual permanece para posts antigos
+sem arte. Decisão: [ADR-0011](adr/ADR-0011-complete-calendar-posts.md).
+
+Verificação: `npm test`, `npm run build` e
+`node scripts/calendar-generation-ui-check.cjs` (Playwright com HTTP controlado,
+`QA_BASE_URL` opcional). `node node_modules/tsx/dist/cli.mjs
+scripts/api/verifyCalendarGeneration.ts` verifica PostgreSQL e Storage reais com
+IA/auth/franquia de teste e limpa somente dados criados pela verificação. Definir
+`POSTFLOW_VERIFY_REAL_AI=true` também aciona uma chamada textual e uma imagem
+pagas; requer credencial válida no backend. Não enviar chaves ao navegador.
+
 Na agenda, “Gerar imagem com IA” cria uma arte para um post sem imagem salva.
 `POST /api/content/generate-image` gera somente a imagem e reserva uma unidade
 de imagem, sem alterar a legenda nem consumir texto.

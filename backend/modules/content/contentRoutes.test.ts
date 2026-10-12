@@ -125,6 +125,52 @@ const authorize = (test: request.Test) =>
 describe('geração de conteúdo', () => {
   afterEach(() => vi.restoreAllMocks())
 
+  it.each(['static', 'carousel', 'reels'] as ContentFormat[])(
+    'preserva a estrutura de %s do lote ao solicitar a capa automaticamente',
+    async (format) => {
+      const generateImage = vi.fn(provider.generateImage!.bind(provider))
+      const app = setup('editor', 'active', new InMemoryContentQuotaService(), {
+        ...provider,
+        generateImage,
+      })
+      const metadata = {
+        format,
+        formatData: formatData(format),
+        persona: 'Pequenos negócios',
+        time: '09:00',
+        timezone: 'America/Sao_Paulo',
+      }
+      const previousDraft = {
+        id: 'draft-generated',
+        title: 'Organize sua semana',
+        caption: 'Planeje seu conteúdo.',
+        hashtags: ['#Planejamento'],
+        visualText: 'Agenda organizada',
+        color: '#4F46E5',
+        platform: validRequest.platform,
+        date: validRequest.date,
+        status: 'draft',
+        ...metadata,
+      }
+      const response = await authorize(
+        request(app).post('/api/content/generate-image'),
+      ).send({
+        ...validRequest,
+        ...metadata,
+        previousDraft,
+      })
+      expect(response.status).toBe(200)
+      expect(generateImage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...metadata,
+          previousDraft: expect.objectContaining(metadata),
+        }),
+        'Agenda organizada',
+        expect.any(AbortSignal),
+      )
+    },
+  )
+
   it('exige autenticação e permissão de edição', async () => {
     const anonymous = await request(setup())
       .post('/api/content/generate')

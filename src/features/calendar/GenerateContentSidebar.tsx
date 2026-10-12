@@ -34,6 +34,7 @@ import {
 } from './calendarUtils'
 import {
   PLATFORMS,
+  generationService,
   type ContentFormat,
   type Platform,
 } from '../content/generationService'
@@ -48,7 +49,7 @@ const FORMATS: Array<{
   {
     value: 'carousel',
     label: 'Carrossel',
-    description: 'Sequência de slides',
+    description: 'Estrutura dos slides e capa',
     icon: Images,
   },
   {
@@ -60,7 +61,7 @@ const FORMATS: Array<{
   {
     value: 'reels',
     label: 'Reels',
-    description: 'Roteiro de vídeo curto',
+    description: 'Roteiro e capa, sem vídeo',
     icon: Video,
   },
 ]
@@ -82,7 +83,8 @@ interface GenerateContentSidebarProps {
   initialBrandId: string
   initialDate: string
   initialPrompt: string
-  phase: 'idle' | 'generating' | 'saving'
+  phase: 'idle' | 'generating' | 'generating-images' | 'saving'
+  imageProgress?: { completed: number; total: number } | null
   error: string
   onEditPrompt: () => void
   onClose: () => void
@@ -111,6 +113,7 @@ export function GenerateContentSidebar({
   initialDate,
   initialPrompt,
   phase,
+  imageProgress,
   error,
   onEditPrompt,
   onClose,
@@ -274,8 +277,9 @@ export function GenerateContentSidebar({
           <div>
             <h2 id="generate-content-title">Configurar geração</h2>
             <p>
-              Uma variação por data e destino. Todos ficam como rascunhos para
-              revisão.
+              {generationService.generateImage
+                ? 'A IA gera legendas por rede e uma arte por data. Os posts ficam salvos para revisão e agendamento.'
+                : 'Modo demonstração: geração de textos, sem imagem de IA.'}
             </p>
           </div>
           <button
@@ -498,8 +502,8 @@ export function GenerateContentSidebar({
           <fieldset className={styles.section}>
             <legend>Destinos do conteúdo</legend>
             <p className={styles.helper}>
-              Cada rede recebe um rascunho adaptado. A publicação continua com
-              você.
+              Cada rede recebe sua legenda e a mesma arte daquele dia. A
+              publicação continua com você.
             </p>
             <div className={styles.platformGrid}>
               {PLATFORMS.map((platform) => {
@@ -537,10 +541,21 @@ export function GenerateContentSidebar({
               {plannedCount > 0
                 ? `${selectedDates.length} ${selectedDates.length === 1 ? 'data' : 'datas'} × ${platforms.length} ${platforms.length === 1 ? 'destino' : 'destinos'} = ${plannedCount} ${plannedCount === 1 ? 'rascunho' : 'rascunhos'}`
                 : 'Selecione datas e destinos para continuar.'}
+              {plannedCount > 0 && generationService.generateImage ? (
+                <small>
+                  Uma imagem por data, compartilhada entre as redes:{' '}
+                  {selectedDates.length}{' '}
+                  {selectedDates.length === 1 ? 'imagem' : 'imagens'} da
+                  franquia.
+                </small>
+              ) : null}
             </p>
-            {phase === 'generating' ? (
+            {phase === 'generating' || phase === 'generating-images' ? (
               <Button type="button" variant="ghost" onClick={onCancel}>
-                <Clock3 size={15} /> Cancelar geração
+                <Clock3 size={15} />
+                {phase === 'generating-images'
+                  ? 'Cancelar imagens'
+                  : 'Cancelar geração'}
               </Button>
             ) : null}
             <Button
@@ -551,9 +566,11 @@ export function GenerateContentSidebar({
               <Sparkles size={16} />
               {phase === 'generating'
                 ? `Gerando ${plannedCount} rascunhos...`
-                : phase === 'saving'
-                  ? 'Salvando na agenda...'
-                  : `Gerar ${plannedCount || ''} ${plannedCount === 1 ? 'rascunho' : 'rascunhos'}`}
+                : phase === 'generating-images'
+                  ? `Gerando imagens ${imageProgress?.completed ?? 0}/${imageProgress?.total ?? selectedDates.length}...`
+                  : phase === 'saving'
+                    ? 'Salvando na agenda...'
+                    : `Gerar ${plannedCount || ''} ${plannedCount === 1 ? 'rascunho' : 'rascunhos'}${generationService.generateImage ? ' e imagens' : ''}`}
             </Button>
           </footer>
         </form>

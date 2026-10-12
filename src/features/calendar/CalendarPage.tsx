@@ -28,6 +28,10 @@ import {
   GenerateContentSidebar,
   type GenerateContentValues,
 } from './GenerateContentSidebar'
+import {
+  createCalendarGenerationTask,
+  type ImageProgress,
+} from './calendarGeneration'
 import styles from './CalendarPage.module.css'
 
 const STATUS_LABELS: Record<PostDraft['status'], string> = {
@@ -71,11 +75,15 @@ export function CalendarPage() {
   const [generatorPrompt, setGeneratorPrompt] = useState('')
   const [generatorError, setGeneratorError] = useState('')
   const [generationPhase, setGenerationPhase] = useState<
-    'idle' | 'generating' | 'saving'
+    'idle' | 'generating' | 'generating-images' | 'saving'
   >('idle')
-  const isGenerating = generationPhase !== 'idle'
   const [generationNotice, setGenerationNotice] = useState('')
   const generationController = useRef<AbortController | null>(null)
+  const [imageProgress, setImageProgress] = useState<ImageProgress | null>(null)
+  const pendingGeneration = useRef<{
+    key: string
+    run: ReturnType<typeof createCalendarGenerationTask>
+  } | null>(null)
   const visibleMonthKey = toDateKey(visibleMonth).slice(0, 7)
   const monthDrafts = useMemo(
     () =>
@@ -235,43 +243,52 @@ export function CalendarPage() {
   }, [])
 
   async function handleGenerate(values: GenerateContentValues) {
-    if (isGenerating) return
+    if (generationController.current) return
     const controller = new AbortController()
     generationController.current = controller
     setGenerationPhase('generating')
     setGeneratorError('')
     setGenerationNotice('')
+    setImageProgress(null)
+    let savedDrafts: PostDraft[] = []
+    let targetWorkspaceId: string | undefined
 
     try {
-      if (!generationService.generateBatch) {
-        throw new Error('Geração em lote indisponível.')
-      }
       const selectedWorkspace = availableWorkspaces.find(
         ({ id }) => id === values.brandId,
       )
       const selectedBrand = selectedWorkspace?.brand ?? brand
-      const targetWorkspaceId = selectedWorkspace?.id ?? currentWorkspace?.id
-      const generated = await generationService.generateBatch(
-        {
-          workspaceId: targetWorkspaceId,
-          prompt: values.prompt,
-          dates: values.dates,
-          time: values.time,
-          timezone: values.timezone,
-          format: values.format,
-          persona: values.persona,
-          platforms: values.platforms,
-          brand: selectedBrand,
-        },
+      targetWorkspaceId = selectedWorkspace?.id ?? currentWorkspace?.id
+      if (!targetWorkspaceId) throw new Error('Selecione uma marca para gerar.')
+      const request = {
+        workspaceId: targetWorkspaceId,
+        prompt: values.prompt,
+        dates: values.dates,
+        time: values.time,
+        timezone: values.timezone,
+        format: values.format,
+        persona: values.persona,
+        platforms: values.platforms,
+        brand: selectedBrand,
+      }
+      const key = JSON.stringify(request)
+      if (pendingGeneration.current?.key !== key) {
+        pendingGeneration.current = {
+          key,
+          run: createCalendarGenerationTask(request, generationService),
+        }
+      }
+      const generated = await pendingGeneration.current.run(
         controller.signal,
+        (progress) => {
+          setGenerationPhase('generating-images')
+          setImageProgress(progress)
+        },
       )
       controller.signal.throwIfAborted()
       setGenerationPhase('saving')
-      if (!targetWorkspaceId) throw new Error('Selecione uma marca para gerar.')
-      const savedDrafts = await addDraftsForWorkspace(
-        targetWorkspaceId,
-        generated,
-      )
+      savedDrafts = await addDraftsForWorkspace(targetWorkspaceId, generated)
+      pendingGeneration.current = null
       if (targetWorkspaceId !== currentWorkspace?.id) {
         await selectWorkspace(targetWorkspaceId)
       }
@@ -285,19 +302,29 @@ export function CalendarPage() {
       }
       setGeneratorPrompt('')
       setGenerationNotice(
-        `${savedDrafts.length} ${savedDrafts.length === 1 ? 'rascunho salvo' : 'rascunhos salvos'} na agenda para revisão. A publicação é manual.`,
+        generationService.generateImage
+          ? `${savedDrafts.length} ${savedDrafts.length === 1 ? 'rascunho com imagem salvo' : 'rascunhos com imagens salvos'} na agenda para revisão. A publicação é manual.`
+          : `${savedDrafts.length} ${savedDrafts.length === 1 ? 'rascunho salvo' : 'rascunhos salvos'} na agenda para revisão. A publicação é manual.`,
       )
       setIsGeneratorOpen(false)
     } catch (error) {
-      if (controller.signal.aborted) {
+      if (savedDrafts.length > 0) {
+        setGenerationNotice(
+          `${savedDrafts.length} rascunhos foram salvos. Atualize a agenda para visualizar a marca selecionada.`,
+        )
+        setIsGeneratorOpen(false)
+      } else if (controller.signal.aborted) {
         setGeneratorError('Geração cancelada. Sua agenda não foi alterada.')
       } else {
-        setGeneratorError(generationError(error))
+        setGeneratorError(
+          `${generationError(error)} A geração não foi concluída. Tente novamente para aproveitar os textos e as imagens já gerados nesta janela.`,
+        )
       }
     } finally {
       if (generationController.current === controller) {
         generationController.current = null
       }
+      setImageProgress(null)
       setGenerationPhase('idle')
     }
   }
@@ -306,8 +333,14 @@ export function CalendarPage() {
     generationController.current?.abort()
   }
 
-  const closeGenerator = useCallback(() => setIsGeneratorOpen(false), [])
+  const closeGenerator = useCallback(() => {
+    pendingGeneration.current = null
+    setGeneratorError('')
+    setIsGeneratorOpen(false)
+  }, [])
   const editComposerIdea = useCallback(() => {
+    pendingGeneration.current = null
+    setGeneratorError('')
     setIsGeneratorOpen(false)
     window.setTimeout(
       () => document.getElementById('calendar-content-prompt')?.focus(),
@@ -573,6 +606,7 @@ export function CalendarPage() {
           }
           initialPrompt={generatorPrompt}
           phase={generationPhase}
+          imageProgress={imageProgress}
           error={generatorError}
           onClose={closeGenerator}
           onCancel={cancelGeneration}
