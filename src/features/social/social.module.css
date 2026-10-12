@@ -5,6 +5,404 @@
   gap: 18px;
   margin: -10px 0 20px;
 }
+
+/* Reference layout: white header, centered two-column platform cards. */
+.integrationsPage {
+  min-height: 100dvh;
+}
+.integrationsHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 24px;
+  padding: 30px clamp(20px, 3vw, 48px) 0;
+  background: #fff;
+  border-bottom: 1px solid #e4e7eb;
+}
+.headerCopy h1 {
+  margin: 0 0 8px;
+  font-size: clamp(23px, 2.2vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.9px;
+}
+.headerCopy p {
+  margin: 0;
+  max-width: 720px;
+  font-size: 12px;
+  color: #697383;
+  line-height: 1.6;
+}
+.headerActions {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.headerActions a {
+  align-self: center;
+  color: #526071;
+  font-size: 12px;
+  text-decoration: none;
+}
+.integrationTabs {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 22px;
+  margin-top: 24px;
+}
+.integrationTabs button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 46px;
+  padding: 0 20px;
+  background: transparent;
+  color: #637083;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+}
+.integrationTabs [aria-selected='true'] {
+  color: #176c4c;
+  border-bottom-color: #176c4c;
+}
+.integrationTabs button > span {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #eef2f0;
+  font-size: 10px;
+}
+.integrationsContent {
+  width: min(100%, 860px);
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+}
+.integrationsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 16px;
+}
+.integrationCard {
+  min-width: 0;
+  padding: 19px 18px 17px;
+  background: #fff;
+  border: 1px solid #e3e6eb;
+  border-radius: 10px;
+}
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px 8px;
+  margin-bottom: 17px;
+}
+.platformIdentity {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+.platformIdentity > div {
+  min-width: 0;
+}
+.platformIdentity h2 {
+  margin: 2px 0 5px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+.integrationIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  color: #20242b;
+}
+.integrationIcon[data-platform='tiktok'],
+.integrationIcon[data-platform='x'],
+.integrationIcon[data-platform='threads'] {
+  color: #fff;
+  background: #16191c;
+}
+.integrationIcon[data-platform='x'] svg {
+  width: 21px;
+  height: 21px;
+}
+.integrationIcon[data-platform='canva'] {
+  color: #fff;
+  background: linear-gradient(130deg, #02c8ca, #5960e4);
+}
+.integrationIcon[data-platform='pinterest'] {
+  color: #fff;
+  background: #bd1731;
+}
+.pinterestMark {
+  font:
+    italic 700 27px/1 Georgia,
+    serif;
+}
+.integrationIcon[data-platform='youtube'] {
+  color: #d82e2e;
+  background: #fff1f0;
+}
+.integrationIcon[data-platform='wordpress'] {
+  color: #237394;
+  background: #edf5f8;
+}
+.connectionState {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #747d88;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.connectionState i {
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+  border-radius: 50%;
+}
+.connectionState[data-state='connected'],
+.connectionState[data-state='ready'] {
+  color: #177b50;
+}
+.connectionState[data-state='missing'],
+.connectionState[data-state='needs_reconnect'] {
+  color: #946319;
+}
+.compactButton {
+  min-height: 34px;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 5px;
+  gap: 5px;
+  white-space: nowrap;
+}
+.compactButton:disabled {
+  color: #707986;
+  background: #f8f9fa;
+  opacity: 1;
+}
+.helpLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  margin-bottom: 4px;
+  color: #354556;
+  font-size: 10px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.integrationDescription {
+  margin: 0;
+  color: #667080;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.setupNote {
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid #eff0f2;
+  color: #7b6849;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.setupNote p {
+  margin: 0;
+}
+.configurationDetails {
+  margin-top: 8px;
+  color: #617080;
+}
+.configurationDetails summary {
+  cursor: pointer;
+  min-height: 30px;
+}
+.configurationDetails ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+}
+.accountsInCard,
+.pendingInCard {
+  margin-top: 19px;
+}
+.accountsInCard h3,
+.pendingInCard h3 {
+  margin: 0 0 9px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.accountGroup + .accountGroup {
+  margin-top: 12px;
+}
+.accountRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid #e6e9ec;
+  border-radius: 6px;
+}
+.accountAvatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #eef3fc;
+  color: #3867b2;
+  font-size: 9px;
+  font-weight: 600;
+}
+.accountIdentity {
+  min-width: 0;
+  flex: 1;
+}
+.accountIdentity strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.accountIdentity small {
+  display: block;
+  margin-top: 2px;
+  color: #737e8a;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.accountBadge {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: #eef1f3;
+  color: #65717f;
+  font-size: 9px;
+  font-weight: 600;
+}
+.accountBadge[data-state='connected'] {
+  color: #177b50;
+  background: #e8f5ee;
+}
+.accountActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pendingInCard .pendingAccount {
+  gap: 10px;
+  font-size: 11px;
+  border-color: #edf0f2;
+}
+.pendingAccount > span {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.pendingAccount small {
+  display: block;
+  color: #687888;
+  font-size: 10px;
+}
+.catalogNote,
+.roleNote,
+.accountEmpty {
+  margin: 16px 0 0;
+  color: #697587;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.catalogNote {
+  text-align: center;
+}
+.roleNote {
+  margin: 0 0 16px;
+}
+.lightNotice,
+.lightError {
+  padding: 12px 14px;
+  margin: 0 0 18px;
+  font-size: 12px;
+  border: 1px solid #cae4d6;
+  border-radius: 6px;
+  color: #246042;
+  background: #edf8f1;
+}
+.lightError {
+  color: #a1313b;
+  background: #fff4f4;
+  border-color: #edced1;
+}
+.lightError button {
+  margin-left: 8px;
+  padding: 2px 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-decoration: underline;
+}
+.activityPanel {
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e3e6eb;
+  border-radius: 10px;
+}
+.activityPanel .empty {
+  color: #697587;
+}
+.activityPanel .publications [data-status] {
+  color: #6c5531;
+}
+.activityPanel .publications [data-status='published'] {
+  color: #177b50;
+}
+.activityPanel .publications article p {
+  color: #a1313b;
+}
+@media (max-width: 1100px) {
+  .integrationsHeader {
+    grid-template-columns: 1fr;
+  }
+  .headerActions {
+    justify-content: flex-start;
+    margin-top: 16px;
+  }
+}
+@media (max-width: 600px) {
+  .integrationsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .integrationsHeader {
+    padding: 23px 20px 0;
+  }
+  .integrationsContent {
+    padding: 18px 16px 32px;
+  }
+  .integrationCard {
+    padding: 17px 16px;
+  }
+  .compactButton {
+    min-height: 44px;
+  }
+  .helpLink {
+    min-height: 36px;
+  }
+}
 .pageActions a,
 .provider a {
   color: var(--color-primary);

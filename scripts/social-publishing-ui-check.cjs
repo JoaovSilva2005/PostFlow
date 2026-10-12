@@ -287,8 +287,12 @@ async function runSocialUnavailable(browser, width) {
     mode: 'unconfigured',
   })
   try {
-    await page.goto(`${base}/social`)
-    await page.getByRole('heading', { name: 'Redes conectadas' }).waitFor()
+    await page.goto(
+      `${base}/social${width === 1440 ? '?oauth=connected&workspace=workspace-qa' : ''}`,
+    )
+    await page
+      .getByRole('heading', { name: 'Conecte suas contas e ferramentas' })
+      .waitFor()
     const setupMessage = page
       .getByText(/configuração administrativa da PostFlow/)
       .first()
@@ -303,6 +307,41 @@ async function runSocialUnavailable(browser, width) {
     assert.equal(await disabledButtons.count(), 4)
     for (const button of await disabledButtons.all())
       assert.equal(await button.isDisabled(), true)
+    await page.waitForURL(/\/integrations(?:\?.*)?$/)
+    if (width === 1440) {
+      const redirected = new URL(page.url())
+      assert.equal(redirected.searchParams.get('oauth'), 'connected')
+      assert.equal(redirected.searchParams.get('workspace'), 'workspace-qa')
+    }
+    const layout = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('[data-integration]')]
+      const rects = cards.map((card) => card.getBoundingClientRect())
+      return {
+        cards: cards.length,
+        overflow: document.documentElement.scrollWidth > window.innerWidth,
+        columns: new Set(rects.map((rect) => Math.round(rect.left))).size,
+        cardOverflow: cards.some(
+          (card) => card.scrollWidth > card.clientWidth + 1,
+        ),
+      }
+    })
+    assert.equal(layout.cards, 10)
+    assert.equal(layout.overflow, false)
+    assert.equal(layout.cardOverflow, false)
+    assert.equal(layout.columns, width <= 600 ? 1 : 2)
+    await page.getByRole('tab', { name: /^Publicações/ }).click()
+    await page.getByRole('heading', { name: 'Publicações recentes' }).waitFor()
+    await page.getByRole('tab', { name: 'Contas', exact: true }).click()
+    await page
+      .getByRole('tab', { name: 'Contas', exact: true })
+      .press('ArrowRight')
+    assert.equal(
+      await page
+        .getByRole('tab', { name: /^Publicações/ })
+        .getAttribute('aria-selected'),
+      'true',
+    )
+    await page.getByRole('tab', { name: /^Publicações/ }).press('Home')
     await page.screenshot({
       path: `${outputDirectory}/social-unconfigured-${width}.png`,
       fullPage: true,
@@ -313,6 +352,7 @@ async function runSocialUnavailable(browser, width) {
       width,
       providersBlocked: 4,
       secretsHidden: true,
+      layout,
       errors,
     })
   } finally {
@@ -520,6 +560,8 @@ async function runCalendar(browser, width, scenario) {
       await runPendingConnection(browser, width)
       await runCalendar(browser, width, 'publication')
     }
+    for (const width of [320, 768, 1024, 1280, 1920, 2560])
+      await runSocialUnavailable(browser, width)
     await runCalendar(browser, 1440, 'carousel')
     await runCalendar(browser, 1440, 'unsaved')
   } finally {

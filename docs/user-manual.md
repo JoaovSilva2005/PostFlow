@@ -19,7 +19,7 @@ Após entrar, o cliente trabalha dentro de uma marca (workspace):
 1. **Minha marca** — configura nome, segmento, tom de voz e identidade visual.
 2. **Criar com IA** — descreve o conteúdo, revisa o texto e prepara a publicação.
 3. **Agenda** — organiza e acompanha rascunhos por data.
-4. **Redes conectadas** — responsáveis/administradores conectam contas autorizadas da marca; editores também podem solicitar publicações. Conexões ficam indisponíveis enquanto o cadastro administrativo dos apps estiver pendente.
+4. **Integrações** — responsáveis/administradores conectam contas autorizadas da marca; editores também podem solicitar publicações. Conexões ficam indisponíveis enquanto o cadastro administrativo dos apps estiver pendente.
 5. **Assinatura e cobrança** — compara o plano disponível, confere preço e limites, revisa o resumo, gera a fatura e confirma o pagamento demonstrativo. Depois acompanha situação, período, consumo, faturas e comprovantes da própria marca.
 
 Faturas podem estar pendentes ou pagas. Selecionar o plano não quita a cobrança: primeiro é criada uma fatura pendente e a tela pede uma confirmação separada. Ao confirmar o pagamento demonstrativo, o sistema gera uma **NFS-e simulada sem validade jurídica**, vinculada à fatura. A nota pode ser impressa ou salva em PDF pelo navegador, mas não é transmitida a nenhum órgão público e o fluxo não movimenta dinheiro real.
@@ -30,7 +30,7 @@ O cliente nunca visualiza despesas, faturamento total, custos de APIs, margem, i
 
 Depois da ativação das integrações, abra um post estático na **Agenda**, salve as alterações e confira a prévia em **Publicar nas redes**. Selecione contas da rede daquele rascunho, confirme o consentimento e clique em **Publicar agora**. Para agendar, informe uma data futura; o campo mostra o fuso do computador e o servidor guarda o instante correspondente. As legendas específicas de cada rede permanecem nos respectivos rascunhos.
 
-Acompanhe cada destino em **Redes conectadas**: estar na fila ou em processamento ainda não confirma publicação. A situação editável da Agenda é um controle manual. Cancelar é possível antes do envio e sem processamento reservado; não apaga um post que já chegou à rede. Editar o rascunho não muda a cópia aprovada de um agendamento existente; cancele e autorize uma nova versão. Resultado desconhecido exige conferir a conta antes de repetir.
+Acompanhe cada destino em **Integrações**: estar na fila ou em processamento ainda não confirma publicação. A situação editável da Agenda é um controle manual. Cancelar é possível antes do envio e sem processamento reservado; não apaga um post que já chegou à rede. Editar o rascunho não muda a cópia aprovada de um agendamento existente; cancele e autorize uma nova versão. Resultado desconhecido exige conferir a conta antes de repetir.
 
 TikTok exige escolhas explícitas de privacidade, indicação de conteúdo gerado por IA e opções comerciais. Esta primeira entrega aceita imagem estática; carrossel, vídeo/Reels, LinkedIn Páginas e X não têm publicação direta. Consulte o [guia de ativação](social-publishing-setup.md).
 

@@ -62,3 +62,9 @@ Cancelar funciona antes do dispatch e sem reserva ativa. Não desfaz conteúdo q
 Testar com duas marcas e titulares diferentes, no mínimo: consentimento OAuth, seleção da conta, imagem revisada, envio agora, agendamento com navegador fechado, cancelamento futuro, revogação/reconexão, falha parcial e link/status confirmado. TikTok precisa de escolha manual de privacidade, declaração de IA e opções comerciais/consentimentos correspondentes. Liberar público apenas após a auditoria.
 
 Nesta entrega, não existe conta de rede conectada nem publicação externa real; faltam os apps, segredos e aprovações. Os testes automatizados validam a implementação e as falhas, com provas de banco e interface documentadas separadamente.
+
+## Tela de Integrações
+
+A interface de contas fica em `/integrations`; `/social` redireciona preservando parâmetros de OAuth e links antigos. Os quatro adaptadores estão agrupados em cartões com as contas da marca, validade, seleção pós-OAuth e controles de acesso. A aba Publicações reúne a fila e seus resultados.
+
+X, Canva, Threads, Pinterest, YouTube e WordPress são opções de catálogo, explicitamente não implementadas e com ações bloqueadas. Esses cartões não criam credenciais, não chamam APIs e não ampliam os quatro adaptadores existentes.

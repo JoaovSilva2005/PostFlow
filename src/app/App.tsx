@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { LoginPage } from '../features/auth/LoginPage'
 import { BrandPage } from '../features/brand/BrandPage'
 import { CalendarPage } from '../features/calendar/CalendarPage'
@@ -10,6 +10,10 @@ import { BillingPage } from '../features/billing/BillingPage'
 import { AdminPlansPage } from '../features/admin/AdminPlansPage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { SocialConnectionsPage } from '../features/social/SocialConnectionsPage'
+function LegacySocialRedirect() {
+  const { search, hash } = useLocation()
+  return <Navigate to={`/integrations${search}${hash}`} replace />
+}
 
 export function App() {
   return (
@@ -71,7 +75,7 @@ export function App() {
         }
       />
       <Route
-        path="/social"
+        path="/integrations"
         element={
           <ProtectedRoute
             workspaceRoles={['owner', 'admin', 'editor', 'viewer']}
@@ -81,6 +85,7 @@ export function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/social" element={<LegacySocialRedirect />} />
       <Route
         path="/admin/finance"
         element={

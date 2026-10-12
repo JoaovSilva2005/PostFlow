@@ -196,9 +196,9 @@ describe('SocialConnectionsPage', () => {
       screen.queryByRole('button', { name: /^Conectar conta$/ }),
     ).not.toBeInTheDocument()
     expect(
-      within(
-        screen.getByRole('region', { name: 'Disponibilidade das redes' }),
-      ).queryByRole('button'),
+      screen.queryByRole('button', {
+        name: /Editar acesso|Reconectar|Desconectar/,
+      }),
     ).not.toBeInTheDocument()
   })
 })

@@ -67,7 +67,7 @@ export function DraftSchedulePanel({
 
       <p className={styles.scheduleNote}>
         Fuso horário de Brasília. A situação é um controle manual da agenda. Use
-        Publicar nas redes para enviar o post e Redes conectadas para conferir a
+        Publicar nas redes para enviar o post e Integrações para conferir a
         confirmação.
       </p>
 

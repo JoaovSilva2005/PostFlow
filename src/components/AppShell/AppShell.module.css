@@ -1,6 +1,60 @@
 .layout {
   min-height: 100dvh;
 }
+.light {
+  color-scheme: light;
+  --color-primary: #17734f;
+  --color-primary-dark: #105b3e;
+  --color-on-primary: #ffffff;
+  --color-background: #f3f4f5;
+  --color-sidebar: #ffffff;
+  --color-surface: #ffffff;
+  --color-elevated: #f6f7f8;
+  --color-text: #20242b;
+  --color-muted: #657080;
+  --color-border: #e4e7eb;
+  --color-control: #f8f9fa;
+  --color-control-border: #dce0e5;
+  --color-hover: #eef1f3;
+  --color-success: #178154;
+  --color-danger: #b02d36;
+  --sidebar-width: 232px;
+  color: var(--color-text);
+  background: var(--color-background);
+}
+.light .main {
+  max-width: none;
+  padding: 0;
+}
+.light .skipLink {
+  color: #fff;
+}
+.light .topbar {
+  display: none;
+}
+.light .navItem {
+  color: #515a65;
+}
+.light .navItem:hover {
+  color: #20242b;
+}
+.light .navItem.active {
+  background: #eef3f0;
+  border-color: transparent;
+  color: #164e37;
+}
+.light .navGroup + .navGroup {
+  border-color: var(--color-border);
+}
+.light .navGroup > p {
+  color: var(--color-muted);
+}
+.light .avatar,
+.light .profileAvatar {
+  background: #edf5f0;
+  color: #176542;
+  border-color: #d6e5dd;
+}
 .skipLink {
   position: fixed;
   top: -100px;

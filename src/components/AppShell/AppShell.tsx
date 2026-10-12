@@ -1,6 +1,6 @@
 import {
   CalendarDays,
-  Share2,
+  Plug,
   ChevronRight,
   Command,
   Database,
@@ -53,13 +53,19 @@ const workspaceNavigation = [
     label: 'Gerenciar',
     links: [
       { to: '/brand', label: 'Minha marca', icon: Palette },
-      { to: '/social', label: 'Redes conectadas', icon: Share2 },
+      { to: '/integrations', label: 'Integrações', icon: Plug },
       { to: '/billing', label: 'Assinatura e cobrança', icon: BadgeDollarSign },
     ],
   },
 ]
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  appearance = 'default',
+}: {
+  children: ReactNode
+  appearance?: 'default' | 'light'
+}) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const {
@@ -169,7 +175,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={styles.layout}>
+    <div
+      className={`${styles.layout} ${appearance === 'light' ? styles.light : ''}`}
+    >
       <a className={styles.skipLink} href="#main-content">
         Pular para o conteúdo
       </a>

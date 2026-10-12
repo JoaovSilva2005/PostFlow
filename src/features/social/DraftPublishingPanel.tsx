@@ -208,7 +208,7 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
       setNotice(
         scheduledAt
           ? 'Solicitações agendadas. Elas serão publicadas pelo servidor no horário escolhido.'
-          : 'Solicitações enfileiradas. Acompanhe a confirmação da rede em Redes conectadas; a situação da agenda é um controle manual.',
+          : 'Solicitações enfileiradas. Acompanhe a confirmação da rede em Integrações; a situação da agenda é um controle manual.',
       )
     else if (accepted > 0)
       setNotice(
@@ -283,7 +283,7 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
             : draftProvider
               ? `Nenhuma conta ${providerLabel(draftProvider)} pronta para publicar. Configure uma rede em `
               : 'A publicação direta não está disponível para esta rede. Consulte as opções em '}
-          <Link to="/social">Redes conectadas</Link>.
+          <Link to="/integrations">Integrações</Link>.
         </p>
       ) : (
         <fieldset className={styles.destinationList}>
