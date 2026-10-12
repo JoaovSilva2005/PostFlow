@@ -4,7 +4,7 @@
   z-index: 70;
   display: flex;
   justify-content: flex-end;
-  background: rgba(3, 6, 5, 0.54);
+  background: var(--color-overlay);
 }
 
 .sidebar {
@@ -15,7 +15,7 @@
   overflow: hidden;
   border-left: 1px solid var(--color-border);
   background: var(--color-surface);
-  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.28);
+  box-shadow: -24px 0 70px rgb(0 0 0 / 28%);
   animation: enter 180ms ease-out;
 }
 
@@ -57,7 +57,7 @@
 }
 .close:hover:not(:disabled) {
   color: var(--color-text);
-  border-color: #708479;
+  border-color: var(--color-primary);
 }
 
 .form {
@@ -67,7 +67,7 @@
   min-height: 0;
   overflow-y: auto;
   padding: 19px 24px 24px;
-  scrollbar-color: #46514a transparent;
+  scrollbar-color: var(--color-border) transparent;
   scrollbar-width: thin;
 }
 .section {
@@ -254,12 +254,12 @@
   opacity: 0.38;
 }
 .dateButton.dateToday:not(.dateSelected) {
-  border-color: #68776c;
+  border-color: var(--color-primary);
 }
 .dateButton.dateSelected {
   border-color: var(--color-primary);
   background: var(--color-primary);
-  color: #10251b;
+  color: var(--color-on-primary);
   font-weight: 700;
 }
 .dateButton:focus-visible {
@@ -350,14 +350,14 @@
 }
 .choice[aria-pressed='true'] {
   border-color: var(--color-primary);
-  background: #20362a;
+  background: var(--color-primary-muted);
   box-shadow: inset 0 0 0 1px var(--color-primary);
 }
 .choice[aria-pressed='true'] svg {
   color: var(--color-primary);
 }
 .choice:hover:not(:disabled) {
-  border-color: #718c7a;
+  border-color: var(--color-primary);
 }
 
 .platformGrid {
@@ -380,11 +380,11 @@
   font-size: 11px;
 }
 .platform:hover:not(:disabled) {
-  border-color: #718c7a;
+  border-color: var(--color-primary);
 }
 .platform[aria-pressed='true'] {
   border-color: var(--color-primary);
-  background: #20362a;
+  background: var(--color-primary-muted);
 }
 .platformMark {
   display: grid;
@@ -403,9 +403,9 @@
   height: 18px;
   margin-left: auto;
   flex: 0 0 18px;
-  border: 1px solid #566158;
+  border: 1px solid var(--color-control-border);
   border-radius: 50%;
-  color: #10251b;
+  color: var(--color-on-primary);
 }
 .platform[aria-pressed='true'] .platformCheck {
   border-color: var(--color-primary);

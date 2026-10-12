@@ -9,10 +9,10 @@
   gap: 12px;
   margin-bottom: 20px;
   font-size: 12px;
-  color: #c7d2cd;
+  color: var(--color-text);
 }
 .sample small {
-  color: #9daaa2;
+  color: var(--color-muted);
   font-size: 11px;
 }
 .week {
@@ -29,7 +29,7 @@
 .day {
   display: block;
   padding: 0 0 12px;
-  color: #a1b3a8;
+  color: var(--color-muted);
   font-size: 12px;
 }
 .content {
@@ -39,12 +39,12 @@
   gap: 14px;
   min-height: 162px;
   padding: 16px 12px;
-  background: #182720;
-  border: 1px solid #355242;
+  background: var(--color-success-muted);
+  border: 1px solid var(--color-success-border);
   border-radius: 8px;
 }
 .content svg {
-  color: #97d2ac;
+  color: var(--color-success);
 }
 .content strong {
   font-size: 13px;
@@ -52,27 +52,27 @@
   line-height: 1.5;
 }
 .content > span {
-  color: #a4b9ac;
+  color: var(--color-muted);
   font-size: 10px;
   margin-top: auto;
 }
 .week li:nth-child(2) .content {
-  background: #1d222d;
-  border-color: #394352;
+  background: var(--color-info-muted);
+  border-color: var(--color-info-border);
 }
 .week li:nth-child(2) svg {
-  color: #b1c4df;
+  color: var(--color-info);
 }
 .week li:nth-child(3) .content {
-  background: #27251d;
-  border-color: #4c4835;
+  background: var(--color-warning-muted);
+  border-color: var(--color-warning-border);
 }
 .week li:nth-child(3) svg {
-  color: #dbcba1;
+  color: var(--color-warning);
 }
 .sample > p {
   margin: 16px 0 0;
   font-size: 11px;
-  color: #a6b7ad;
+  color: var(--color-muted);
   line-height: 1.6;
 }

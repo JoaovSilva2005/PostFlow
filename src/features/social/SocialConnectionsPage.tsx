@@ -392,7 +392,7 @@ export function SocialConnectionsPage() {
   }
 
   return (
-    <AppShell appearance="light">
+    <AppShell contentLayout="edge">
       <div className={styles.integrationsPage}>
         <header className={styles.integrationsHeader}>
           <div className={styles.headerCopy}>
@@ -445,12 +445,12 @@ export function SocialConnectionsPage() {
         </header>
         <div className={styles.integrationsContent}>
           {notice && (
-            <p className={styles.lightNotice} role="status">
+            <p className={styles.positiveNotice} role="status">
               {notice}
             </p>
           )}
           {error && (
-            <p className={styles.lightError} role="alert">
+            <p className={styles.errorNotice} role="alert">
               {error}{' '}
               <button onClick={() => void load()}>Tentar novamente</button>
             </p>

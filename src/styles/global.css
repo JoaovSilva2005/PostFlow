@@ -64,7 +64,7 @@ textarea {
   min-width: 0;
 }
 ::selection {
-  background: #79e2ae40;
+  background: var(--color-focus-ring);
 }
 :focus-visible {
   outline: 2px solid var(--color-primary);
@@ -76,7 +76,6 @@ textarea {
   caret-color: var(--color-primary);
 }
 input[type='date']::-webkit-calendar-picker-indicator {
-  filter: invert(1);
   opacity: 0.75;
 }
 .sr-only {

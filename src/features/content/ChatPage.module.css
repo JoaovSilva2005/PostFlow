@@ -84,7 +84,7 @@
   font-size: 14px;
 }
 .brief select:hover {
-  border-color: #555c60;
+  border-color: var(--color-primary);
 }
 .imageTierField {
   flex: 0 1 240px;
@@ -128,7 +128,7 @@
 }
 .platformPicker summary:hover,
 .platformPicker[open] summary {
-  border-color: #555c60;
+  border-color: var(--color-primary);
 }
 .platformPicker summary > span {
   min-width: 0;
@@ -302,7 +302,7 @@
 }
 .userMessage {
   align-self: flex-end;
-  background: #242729;
+  background: var(--color-elevated);
   border-radius: 10px 10px 2px 10px;
   padding: 12px 16px;
   max-width: 92%;
@@ -360,10 +360,10 @@
   display: block;
   font-size: 12px;
   margin-bottom: 10px;
-  color: #ced1d3;
+  color: var(--color-text);
 }
 .inputBox {
-  border: 1px solid #3e4448;
+  border: 1px solid var(--color-control-border);
   background: var(--color-control);
   border-radius: 10px;
   padding: 12px;
@@ -386,7 +386,7 @@
   line-height: 1.7;
 }
 .inputBox textarea::placeholder {
-  color: #8e9499;
+  color: var(--color-muted);
 }
 .composerActions {
   display: flex;
@@ -413,7 +413,7 @@
 }
 .reviewPanel {
   min-width: 0;
-  background: #131516;
+  background: var(--color-background);
 }
 .unpublished {
   font-size: 10px;
@@ -456,8 +456,8 @@
   color: var(--color-text);
 }
 .platformTabs button[aria-pressed='true'] {
-  border-color: #395445;
-  background: #1d2a22;
+  border-color: var(--color-success-border);
+  background: var(--color-primary-muted);
   color: var(--color-text);
 }
 .previewSwitch button,
@@ -478,8 +478,8 @@
 .previewSwitch button[aria-pressed='true'],
 .mobileSwitch button[aria-pressed='true'] {
   color: var(--color-text);
-  background: #282b2d;
-  border-color: #353a3d;
+  background: var(--color-elevated);
+  border-color: var(--color-border);
 }
 .reviewBody {
   flex: 1;
@@ -493,7 +493,7 @@
   border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
-  background: #191c1e;
+  background: var(--color-surface);
 }
 .socialHeader {
   display: flex;
@@ -564,7 +564,7 @@
   aspect-ratio: 1;
   width: 100%;
   overflow: hidden;
-  background: #202426;
+  background: var(--color-preview-background);
 }
 .generatedArtwork img {
   display: block;
@@ -577,9 +577,9 @@
   right: 12px;
   bottom: 12px;
   padding: 6px 8px;
-  border: 1px solid #ffffff3a;
+  border: 1px solid var(--color-border);
   border-radius: 5px;
-  background: #101112b8;
+  background: var(--color-media-overlay);
   color: #f5f6f6;
   font-size: 10px;
 }
@@ -593,7 +593,7 @@
 }
 .postCopy p {
   font-size: 12px;
-  color: #c5c9cc;
+  color: var(--color-text);
   line-height: 1.8;
   white-space: pre-wrap;
 }
@@ -624,9 +624,9 @@
 .reviewForm textarea {
   width: 100%;
   resize: vertical;
-  border: 1px solid #35393c;
+  border: 1px solid var(--color-control-border);
   border-radius: 6px;
-  background: #111314;
+  background: var(--color-control);
   color: var(--color-text);
   padding: 12px;
   line-height: 1.7;
@@ -683,20 +683,20 @@
   flex-direction: column;
   justify-content: flex-end;
   gap: 10px;
-  border: 1px solid #383d40;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #1b1e20;
+  background: var(--color-preview-background);
   transform: rotate(-5deg);
 }
 .paper svg {
   align-self: center;
   margin: auto;
-  color: #8f999f;
+  color: var(--color-muted);
 }
 .paper span {
   height: 5px;
   width: 100%;
-  background: #343a3d;
+  background: var(--color-border);
   border-radius: 3px;
 }
 .paper span:last-child {

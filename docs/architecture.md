@@ -204,6 +204,10 @@ O módulo `backend/modules/social-publishing` usa `SocialRepository`/`SocialProv
 
 O snapshot contém a legenda/hashtags aprovadas e uma cópia privada da imagem. URLs de transferência são emitidas perto do envio. O executor depende de Supabase Cron e segredo próprio; o navegador não agenda a execução. Facebook Pages, Instagram profissional via Instagram Login, LinkedIn perfil e TikTok foto única são adaptadores da primeira versão. O status manual da agenda permanece separado do status externo. Consulte [configuração](social-publishing-setup.md) e [evidências e limites](social-publishing-release-2026-10-12.md).
 
+## Temas
+
+A aplicação compartilha uma paleta semântica global com modos claro e escuro. A preferência Escuro/Claro/Sistema é local ao navegador, independente de Auth, marca e backend. Tokens de superfície, texto, ações e status variam pelo atributo de tema do documento; imagens, logos e papel de impressão preservam suas cores próprias. Consulte [ADR-0013](adr/ADR-0013-global-application-themes.md) e [operação e testes](application-themes-2026-10-12.md).
+
 ## Decisões simples para apresentação
 
 - Nomes técnicos em inglês; interface e documentação em português.

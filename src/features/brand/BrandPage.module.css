@@ -32,8 +32,8 @@
   height: 36px;
   flex-shrink: 0;
   color: var(--color-primary);
-  background: #223329;
-  border: 1px solid #35473b;
+  background: var(--color-primary-muted);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -78,7 +78,7 @@
   padding: 12px 10px;
   color: var(--color-muted);
   text-align: left;
-  background: #141617;
+  background: var(--color-control);
   border: 1px solid var(--color-border);
   border-radius: 8px;
   cursor: pointer;
@@ -90,7 +90,7 @@
 
 .sectionTab:hover {
   color: var(--color-text);
-  border-color: #46504c;
+  border-color: var(--color-primary);
 }
 
 .sectionTab:focus-visible,
@@ -103,8 +103,8 @@
 
 .sectionTab.activeTab {
   color: var(--color-text);
-  background: #1d2a22;
-  border-color: #47715a;
+  background: var(--color-primary-muted);
+  border-color: var(--color-border);
   box-shadow: inset 0 2px 0 var(--color-primary);
 }
 
@@ -144,7 +144,7 @@
 .sectionPanel {
   min-height: 410px;
   padding: 24px;
-  background: #151718;
+  background: var(--color-elevated);
   border: 1px solid var(--color-border);
   border-radius: 10px;
 }
@@ -161,8 +161,8 @@
   flex-shrink: 0;
   padding: 4px 8px;
   color: var(--color-primary);
-  background: #1f3026;
-  border: 1px solid #365442;
+  background: var(--color-primary-muted);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
   font-size: 10px;
   font-variant-numeric: tabular-nums;
@@ -193,7 +193,7 @@
   width: 100%;
   margin-bottom: 9px;
   padding: 0;
-  color: #d7dadd;
+  color: var(--color-text);
   font-size: 12px;
   font-weight: 600;
 }
@@ -217,12 +217,12 @@
 }
 
 .textarea::placeholder {
-  color: #747a7f;
+  color: var(--color-muted);
 }
 
 .textarea:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px #79e2ae22;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
   outline: none;
 }
 
@@ -238,7 +238,7 @@
 
 .fieldMeta span:last-child {
   flex-shrink: 0;
-  color: #747a7f;
+  color: var(--color-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -287,8 +287,8 @@
   align-items: center;
   min-width: 0;
   padding: 9px;
-  background: #1b1e1f;
-  border: 1px solid #303536;
+  background: var(--color-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 7px;
 }
 
@@ -315,7 +315,7 @@
 }
 
 .paletteColor strong {
-  color: #d7dadd;
+  color: var(--color-text);
   font-size: 10px;
   font-weight: 600;
 }
@@ -370,7 +370,7 @@
 
 .removeColor:hover {
   color: var(--color-danger);
-  background: #3a2022;
+  background: var(--color-danger-muted);
 }
 
 .paletteTools {
@@ -393,9 +393,9 @@
   width: 26px;
   height: 26px;
   color: white;
-  border: 2px solid #151718;
+  border: 2px solid var(--color-elevated);
   border-radius: 6px;
-  box-shadow: 0 0 0 1px #4a5053;
+  box-shadow: 0 0 0 1px var(--color-control-border);
   cursor: pointer;
 }
 
@@ -411,7 +411,7 @@
   color: var(--color-primary);
   font-size: 10px;
   background: transparent;
-  border: 1px solid #365442;
+  border: 1px solid var(--color-primary);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -478,7 +478,11 @@
   position: sticky;
   top: 24px;
   padding: 24px;
-  background: linear-gradient(160deg, #202826 0%, #171819 45%);
+  background: linear-gradient(
+    160deg,
+    var(--color-elevated) 0%,
+    var(--color-surface) 45%
+  );
 }
 
 .previewLabel {
@@ -545,8 +549,8 @@
 
 .contextSummary {
   padding: 14px;
-  background: #191d1d;
-  border: 1px solid #303837;
+  background: var(--color-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -567,8 +571,8 @@
   min-height: 20px;
   padding: 0 7px;
   color: var(--color-primary);
-  background: #22362a;
-  border: 1px solid #365442;
+  background: var(--color-success-muted);
+  border: 1px solid var(--color-success-border);
   border-radius: 999px;
   font-size: 9px;
   letter-spacing: 0;
@@ -576,9 +580,9 @@
 }
 
 .pendingBadge {
-  color: #e3b76a;
-  background: #342d1e;
-  border-color: #604d29;
+  color: var(--color-warning);
+  background: var(--color-warning-muted);
+  border-color: var(--color-warning-border);
 }
 
 .contextSummary dl {
@@ -593,13 +597,13 @@
 }
 
 .contextSummary dt {
-  color: #858c8c;
+  color: var(--color-muted);
   font-size: 10px;
 }
 
 .contextSummary dd {
   margin: 0;
-  color: #d1d5d5;
+  color: var(--color-text);
   font-size: 11px;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -607,8 +611,8 @@
 
 .examplePost {
   padding: 18px;
-  background: #1e2122;
-  border: 1px solid #363c3c;
+  background: var(--color-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -642,7 +646,7 @@
 
 .examplePost > p {
   margin: 18px 0 11px;
-  color: #c4c9cc;
+  color: var(--color-text);
   font-size: 12px;
   line-height: 1.5;
 }

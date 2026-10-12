@@ -15,8 +15,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   column-gap: 24px;
   padding: 30px clamp(20px, 3vw, 48px) 0;
-  background: #fff;
-  border-bottom: 1px solid #e4e7eb;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 .headerCopy h1 {
   margin: 0 0 8px;
@@ -28,7 +28,7 @@
   margin: 0;
   max-width: 720px;
   font-size: 12px;
-  color: #697383;
+  color: var(--color-muted);
   line-height: 1.6;
 }
 .headerActions {
@@ -40,7 +40,7 @@
 }
 .headerActions a {
   align-self: center;
-  color: #526071;
+  color: var(--color-muted);
   font-size: 12px;
   text-decoration: none;
 }
@@ -57,20 +57,20 @@
   min-height: 46px;
   padding: 0 20px;
   background: transparent;
-  color: #637083;
+  color: var(--color-muted);
   border: 0;
   border-bottom: 2px solid transparent;
   font-size: 12px;
   font-weight: 600;
 }
 .integrationTabs [aria-selected='true'] {
-  color: #176c4c;
-  border-bottom-color: #176c4c;
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
 }
 .integrationTabs button > span {
   padding: 1px 6px;
   border-radius: 4px;
-  background: #eef2f0;
+  background: var(--color-primary-muted);
   font-size: 10px;
 }
 .integrationsContent {
@@ -87,8 +87,8 @@
 .integrationCard {
   min-width: 0;
   padding: 19px 18px 17px;
-  background: #fff;
-  border: 1px solid #e3e6eb;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
 }
 .cardHeader {
@@ -121,7 +121,7 @@
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  color: #20242b;
+  color: var(--color-text);
 }
 .integrationIcon[data-platform='tiktok'],
 .integrationIcon[data-platform='x'],
@@ -158,7 +158,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #747d88;
+  color: var(--color-muted);
   font-size: 10px;
   line-height: 1.4;
 }
@@ -170,11 +170,11 @@
 }
 .connectionState[data-state='connected'],
 .connectionState[data-state='ready'] {
-  color: #177b50;
+  color: var(--color-success);
 }
 .connectionState[data-state='missing'],
 .connectionState[data-state='needs_reconnect'] {
-  color: #946319;
+  color: var(--color-warning);
 }
 .compactButton {
   min-height: 34px;
@@ -186,8 +186,8 @@
   white-space: nowrap;
 }
 .compactButton:disabled {
-  color: #707986;
-  background: #f8f9fa;
+  color: var(--color-muted);
+  background: var(--color-elevated);
   opacity: 1;
 }
 .helpLink {
@@ -196,7 +196,7 @@
   gap: 5px;
   min-height: 24px;
   margin-bottom: 4px;
-  color: #354556;
+  color: var(--color-text);
   font-size: 10px;
   font-weight: 600;
   text-decoration: underline;
@@ -204,15 +204,15 @@
 }
 .integrationDescription {
   margin: 0;
-  color: #667080;
+  color: var(--color-muted);
   font-size: 12px;
   line-height: 1.65;
 }
 .setupNote {
   margin-top: 13px;
   padding-top: 11px;
-  border-top: 1px solid #eff0f2;
-  color: #7b6849;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-warning);
   font-size: 11px;
   line-height: 1.6;
 }
@@ -221,7 +221,7 @@
 }
 .configurationDetails {
   margin-top: 8px;
-  color: #617080;
+  color: var(--color-muted);
 }
 .configurationDetails summary {
   cursor: pointer;
@@ -251,7 +251,7 @@
   align-items: center;
   gap: 8px;
   padding: 9px;
-  border: 1px solid #e6e9ec;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
 }
 .accountAvatar {
@@ -261,8 +261,8 @@
   width: 27px;
   height: 27px;
   border-radius: 50%;
-  background: #eef3fc;
-  color: #3867b2;
+  background: var(--color-info-muted);
+  color: var(--color-info);
   font-size: 9px;
   font-weight: 600;
 }
@@ -279,7 +279,7 @@
 .accountIdentity small {
   display: block;
   margin-top: 2px;
-  color: #737e8a;
+  color: var(--color-muted);
   font-size: 9px;
   line-height: 1.45;
 }
@@ -287,14 +287,14 @@
   flex: none;
   padding: 2px 7px;
   border-radius: 20px;
-  background: #eef1f3;
-  color: #65717f;
+  background: var(--color-elevated);
+  color: var(--color-muted);
   font-size: 9px;
   font-weight: 600;
 }
 .accountBadge[data-state='connected'] {
-  color: #177b50;
-  background: #e8f5ee;
+  color: var(--color-success);
+  background: var(--color-success-muted);
 }
 .accountActions {
   display: flex;
@@ -306,7 +306,7 @@
 .pendingInCard .pendingAccount {
   gap: 10px;
   font-size: 11px;
-  border-color: #edf0f2;
+  border-color: var(--color-border);
 }
 .pendingAccount > span {
   min-width: 0;
@@ -315,14 +315,14 @@
 }
 .pendingAccount small {
   display: block;
-  color: #687888;
+  color: var(--color-muted);
   font-size: 10px;
 }
 .catalogNote,
 .roleNote,
 .accountEmpty {
   margin: 16px 0 0;
-  color: #697587;
+  color: var(--color-muted);
   font-size: 11px;
   line-height: 1.7;
 }
@@ -332,22 +332,22 @@
 .roleNote {
   margin: 0 0 16px;
 }
-.lightNotice,
-.lightError {
+.positiveNotice,
+.errorNotice {
   padding: 12px 14px;
   margin: 0 0 18px;
   font-size: 12px;
-  border: 1px solid #cae4d6;
+  border: 1px solid var(--color-success-border);
   border-radius: 6px;
-  color: #246042;
-  background: #edf8f1;
+  color: var(--color-success);
+  background: var(--color-success-muted);
 }
-.lightError {
-  color: #a1313b;
-  background: #fff4f4;
-  border-color: #edced1;
+.errorNotice {
+  color: var(--color-danger);
+  background: var(--color-danger-muted);
+  border-color: var(--color-danger-border);
 }
-.lightError button {
+.errorNotice button {
   margin-left: 8px;
   padding: 2px 0;
   border: 0;
@@ -357,21 +357,21 @@
 }
 .activityPanel {
   padding: 20px;
-  background: #fff;
-  border: 1px solid #e3e6eb;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
 }
 .activityPanel .empty {
-  color: #697587;
+  color: var(--color-muted);
 }
 .activityPanel .publications [data-status] {
-  color: #6c5531;
+  color: var(--color-warning);
 }
 .activityPanel .publications [data-status='published'] {
-  color: #177b50;
+  color: var(--color-success);
 }
 .activityPanel .publications article p {
-  color: #a1313b;
+  color: var(--color-danger);
 }
 @media (max-width: 1100px) {
   .integrationsHeader {
@@ -475,7 +475,7 @@
 .connectionHeading [data-status='connected'],
 [data-status='ready'],
 [data-status='published'] {
-  color: #81c995;
+  color: var(--color-success);
 }
 .connectionHeading [data-status='reconnect_required'],
 .connectionHeading [data-status='needs_reconnect'],
@@ -483,12 +483,12 @@
 [data-status='error'],
 [data-status='missing'],
 [data-status='failed'] {
-  color: #e8a2a2;
+  color: var(--color-danger);
 }
 .connectionHeading [data-status='queued'],
 [data-status='processing'],
 [data-status='partial'] {
-  color: #e5c37a;
+  color: var(--color-warning);
 }
 .provider > small,
 .missing {
@@ -521,7 +521,7 @@
   line-height: 1.55;
 }
 .warning {
-  color: #e8c078;
+  color: var(--color-warning);
 }
 .notice,
 .error {
@@ -531,14 +531,14 @@
   font-size: 13px;
 }
 .notice {
-  color: #b6e3c8;
-  background: #1b2b22;
-  border: 1px solid #34523f;
+  color: var(--color-success);
+  background: var(--color-success-muted);
+  border: 1px solid var(--color-success-border);
 }
 .error {
-  color: #ffc0bd;
-  background: #321f20;
-  border: 1px solid #653b3b;
+  color: var(--color-danger);
+  background: var(--color-danger-muted);
+  border: 1px solid var(--color-danger-border);
 }
 .pending {
   display: grid;
@@ -590,7 +590,7 @@
 .publications article p {
   flex-basis: 100%;
   margin: 0;
-  color: #e8a2a2;
+  color: var(--color-danger);
 }
 .publications [data-status] {
   font-weight: 600;
@@ -634,7 +634,7 @@
   min-height: 110px;
   overflow: hidden;
   border-radius: 5px;
-  background: #15191a;
+  background: var(--color-preview-background);
   color: var(--color-muted);
   font-size: 12px;
 }

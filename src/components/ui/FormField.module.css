@@ -4,7 +4,7 @@
   min-width: 0;
 }
 .label {
-  color: #d7dadd;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 500;
 }
@@ -23,14 +23,14 @@
     box-shadow var(--duration-feedback) var(--ease-feedback);
 }
 .control:hover {
-  border-color: #555c60;
+  border-color: var(--color-control-border);
 }
 .control:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 .control::placeholder {
-  color: #7c8287;
+  color: var(--color-muted);
 }
 .invalid {
   border-color: var(--color-danger);

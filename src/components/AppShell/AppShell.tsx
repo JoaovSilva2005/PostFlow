@@ -27,6 +27,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import type { PlatformRole, WorkspaceRole } from '../../domain/auth'
 import styles from './AppShell.module.css'
+import { ThemeSwitcher } from '../ThemeSwitcher/ThemeSwitcher'
 
 const workspaceRoleLabels: Record<WorkspaceRole, string> = {
   owner: 'Responsável',
@@ -61,10 +62,10 @@ const workspaceNavigation = [
 
 export function AppShell({
   children,
-  appearance = 'default',
+  contentLayout = 'default',
 }: {
   children: ReactNode
-  appearance?: 'default' | 'light'
+  contentLayout?: 'default' | 'edge'
 }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -176,7 +177,7 @@ export function AppShell({
 
   return (
     <div
-      className={`${styles.layout} ${appearance === 'light' ? styles.light : ''}`}
+      className={`${styles.layout} ${contentLayout === 'edge' ? styles.edge : ''}`}
     >
       <a className={styles.skipLink} href="#main-content">
         Pular para o conteúdo
@@ -272,6 +273,7 @@ export function AppShell({
           )}
         </nav>
         <div className={styles.sidebarFooter}>
+          <ThemeSwitcher />
           {(platformRole || databaseStatus === 'error') && (
             <div
               className={`${styles.databaseStatus} ${styles[databaseStatus]}`}

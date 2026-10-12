@@ -17,10 +17,10 @@
 .primary {
   color: var(--color-on-primary);
   background: var(--color-primary);
-  border-color: #8eebbc;
+  border-color: var(--color-primary);
   box-shadow:
-    0 1px 2px #0003,
-    inset 0 1px #ffffff30;
+    0 1px 2px var(--color-overlay),
+    inset 0 1px rgb(255 255 255 / 18%);
 }
 .primary:hover:not(:disabled) {
   background: var(--color-primary-dark);
@@ -43,11 +43,11 @@
 }
 .danger {
   color: var(--color-danger);
-  border-color: #62363a;
-  background: #2f1b1f;
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-muted);
 }
 .danger:hover:not(:disabled) {
-  background: #46272c;
+  background: var(--color-danger-muted);
 }
 .fullWidth {
   width: 100%;

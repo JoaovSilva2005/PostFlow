@@ -20,6 +20,8 @@ import { SelectField, TextField } from '../../components/ui/FormField'
 import { BRAND_SEGMENT_OPTIONS } from '../../domain/brandCatalog'
 import styles from './LoginPage.module.css'
 import { PasswordField } from './PasswordField'
+import { ThemeSwitcher } from '../../components/ThemeSwitcher/ThemeSwitcher'
+import themeStyles from '../../components/ThemeSwitcher/ThemeSwitcher.module.css'
 
 interface FormErrors {
   displayName?: string
@@ -304,6 +306,9 @@ export function LoginPage() {
 
   return (
     <div className={styles.page}>
+      <div className={themeStyles.loginPlacement}>
+        <ThemeSwitcher />
+      </div>
       <WorkspaceBackdrop />
       <div className={styles.backdrop} />
 

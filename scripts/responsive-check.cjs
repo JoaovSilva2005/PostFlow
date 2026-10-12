@@ -348,7 +348,10 @@ async function mockNetwork(page, name) {
   return state
 }
 
+module.exports = { mockNetwork }
+
 ;(async () => {
+  if (require.main !== module) return
   const browser = await chromium.launch({
     headless: true,
     channel: process.env.PLAYWRIGHT_CHANNEL || undefined,

@@ -75,11 +75,11 @@
   color: var(--color-text);
 }
 .result[data-outcome='profit'] dd {
-  color: #70d4a6;
+  color: var(--color-success);
 }
 .result[data-outcome='loss'] dd,
 .error {
-  color: #f1938a;
+  color: var(--color-danger);
 }
 .error {
   line-height: 1.7;

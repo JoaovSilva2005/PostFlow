@@ -19,7 +19,7 @@
   color: var(--color-text);
 }
 .control:hover {
-  border-color: #555c60;
+  border-color: var(--color-control-border);
 }
 .control:focus-within {
   border-color: var(--color-primary);

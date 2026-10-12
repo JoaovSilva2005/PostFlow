@@ -68,12 +68,12 @@
   font-size: 10px;
 }
 .savedNotice {
-  border: 1px solid #34523f;
+  border: 1px solid var(--color-success-border);
   border-radius: var(--radius-sm);
   padding: 12px 16px;
   margin: 0 0 24px;
-  background: #1b2b22;
-  color: #b6e3c8;
+  background: var(--color-success-muted);
+  color: var(--color-success);
   font-size: 13px;
 }
 .calendarToolbar {
@@ -95,13 +95,13 @@
   place-items: center;
   width: 36px;
   height: 36px;
-  background: #202426;
-  border: 1px solid #353c3f;
+  background: var(--color-control);
+  border: 1px solid var(--color-control-border);
   border-radius: 6px;
-  color: #c5ccd0;
+  color: var(--color-text);
 }
 .calendarToolbar button:hover {
-  background: #323a3b;
+  background: var(--color-hover);
 }
 .calendarToolbar h2 {
   margin: 0 0 0 14px;
@@ -152,8 +152,8 @@
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 .weekHeader {
-  background: #131617;
-  color: #9ba3a7;
+  background: var(--color-elevated);
+  color: var(--color-muted);
   font-size: 10px;
   letter-spacing: 0.8px;
 }
@@ -175,19 +175,19 @@
   place-items: center;
   width: 24px;
   height: 24px;
-  color: #bcc5c8;
+  color: var(--color-muted);
   font-size: 11px;
   border-radius: 5px;
 }
 .day > span.today {
-  color: #132719;
+  color: var(--color-on-primary);
   background: var(--color-primary);
 }
 .outside {
-  background: #121415;
+  background: var(--color-background);
 }
 .outside > span {
-  color: #687176;
+  color: var(--color-muted);
 }
 .dayDrafts {
   display: grid;
@@ -208,7 +208,7 @@
 }
 .draft:hover {
   background: var(--color-hover);
-  border-color: #535c57;
+  border-color: var(--color-primary);
 }
 .draft > span {
   width: 3px;
@@ -221,7 +221,7 @@
   background: var(--color-primary);
 }
 .draft[data-status='published'] > span {
-  background: #bac1c5;
+  background: var(--color-muted);
 }
 .draft div {
   display: grid;
@@ -272,7 +272,7 @@
   border-bottom: 0;
 }
 .agendaEntry:hover {
-  background: #1e2421;
+  background: var(--color-hover);
 }
 .agendaEntry > time {
   display: grid;
@@ -331,15 +331,15 @@
   display: grid;
   place-items: center;
   padding: 16px;
-  background: #000c;
+  background: var(--color-overlay);
 }
 .dialog {
   width: min(560px, 100%);
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
-  border: 1px solid #454c4f;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  background: #191c1e;
+  background: var(--color-surface);
   box-shadow: 0 24px 90px #0009;
 }
 .dialog > header {
@@ -356,7 +356,7 @@
   height: 36px;
   flex-shrink: 0;
   border-radius: 8px;
-  background: #29372e;
+  background: var(--color-success-muted);
   color: var(--color-primary);
 }
 .dialog header > div:nth-child(2) {
@@ -394,13 +394,13 @@
 .textareaField span {
   font-size: 13px;
   font-weight: 500;
-  color: #d7dadd;
+  color: var(--color-text);
 }
 .textareaField textarea {
   width: 100%;
-  border: 1px solid #35393c;
+  border: 1px solid var(--color-control-border);
   border-radius: 6px;
-  background: #111314;
+  background: var(--color-control);
   color: var(--color-text);
   padding: 12px;
   resize: vertical;
@@ -570,7 +570,7 @@
   width: min(1240px, 100%);
   height: min(820px, calc(100dvh - 40px));
   overflow: hidden;
-  border: 1px solid #41484a;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   background: var(--color-surface);
   box-shadow: var(--shadow-overlay);
@@ -583,7 +583,7 @@
   gap: 12px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--color-border);
-  background: #131516;
+  background: var(--color-elevated);
 }
 .dayNavigator {
   display: flex;
@@ -642,7 +642,7 @@
   gap: 12px;
 }
 .dayNavigationActions > span {
-  color: #f0c58b;
+  color: var(--color-warning);
   font-size: 11px;
 }
 .dayPosts {
@@ -680,7 +680,7 @@
   gap: 16px;
   padding: 12px 18px;
   border-bottom: 1px solid var(--color-border);
-  background: #131516;
+  background: var(--color-elevated);
 }
 .detailPlatform {
   display: flex;
@@ -715,18 +715,18 @@
   background: var(--color-muted);
 }
 .statusBadge[data-status='scheduled'] {
-  border-color: #416951;
-  color: #a8e4bf;
+  border-color: var(--color-success-border);
+  color: var(--color-success);
 }
 .statusBadge[data-status='scheduled'] > span {
   background: var(--color-primary);
 }
 .statusBadge[data-status='published'] {
-  border-color: #454c4f;
-  color: #c4c9cb;
+  border-color: var(--color-border);
+  color: var(--color-muted);
 }
 .statusBadge[data-status='published'] > span {
-  background: #aab1b4;
+  background: var(--color-muted);
 }
 .metaDate {
   color: var(--color-text);
@@ -757,7 +757,7 @@
   flex-direction: column;
   gap: 14px;
   border-right: 1px solid var(--color-border);
-  background: #141617;
+  background: var(--color-elevated);
 }
 .previewHeading {
   display: flex;
@@ -793,7 +793,7 @@
   aspect-ratio: 4 / 5;
   align-self: center;
   overflow: hidden;
-  border: 1px solid #ffffff20;
+  border: 1px solid var(--color-border);
   border-radius: 9px;
   background:
     radial-gradient(
@@ -801,7 +801,12 @@
       color-mix(in srgb, var(--draft-accent) 36%, transparent),
       transparent 48%
     ),
-    linear-gradient(150deg, #272d2c 0%, #191d1d 56%, #101213 100%);
+    linear-gradient(
+      150deg,
+      var(--color-elevated) 0%,
+      var(--color-surface) 56%,
+      var(--color-background) 100%
+    );
   box-shadow: 0 12px 32px #0005;
 }
 .artboard[data-format='reels'] {
@@ -843,7 +848,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #e6ece8;
+  color: var(--color-text);
   font-size: 11px;
   font-weight: 600;
 }
@@ -860,7 +865,7 @@
   font-weight: 600;
 }
 .artboardCopy strong {
-  color: #f4f5f3;
+  color: var(--color-text);
   font-size: clamp(22px, 3vw, 38px);
   font-weight: 700;
   letter-spacing: -1.1px;
@@ -870,13 +875,13 @@
 .artboardCopy p {
   max-width: 30ch;
   margin: 0;
-  color: #c2cac5;
+  color: var(--color-text);
   font-size: 12px;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
 .artboardFooter {
-  color: #8d9891;
+  color: var(--color-muted);
   font-size: 9px;
   letter-spacing: 0.5px;
 }
@@ -916,7 +921,7 @@
 }
 .previewError {
   margin: 0;
-  color: #ff9a92;
+  color: var(--color-danger);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -985,11 +990,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid #345344;
+  border: 1px solid var(--color-success-border);
   border-radius: 999px;
   padding: 4px 8px;
-  background: #18241e;
-  color: #b1e3c7;
+  background: var(--color-success-muted);
+  color: var(--color-success);
   font-size: 10px;
 }
 .hashtagChip > button {
@@ -1004,7 +1009,7 @@
   cursor: pointer;
 }
 .hashtagChip > button:hover:not(:disabled) {
-  background: #345344;
+  background: var(--color-success-border);
 }
 .hashtagInputRow {
   display: flex;
@@ -1068,7 +1073,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: #151718;
+  background: var(--color-surface);
 }
 .schedulePanel {
   display: grid;
@@ -1153,7 +1158,7 @@
   gap: 14px;
   border-top: 1px solid var(--color-border);
   padding: 12px 20px;
-  background: #131516;
+  background: var(--color-elevated);
 }
 .detailFeedback {
   min-width: 0;
@@ -1166,7 +1171,7 @@
   margin: 0;
 }
 .saveNotice {
-  color: #a8e4bf;
+  color: var(--color-success);
   font-size: 11px;
 }
 .detailFooterActions {

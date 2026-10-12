@@ -196,6 +196,7 @@ Depois do deploy, valide:
 ## Documentação
 
 - [Arquitetura e autorização](docs/architecture.md)
+- [Temas claro e escuro](docs/application-themes-2026-10-12.md)
 - [Configuração da publicação social](docs/social-publishing-setup.md)
 - [Verificação da integração social de 12/10/2026](docs/social-publishing-release-2026-10-12.md)
 - [Estúdio de conteúdo e contrato da IA](docs/content-studio.md)

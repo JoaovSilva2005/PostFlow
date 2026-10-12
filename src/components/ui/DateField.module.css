@@ -4,7 +4,7 @@
   min-width: 0;
 }
 .field > label {
-  color: #d7dadd;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 500;
 }
@@ -24,7 +24,7 @@
   cursor: pointer;
 }
 .controlWrap input:hover {
-  border-color: #555c60;
+  border-color: var(--color-control-border);
 }
 .controlWrap input:focus {
   border-color: var(--color-primary);

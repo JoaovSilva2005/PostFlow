@@ -12,6 +12,12 @@ No login, use e-mail e senha. O botão com ícone de olho permite visualizar ou
 ocultar a senha antes de entrar. Se esquecer a senha, informe o e-mail e use
 **Esqueceu a senha?**.
 
+## Aparência da aplicação
+
+Use **Tema** no menu esquerdo para escolher **Escuro**, **Claro** ou **Sistema**. No celular, abra o menu para encontrar o seletor. Ele também está disponível no canto superior da tela de login/cadastro.
+
+A preferência é salva neste navegador e vale para todas as telas. **Sistema** acompanha a aparência do dispositivo. As cores da sua marca, das imagens e dos documentos de impressão continuam próprias do conteúdo.
+
 ## Cliente do PostFlow
 
 Após entrar, o cliente trabalha dentro de uma marca (workspace):
