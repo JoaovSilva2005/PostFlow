@@ -1,16 +1,12 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { Link } from 'react-router'
 import {
-  AtSign,
   CheckCircle2,
   ExternalLink,
-  Globe,
   Link2,
-  PenTool,
   Plug,
   RefreshCw,
   Unlink,
-  CirclePlay,
 } from 'lucide-react'
 import { useApp } from '../../app/AppContext'
 import { AppShell } from '../../components/AppShell/AppShell'
@@ -197,19 +193,16 @@ export function SocialConnectionsPage() {
     const reconnect = connections.some(
       (entry) => entry.status === 'needs_reconnect',
     )
-    const status = !item.provider
-      ? 'planned'
-      : !provider
-        ? 'unavailable'
-        : !ready
-          ? 'missing'
-          : reconnect
-            ? 'needs_reconnect'
-            : connected
-              ? 'connected'
-              : 'ready'
+    const status = !provider
+      ? 'unavailable'
+      : !ready
+        ? 'missing'
+        : reconnect
+          ? 'needs_reconnect'
+          : connected
+            ? 'connected'
+            : 'ready'
     const label = {
-      planned: 'Não implementada',
       unavailable: loading ? 'Verificando…' : 'Indisponível',
       missing: 'Em configuração',
       needs_reconnect: 'Reconexão necessária',
@@ -238,36 +231,30 @@ export function SocialConnectionsPage() {
               </span>
             </div>
           </div>
-          {item.provider ? (
-            connected || reconnect ? (
-              <Button
-                variant="ghost"
-                className={styles.compactButton}
-                onClick={() => void load()}
-                disabled={loading || busy !== null}
-              >
-                <RefreshCw size={13} /> Atualizar
-              </Button>
-            ) : canManage ? (
-              <Button
-                variant="ghost"
-                className={styles.compactButton}
-                disabled={!ready || busy !== null || loading}
-                onClick={() => void connect(item.provider!)}
-              >
-                <Link2 size={13} />
-                {ready
-                  ? busy === item.provider
-                    ? 'Conectando…'
-                    : 'Conectar conta'
-                  : 'Configuração pendente'}
-              </Button>
-            ) : null
-          ) : (
-            <Button variant="ghost" className={styles.compactButton} disabled>
-              Não disponível
+          {connected || reconnect ? (
+            <Button
+              variant="ghost"
+              className={styles.compactButton}
+              onClick={() => void load()}
+              disabled={loading || busy !== null}
+            >
+              <RefreshCw size={13} /> Atualizar
             </Button>
-          )}
+          ) : canManage ? (
+            <Button
+              variant="ghost"
+              className={styles.compactButton}
+              disabled={!ready || busy !== null || loading}
+              onClick={() => void connect(item.provider)}
+            >
+              <Link2 size={13} />
+              {ready
+                ? busy === item.provider
+                  ? 'Conectando…'
+                  : 'Conectar conta'
+                : 'Configuração pendente'}
+            </Button>
+          ) : null}
         </header>
         <a
           className={styles.helpLink}
@@ -278,7 +265,7 @@ export function SocialConnectionsPage() {
           Precisa de ajuda? <ExternalLink size={11} />
         </a>
         <p className={styles.integrationDescription}>{item.description}</p>
-        {item.provider && provider && !ready && (
+        {provider && !ready && (
           <div className={styles.setupNote}>
             <p>
               A integração está pendente de configuração administrativa da
@@ -297,7 +284,7 @@ export function SocialConnectionsPage() {
               )}
           </div>
         )}
-        {item.provider && ready && !connections.length && !sessions.length && (
+        {ready && !connections.length && !sessions.length && (
           <p className={styles.accountEmpty}>
             Conecte uma conta para começar a publicar.
           </p>
@@ -396,7 +383,7 @@ export function SocialConnectionsPage() {
       <div className={styles.integrationsPage}>
         <header className={styles.integrationsHeader}>
           <div className={styles.headerCopy}>
-            <h1>Conecte suas contas e ferramentas</h1>
+            <h1>Conecte suas redes sociais</h1>
             <p>
               Reúna as integrações da sua marca e publique seus conteúdos
               diretamente pelo PostFlow.
@@ -475,8 +462,8 @@ export function SocialConnectionsPage() {
               {integrationCatalog.map(renderIntegration)}
             </section>
             <p className={styles.catalogNote}>
-              As contas são vinculadas à marca atual. As opções não
-              implementadas ainda não permitem conexão ou publicação.
+              As contas são vinculadas à marca atual. Conecte uma rede para
+              publicar ou agendar os posts da sua agenda.
             </p>
           </div>
           <div
@@ -565,26 +552,9 @@ export function SocialConnectionsPage() {
 }
 
 function IntegrationIcon({ item }: { item: IntegrationDefinition }) {
-  const icon =
-    item.provider || item.id === 'x' ? (
-      <SocialPlatformIcon
-        platform={item.id === 'x' ? 'X / Twitter' : item.name}
-        size={28}
-      />
-    ) : item.id === 'canva' ? (
-      <PenTool size={23} />
-    ) : item.id === 'youtube' ? (
-      <CirclePlay size={26} />
-    ) : item.id === 'threads' ? (
-      <AtSign size={25} />
-    ) : item.id === 'pinterest' ? (
-      <span className={styles.pinterestMark}>P</span>
-    ) : (
-      <Globe size={25} />
-    )
   return (
     <span className={styles.integrationIcon} data-platform={item.id}>
-      {icon}
+      <SocialPlatformIcon platform={item.name} size={28} />
     </span>
   )
 }

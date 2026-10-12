@@ -282,16 +282,19 @@ async function preparePage(
   return { page, apiState, errors }
 }
 
-async function runSocialUnavailable(browser, width) {
+async function runSocialUnavailable(browser, width, theme = 'dark') {
   const { page, errors } = await preparePage(browser, width, {
     mode: 'unconfigured',
   })
   try {
+    await page.addInitScript((theme) => {
+      localStorage.setItem('postflow.theme', theme)
+    }, theme)
     await page.goto(
       `${base}/social${width === 1440 ? '?oauth=connected&workspace=workspace-qa' : ''}`,
     )
     await page
-      .getByRole('heading', { name: 'Conecte suas contas e ferramentas' })
+      .getByRole('heading', { name: 'Conecte suas redes sociais' })
       .waitFor()
     const setupMessage = page
       .getByText(/configuração administrativa da PostFlow/)
@@ -318,6 +321,7 @@ async function runSocialUnavailable(browser, width) {
       const rects = cards.map((card) => card.getBoundingClientRect())
       return {
         cards: cards.length,
+        networks: cards.map((card) => card.dataset.integration),
         overflow: document.documentElement.scrollWidth > window.innerWidth,
         columns: new Set(rects.map((rect) => Math.round(rect.left))).size,
         cardOverflow: cards.some(
@@ -325,7 +329,14 @@ async function runSocialUnavailable(browser, width) {
         ),
       }
     })
-    assert.equal(layout.cards, 10)
+    assert.equal(layout.cards, 4)
+    assert.deepEqual(layout.networks, [
+      'facebook',
+      'instagram',
+      'linkedin',
+      'tiktok',
+    ])
+    assert.equal(await page.locator('html').getAttribute('data-theme'), theme)
     assert.equal(layout.overflow, false)
     assert.equal(layout.cardOverflow, false)
     assert.equal(layout.columns, width <= 600 ? 1 : 2)
@@ -343,13 +354,14 @@ async function runSocialUnavailable(browser, width) {
     )
     await page.getByRole('tab', { name: /^Publicações/ }).press('Home')
     await page.screenshot({
-      path: `${outputDirectory}/social-unconfigured-${width}.png`,
+      path: `${outputDirectory}/social-unconfigured-${theme}-${width}.png`,
       fullPage: true,
     })
     assert.deepEqual(errors, [])
     report.push({
       name: 'social-unconfigured',
       width,
+      theme,
       providersBlocked: 4,
       secretsHidden: true,
       layout,
@@ -562,6 +574,8 @@ async function runCalendar(browser, width, scenario) {
     }
     for (const width of [320, 768, 1024, 1280, 1920, 2560])
       await runSocialUnavailable(browser, width)
+    for (const width of [1440, 390])
+      await runSocialUnavailable(browser, width, 'light')
     await runCalendar(browser, 1440, 'carousel')
     await runCalendar(browser, 1440, 'unsaved')
   } finally {

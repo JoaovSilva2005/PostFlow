@@ -9,6 +9,9 @@ import { createTestRepository } from '../../test/testRepository'
 import { socialApi } from './socialApi'
 import { SocialConnectionsPage } from './SocialConnectionsPage'
 import type { SocialOverview } from '../../../shared/domain/socialPublishing'
+import { SOCIAL_PLATFORMS } from '../../../shared/domain/socialPlatforms'
+import { SOCIAL_PROVIDERS } from '../../../shared/domain/socialPublishing'
+import { integrationCatalog } from './integrationCatalog'
 
 vi.mock('./socialApi', async (original) => ({
   ...(await original<typeof import('./socialApi')>()),
@@ -141,6 +144,31 @@ describe('SocialConnectionsPage', () => {
     expect(screen.getByText('Reconexão necessária')).toBeInTheDocument()
     expect(screen.getByText('Na fila')).toBeInTheDocument()
     expect(screen.queryByText('Publicado')).not.toBeInTheDocument()
+    const networkPanel = screen.getByRole('region', {
+      name: 'Disponibilidade das redes',
+    })
+    expect(within(networkPanel).getAllByRole('article')).toHaveLength(4)
+    expect(integrationCatalog.map((item) => item.provider).sort()).toEqual(
+      [...SOCIAL_PROVIDERS].sort(),
+    )
+    for (const item of integrationCatalog) {
+      expect(SOCIAL_PLATFORMS).toContain(item.name)
+      expect(
+        within(networkPanel).getByRole('heading', { name: item.name }),
+      ).toBeInTheDocument()
+    }
+    for (const name of [
+      'X / Twitter',
+      'Canva',
+      'Threads',
+      'Pinterest',
+      'YouTube',
+      'WordPress',
+    ]) {
+      expect(
+        within(networkPanel).queryByRole('heading', { name }),
+      ).not.toBeInTheDocument()
+    }
   })
 
   it('oculta detalhes internos das credenciais dos clientes e não inicia OAuth', async () => {

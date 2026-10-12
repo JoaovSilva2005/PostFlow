@@ -123,36 +123,9 @@
   border-radius: 8px;
   color: var(--color-text);
 }
-.integrationIcon[data-platform='tiktok'],
-.integrationIcon[data-platform='x'],
-.integrationIcon[data-platform='threads'] {
+.integrationIcon[data-platform='tiktok'] {
   color: #fff;
   background: #16191c;
-}
-.integrationIcon[data-platform='x'] svg {
-  width: 21px;
-  height: 21px;
-}
-.integrationIcon[data-platform='canva'] {
-  color: #fff;
-  background: linear-gradient(130deg, #02c8ca, #5960e4);
-}
-.integrationIcon[data-platform='pinterest'] {
-  color: #fff;
-  background: #bd1731;
-}
-.pinterestMark {
-  font:
-    italic 700 27px/1 Georgia,
-    serif;
-}
-.integrationIcon[data-platform='youtube'] {
-  color: #d82e2e;
-  background: #fff1f0;
-}
-.integrationIcon[data-platform='wordpress'] {
-  color: #237394;
-  background: #edf5f8;
 }
 .connectionState {
   display: flex;

@@ -5,12 +5,12 @@ export interface IntegrationDefinition {
   name: string
   description: string
   accountLabel: string
-  provider?: SocialProviderId
+  provider: SocialProviderId
   documentation: string
 }
 
-// Only entries with a provider have implemented OAuth/publishing adapters.
-// Catalog entries never create accounts or imply a working connection.
+// Only networks with implemented OAuth/publishing adapters belong here.
+// Availability still depends on the server's real provider configuration.
 export const integrationCatalog: IntegrationDefinition[] = [
   {
     id: 'facebook',
@@ -40,14 +40,6 @@ export const integrationCatalog: IntegrationDefinition[] = [
     documentation: 'https://www.linkedin.com/developers/apps',
   },
   {
-    id: 'x',
-    name: 'X / Twitter',
-    accountLabel: '',
-    description:
-      'Um destino para os conteúdos da sua marca no X. A conexão ainda precisa ser implementada e depende de acesso à API.',
-    documentation: 'https://docs.x.com/x-api/introduction',
-  },
-  {
     id: 'tiktok',
     provider: 'tiktok',
     name: 'TikTok',
@@ -55,45 +47,5 @@ export const integrationCatalog: IntegrationDefinition[] = [
     description:
       'Conecte sua conta para publicar fotos. A ativação depende da aprovação do aplicativo e da verificação do domínio de mídia.',
     documentation: 'https://developers.tiktok.com/apps/',
-  },
-  {
-    id: 'canva',
-    name: 'Canva',
-    accountLabel: '',
-    description:
-      'Uma opção para trazer designs e materiais da sua marca para o PostFlow. A conexão com o Canva ainda não foi implementada.',
-    documentation: 'https://www.canva.dev/docs/apps/rest-apis/',
-  },
-  {
-    id: 'threads',
-    name: 'Threads',
-    accountLabel: '',
-    description:
-      'Uma opção para compartilhar os conteúdos da sua marca no Threads. A conexão ainda precisa ser implementada.',
-    documentation: 'https://developers.facebook.com/docs/threads/',
-  },
-  {
-    id: 'pinterest',
-    name: 'Pinterest',
-    accountLabel: '',
-    description:
-      'Uma opção para organizar conteúdo visual em Pins e pastas. A conexão com o Pinterest ainda não foi implementada.',
-    documentation: 'https://developers.pinterest.com/docs/api/v5/introduction/',
-  },
-  {
-    id: 'youtube',
-    name: 'YouTube',
-    accountLabel: '',
-    description:
-      'Uma opção para os vídeos do seu canal. A conexão e o envio de arquivos de vídeo ainda precisam ser implementados.',
-    documentation: 'https://developers.google.com/youtube/v3',
-  },
-  {
-    id: 'wordpress',
-    name: 'WordPress',
-    accountLabel: '',
-    description:
-      'Uma opção para publicar artigos no site da sua marca. A conexão com o WordPress ainda não foi implementada.',
-    documentation: 'https://developer.wordpress.org/rest-api/',
   },
 ]

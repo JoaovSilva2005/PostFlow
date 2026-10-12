@@ -67,4 +67,4 @@ Nesta entrega, não existe conta de rede conectada nem publicação externa real
 
 A interface de contas fica em `/integrations`; `/social` redireciona preservando parâmetros de OAuth e links antigos. Os quatro adaptadores estão agrupados em cartões com as contas da marca, validade, seleção pós-OAuth e controles de acesso. A aba Publicações reúne a fila e seus resultados.
 
-X, Canva, Threads, Pinterest, YouTube e WordPress são opções de catálogo, explicitamente não implementadas e com ações bloqueadas. Esses cartões não criam credenciais, não chamam APIs e não ampliam os quatro adaptadores existentes.
+A tela exibe somente as quatro redes com adaptadores implementados. Os cartões de X, Canva, Threads, Pinterest, YouTube e WordPress foram removidos. X e Blog continuam disponíveis para criação editorial na marca, sem conexão ou publicação direta pela API. As opções de conexão continuam condicionadas à configuração real dos apps no servidor.
