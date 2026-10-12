@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createApp } from '../backend/app.js'
 
 const app = createApp()
+export const config = { maxDuration: 60 }
 
 function restoreApiPath(request: IncomingMessage) {
   const url = new URL(request.url ?? '/', 'http://localhost')

@@ -110,7 +110,7 @@ describe('geração da Agenda', () => {
 
     image.resolve('https://images.example.test/shared-art.png')
     expect(await screen.findByRole('status')).toHaveTextContent(
-      '3 rascunhos com imagens salvos na agenda para revisão. A publicação é manual.',
+      '3 rascunhos com imagens salvos na agenda para revisão. Abra o post para revisar e publicar nas redes conectadas.',
     )
     const created = repository.snapshot().drafts
     expect(created).toHaveLength(3)
@@ -145,7 +145,7 @@ describe('geração da Agenda', () => {
     )
 
     expect(await screen.findByRole('status')).toHaveTextContent(
-      '6 rascunhos com imagens salvos na agenda para revisão. A publicação é manual.',
+      '6 rascunhos com imagens salvos na agenda para revisão. Abra o post para revisar e publicar nas redes conectadas.',
     )
     expect(generateImage).toHaveBeenCalledTimes(2)
     const generatedDates = generateImage.mock.calls.map(

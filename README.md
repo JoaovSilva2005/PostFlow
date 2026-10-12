@@ -36,11 +36,11 @@ código, publicação, testes de login e material de apresentação.
 
 ## Acesso e permissões
 
-| Área               | Rotas                                             | Regra de acesso                                 |
-| ------------------ | ------------------------------------------------- | ----------------------------------------------- |
-| Autenticação       | `/login`                                          | Pública                                         |
-| Assinatura         | `/billing`                                        | Usuário autenticado                             |
-| Marca, IA e agenda | `/brand`, `/chat`, `/calendar`                    | Membro do workspace com plano ativo ou em teste |
+| Área               | Rotas                                                                  | Regra de acesso                                 |
+| ------------------ | ---------------------------------------------------------------------- | ----------------------------------------------- |
+| Autenticação       | `/login`                                                               | Pública                                         |
+| Assinatura         | `/billing`                                                             | Usuário autenticado                             |
+| Marca, IA e agenda | `/brand`, `/chat`, `/calendar`                                         | Membro do workspace com plano ativo ou em teste |
 | Administração      | `/admin/finance`, `/admin/fiscal`, `/admin/accounting`, `/admin/plans` | Membro interno autorizado                       |
 
 Contas sem plano são direcionadas para a página de assinatura. Os papéis do workspace (`owner`, `admin`, `editor`, `viewer`) são independentes dos papéis internos da plataforma (`platform_owner`, `finance_admin`, `support`).
@@ -86,20 +86,20 @@ O comando inicia:
 
 ## Variáveis de ambiente
 
-| Variável                                             | Uso                                                 |
-| ---------------------------------------------------- | --------------------------------------------------- |
-| `VITE_SUPABASE_URL`                                  | URL pública do projeto Supabase                     |
-| `VITE_SUPABASE_PUBLISHABLE_KEY`                      | Chave publicável usada na autenticação              |
-| `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_SECRET_KEY` | Acesso administrativo usado somente pelo backend    |
-| `VITE_API_URL`                                       | URL local da API; use `http://localhost:3001/api`   |
-| `OPENAI_API_KEY`                                     | Credencial server-side para geração de conteúdo     |
-| `OPENAI_TEXT_MODEL`                                  | Modelo de texto; padrão `gpt-6-luna`                |
-| `OPENAI_IMAGE_MODEL`                                 | Modelo de imagem padrão; padrão `gpt-image-2.5-flare` |
-| `OPENAI_IMAGE_QUALITY_MODEL`                         | Modelo opcional de maior qualidade; padrão `gpt-image-2.5-sunburst` |
+| Variável                                             | Uso                                                                                             |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `VITE_SUPABASE_URL`                                  | URL pública do projeto Supabase                                                                 |
+| `VITE_SUPABASE_PUBLISHABLE_KEY`                      | Chave publicável usada na autenticação                                                          |
+| `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_SECRET_KEY` | Acesso administrativo usado somente pelo backend                                                |
+| `VITE_API_URL`                                       | URL local da API; use `http://localhost:3001/api`                                               |
+| `OPENAI_API_KEY`                                     | Credencial server-side para geração de conteúdo                                                 |
+| `OPENAI_TEXT_MODEL`                                  | Modelo de texto; padrão `gpt-6-luna`                                                            |
+| `OPENAI_IMAGE_MODEL`                                 | Modelo de imagem padrão; padrão `gpt-image-2.5-flare`                                           |
+| `OPENAI_IMAGE_QUALITY_MODEL`                         | Modelo opcional de maior qualidade; padrão `gpt-image-2.5-sunburst`                             |
 | `OPENAI_IMAGE_QUALITY`                               | Qualidade da API de imagens: `low`, `medium`, `high`, `xhigh`, `max` ou `auto`; padrão `medium` |
-| `OPENAI_IMAGE_SIZE`                                  | Tamanho da imagem, por padrão `1024x1024`          |
-| `APP_URL`                                            | Origem autorizada e retorno da recuperação de senha |
-| `APP_ALLOWED_ORIGINS`                               | Origens HTTPS adicionais confiáveis, separadas por vírgula |
+| `OPENAI_IMAGE_SIZE`                                  | Tamanho da imagem, por padrão `1024x1024`                                                       |
+| `APP_URL`                                            | Origem autorizada e retorno da recuperação de senha                                             |
+| `APP_ALLOWED_ORIGINS`                                | Origens HTTPS adicionais confiáveis, separadas por vírgula                                      |
 
 Nunca use uma chave administrativa do Supabase ou uma chave de IA em variável iniciada com `VITE_`. Em produção, configure também um SMTP próprio no Supabase para evitar o limite reduzido do serviço de e-mail de teste.
 
@@ -191,11 +191,13 @@ Depois do deploy, valide:
 - imagens aprovadas e salvas na agenda são persistidas no Storage privado; prévias ainda não salvas permanecem na revisão;
 - pagamento e emissão fiscal usam adapters demonstrativos e não movimentam dinheiro real;
 - o comprovante fiscal é acadêmico e não substitui NFS-e;
-- publicação automática em redes sociais ainda não foi implementada.
+- publicação direta de imagens e agendamento têm implementação no servidor; ativação depende de criar apps, configurar credenciais, executor e permissões das redes. Não há publicação externa real validada nesta entrega.
 
 ## Documentação
 
 - [Arquitetura e autorização](docs/architecture.md)
+- [Configuração da publicação social](docs/social-publishing-setup.md)
+- [Verificação da integração social de 12/10/2026](docs/social-publishing-release-2026-10-12.md)
 - [Estúdio de conteúdo e contrato da IA](docs/content-studio.md)
 - [Fiscal e precificação](docs/fiscal-and-pricing.md)
 - [Contábil e DRE simples](docs/accounting.md)

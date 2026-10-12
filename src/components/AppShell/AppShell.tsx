@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  Share2,
   ChevronRight,
   Command,
   Database,
@@ -15,7 +16,13 @@ import {
   BadgeDollarSign,
   X,
 } from 'lucide-react'
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import type { PlatformRole, WorkspaceRole } from '../../domain/auth'
@@ -46,6 +53,7 @@ const workspaceNavigation = [
     label: 'Gerenciar',
     links: [
       { to: '/brand', label: 'Minha marca', icon: Palette },
+      { to: '/social', label: 'Redes conectadas', icon: Share2 },
       { to: '/billing', label: 'Assinatura e cobrança', icon: BadgeDollarSign },
     ],
   },
@@ -94,7 +102,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           links: [
             { to: '/admin/finance', label: 'Financeiro', icon: WalletCards },
             { to: '/admin/fiscal', label: 'Fiscal', icon: ReceiptText },
-            { to: '/admin/accounting', label: 'Contábil', icon: ChartNoAxesCombined },
+            {
+              to: '/admin/accounting',
+              label: 'Contábil',
+              icon: ChartNoAxesCombined,
+            },
             {
               to: '/admin/plans',
               label: 'Planos e custos',
@@ -253,7 +265,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className={styles.sidebarFooter}>
           {(platformRole || databaseStatus === 'error') && (
-            <div className={`${styles.databaseStatus} ${styles[databaseStatus]}`}>
+            <div
+              className={`${styles.databaseStatus} ${styles[databaseStatus]}`}
+            >
               <Database size={14} />
               <span>
                 {databaseStatus === 'connected'

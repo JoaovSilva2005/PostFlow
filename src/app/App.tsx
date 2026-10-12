@@ -9,6 +9,7 @@ import { AccountingPage } from '../features/accounting/AccountingPage'
 import { BillingPage } from '../features/billing/BillingPage'
 import { AdminPlansPage } from '../features/admin/AdminPlansPage'
 import { ProtectedRoute } from './ProtectedRoute'
+import { SocialConnectionsPage } from '../features/social/SocialConnectionsPage'
 
 export function App() {
   return (
@@ -70,6 +71,17 @@ export function App() {
         }
       />
       <Route
+        path="/social"
+        element={
+          <ProtectedRoute
+            workspaceRoles={['owner', 'admin', 'editor', 'viewer']}
+            requiresActivePlan
+          >
+            <SocialConnectionsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/finance"
         element={
           <ProtectedRoute
@@ -92,7 +104,9 @@ export function App() {
       <Route
         path="/admin/accounting"
         element={
-          <ProtectedRoute platformRoles={['platform_owner', 'finance_admin', 'support']}>
+          <ProtectedRoute
+            platformRoles={['platform_owner', 'finance_admin', 'support']}
+          >
             <AccountingPage />
           </ProtectedRoute>
         }

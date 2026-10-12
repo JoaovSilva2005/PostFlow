@@ -303,8 +303,8 @@ export function CalendarPage() {
       setGeneratorPrompt('')
       setGenerationNotice(
         generationService.generateImage
-          ? `${savedDrafts.length} ${savedDrafts.length === 1 ? 'rascunho com imagem salvo' : 'rascunhos com imagens salvos'} na agenda para revisão. A publicação é manual.`
-          : `${savedDrafts.length} ${savedDrafts.length === 1 ? 'rascunho salvo' : 'rascunhos salvos'} na agenda para revisão. A publicação é manual.`,
+          ? `${savedDrafts.length} ${savedDrafts.length === 1 ? 'rascunho com imagem salvo' : 'rascunhos com imagens salvos'} na agenda para revisão. Abra o post para revisar e publicar nas redes conectadas.`
+          : `${savedDrafts.length} ${savedDrafts.length === 1 ? 'rascunho salvo' : 'rascunhos salvos'} na agenda para revisão. Abra o post para revisar e publicar nas redes conectadas.`,
       )
       setIsGeneratorOpen(false)
     } catch (error) {

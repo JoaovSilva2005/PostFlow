@@ -7,7 +7,7 @@ import styles from './CalendarPage.module.css'
 const STATUS_OPTIONS = [
   { label: 'Rascunho', value: 'draft' },
   { label: 'Agendado', value: 'scheduled' },
-  { label: 'Publicado', value: 'published' },
+  { label: 'Publicado (controle manual)', value: 'published' },
 ]
 
 interface DraftSchedulePanelProps {
@@ -66,8 +66,9 @@ export function DraftSchedulePanel({
       </div>
 
       <p className={styles.scheduleNote}>
-        Fuso horário de Brasília. A situação organiza sua agenda; a publicação
-        nas redes ainda é manual.
+        Fuso horário de Brasília. A situação é um controle manual da agenda. Use
+        Publicar nas redes para enviar o post e Redes conectadas para conferir a
+        confirmação.
       </p>
 
       <div className={styles.timezoneLabel}>

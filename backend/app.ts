@@ -55,6 +55,13 @@ import {
 } from './modules/billing/billingRoutes.js'
 import { createWorkspaceRouter } from './modules/workspace/workspaceRoutes.js'
 import { createBrandRouter } from './modules/brand/brandRoutes.js'
+import { SocialService } from './modules/social-publishing/socialService.js'
+import { SupabaseSocialRepository } from './modules/social-publishing/socialRepository.js'
+import { createSocialProviders } from './modules/social-publishing/providers/index.js'
+import {
+  createSocialPublicRouter,
+  createSocialWorkspaceRouter,
+} from './modules/social-publishing/socialRoutes.js'
 
 interface AppOptions {
   authService?: AuthService
@@ -63,6 +70,7 @@ interface AppOptions {
   contentQuotaService?: ContentQuotaService
   workspaceAccessRepository?: WorkspaceAccessRepository
   billingRepository?: BillingRepository
+  socialService?: SocialService
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -111,6 +119,14 @@ export function createApp(options: AppOptions = {}) {
   const contentQuotaService =
     options.contentQuotaService ??
     new SupabaseContentQuotaService(createSupabaseAdminDataClient())
+  const socialService =
+    options.socialService ??
+    new SocialService({
+      repository: new SupabaseSocialRepository(createSupabaseAdminDataClient()),
+      providers: Object.values(createSocialProviders()),
+      access: workspaceAccess,
+      appUrl: environment.appUrl,
+    })
 
   app.use(
     cors({
@@ -152,6 +168,21 @@ export function createApp(options: AppOptions = {}) {
   })
 
   app.use('/api/auth', createAuthRouter(authService, workspaceAccess))
+  app.use(
+    '/api/social',
+    createSocialPublicRouter(socialService, requireAuthentication(authService)),
+  )
+  app.use(
+    '/api/workspaces/:workspaceId/social',
+    requireAuthentication(authService),
+    requireWorkspaceContext(workspaceAccess),
+    requireActiveSubscription(workspaceAccess),
+    createSocialWorkspaceRouter(
+      socialService,
+      requireWorkspaceRole('owner', 'admin'),
+      requireWorkspaceRole('owner', 'admin', 'editor'),
+    ),
+  )
   app.use(
     '/api/brands',
     requireAuthentication(authService),
@@ -213,7 +244,9 @@ export function createApp(options: AppOptions = {}) {
     createAccountingRouter(financialService, () =>
       financialRepository instanceof ResilientFinancialTransactionRepository
         ? financialRepository.getMode()
-        : options.financialRepository ? 'test' : 'supabase',
+        : options.financialRepository
+          ? 'test'
+          : 'supabase',
     ),
   )
   // Compatibilidade exclusiva para os testes unitários que injetam o

@@ -198,6 +198,12 @@ Em produção, CORS aceita apenas a origem exata de `APP_URL` e as origens HTTPS
 exatas de `APP_ALLOWED_ORIGINS`. Previews da Vercel não são liberados por
 padrão; `localhost` e `127.0.0.1` ficam disponíveis apenas fora de produção.
 
+## Publicação social direta
+
+O módulo `backend/modules/social-publishing` usa `SocialRepository`/`SocialProvider` no BFF, conforme ADR-0012. Conexões e intenções pertencem à marca; a autorização é verificada antes de usar o cliente administrativo do Supabase e novamente no despacho. Tokens são cifrados com contexto; DTOs nunca contêm credenciais. O worker usa lease/RPC para reservar uma intenção por vez, com marcador persistido antes do envio. Resultado ambíguo exige reconciliação e não gera reenvio automático.
+
+O snapshot contém a legenda/hashtags aprovadas e uma cópia privada da imagem. URLs de transferência são emitidas perto do envio. O executor depende de Supabase Cron e segredo próprio; o navegador não agenda a execução. Facebook Pages, Instagram profissional via Instagram Login, LinkedIn perfil e TikTok foto única são adaptadores da primeira versão. O status manual da agenda permanece separado do status externo. Consulte [configuração](social-publishing-setup.md) e [evidências e limites](social-publishing-release-2026-10-12.md).
+
 ## Decisões simples para apresentação
 
 - Nomes técnicos em inglês; interface e documentação em português.

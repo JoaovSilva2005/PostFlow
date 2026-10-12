@@ -26,6 +26,7 @@ import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import type { PostDraft } from '../../domain/models'
 import { DraftSchedulePanel } from './DraftSchedulePanel'
 import { PostCreativePreview } from './PostCreativePreview'
+import { DraftPublishingPanel } from '../social/DraftPublishingPanel'
 import styles from './CalendarPage.module.css'
 
 interface EditDraftDialogProps {
@@ -628,6 +629,10 @@ function EditDraftCard({
               disabled={isSaving}
               onDateChange={handleDateChange}
               onChange={updateFormField}
+            />
+            <DraftPublishingPanel
+              draft={form}
+              hasUnsavedChanges={hasUnsavedChanges}
             />
             <section
               className={styles.detailActions}
