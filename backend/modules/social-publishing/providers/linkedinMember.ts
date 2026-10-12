@@ -166,7 +166,7 @@ export function createLinkedInMemberProvider(
             ...bearer(input.tokens.accessToken),
             'Content-Type': 'application/octet-stream',
           },
-          body: input.imageBytes,
+          body: new Uint8Array(input.imageBytes).buffer,
           signal: AbortSignal.timeout(env.timeoutMs ?? 15_000),
         })
       } catch {
