@@ -18,8 +18,23 @@ Após entrar, o cliente trabalha dentro de uma marca (workspace):
 
 1. **Minha marca** — configura nome, segmento, tom de voz e identidade visual.
 2. **Criar com IA** — descreve o conteúdo, revisa o texto e prepara a publicação.
-3. **Agenda** — organiza e acompanha rascunhos por data.
+3. **Agenda** — organiza e acompanha os posts por data, aprova o que deve ser publicado e mostra o estado de cada um (veja abaixo).
 4. **Assinatura e cobrança** — compara o plano disponível, confere preço e limites, revisa o resumo, gera a fatura e confirma o pagamento demonstrativo. Depois acompanha situação, período, consumo, faturas e comprovantes da própria marca.
+
+### Aprovar e agendar posts
+
+**A publicação é simulada.** Enquanto o conector da Meta não existe, o PostFlow não publica em nenhuma rede social real: no horário marcado o post apenas passa a "Publicado (simulado)".
+
+Cada post da Agenda tem um estado:
+
+- **Não agendado** — rascunho ainda sem aprovação; nunca é publicado.
+- **Agendado** — aprovado; será publicado na data e hora marcadas (o horário precisa estar no futuro).
+- **Publicando** — o sistema está processando o post.
+- **Publicado (simulado)** — publicação demonstrativa concluída, sem envio a nenhuma rede.
+- **Publicado** — publicação real (disponível quando houver conector).
+- **Falhou** — o post não foi publicado; o motivo aparece em destaque. Por exemplo, o horário passou mais de 2 horas sem publicação.
+
+Para publicar, aprove o post na Agenda. Se você editar legenda, imagem, data ou hora de um post "Agendado", ele volta a "Não agendado" e precisa ser aprovado de novo. O sistema verifica os posts agendados a cada 5 minutos, então a publicação pode levar alguns minutos além do horário.
 
 Faturas podem estar pendentes ou pagas. Selecionar o plano não quita a cobrança: primeiro é criada uma fatura pendente e a tela pede uma confirmação separada. Ao confirmar o pagamento demonstrativo, o sistema gera uma **NFS-e simulada sem validade jurídica**, vinculada à fatura. A nota pode ser impressa ou salva em PDF pelo navegador, mas não é transmitida a nenhum órgão público e o fluxo não movimenta dinheiro real.
 
@@ -75,6 +90,7 @@ porque o responsável esqueceu a senha. Consulte a [auditoria da entrega](entreg
 
 ## Limitações acadêmicas
 
+- A publicação de posts é simulada até o conector da Meta existir: o estado "Publicado (simulado)" não significa que o post foi enviado ao Facebook ou Instagram.
 - Alíquota padrão de 6% usada apenas para demonstração.
 - Pagamento confirmado por adapter demonstrativo; nenhum provedor real está ativo sem credencial server-side.
 - A NFS-e simulada não possui validade fiscal, não contém QR Code consultável e não substitui uma NFS-e autorizada pela prefeitura ou pelo ambiente nacional.
