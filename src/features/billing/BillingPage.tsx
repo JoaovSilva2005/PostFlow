@@ -101,7 +101,23 @@ function UsageBar({
 }
 
 export function BillingPage() {
-  const { currentWorkspace, refreshSession } = useApp()
+  const {
+    currentWorkspace,
+    availableWorkspaces,
+    billingWorkspaceId,
+    refreshSession,
+  } = useApp()
+  const workspaceId = billingWorkspaceId ?? currentWorkspace?.id
+  const billingWorkspace = availableWorkspaces.find(
+    ({ id }) => id === workspaceId,
+  )
+  const billingRole =
+    billingWorkspace?.role ??
+    (workspaceId === currentWorkspace?.id ? currentWorkspace?.role : undefined)
+  const billingDescription =
+    billingWorkspace && billingWorkspace.id !== currentWorkspace?.id
+      ? `A franquia está vinculada a ${billingWorkspace.brand.name} e pode ser usada nas marcas que você acessa.`
+      : 'Acompanhe seu plano, consumo e faturas deste workspace.'
   const [overview, setOverview] = useState<BillingOverview | null>(null)
   const [plans, setPlans] = useState<BillingPlan[]>([])
   const [invoices, setInvoices] = useState<BillingInvoice[]>([])
@@ -122,11 +138,10 @@ export function BillingPage() {
     useState<BillingInvoice | null>(null)
   const professionalPlan =
     plans.find((plan) => plan.code === 'professional') ?? plans[0] ?? null
-  const canManageBilling =
-    currentWorkspace?.role === 'owner' || currentWorkspace?.role === 'admin'
+  const canManageBilling = billingRole === 'owner' || billingRole === 'admin'
 
   useEffect(() => {
-    if (!currentWorkspace) {
+    if (!workspaceId) {
       setLoading(false)
       return
     }
@@ -134,9 +149,9 @@ export function BillingPage() {
     setLoading(true)
     setError('')
     Promise.all([
-      billingApi.plans(currentWorkspace.id, controller.signal),
-      billingApi.overview(currentWorkspace.id, controller.signal),
-      billingApi.invoices(currentWorkspace.id, controller.signal),
+      billingApi.plans(workspaceId, controller.signal),
+      billingApi.overview(workspaceId, controller.signal),
+      billingApi.invoices(workspaceId, controller.signal),
     ])
       .then(([nextPlans, nextOverview, nextInvoices]) => {
         if (!controller.signal.aborted) {
@@ -161,7 +176,7 @@ export function BillingPage() {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [currentWorkspace, revision])
+  }, [workspaceId, revision])
 
   function startPlanSelection() {
     if (!professionalPlan || !canManageBilling) return
@@ -175,14 +190,14 @@ export function BillingPage() {
   }
 
   async function subscribe() {
-    if (!currentWorkspace || !professionalPlan || !canManageBilling) return
+    if (!workspaceId || !professionalPlan || !canManageBilling) return
     const key = subscriptionKey.current ?? idempotencyKey()
     subscriptionKey.current = key
     setSubscriptionFlow('processing')
     setFlowError('')
     try {
       const invoice = await billingApi.subscribe(
-        currentWorkspace.id,
+        workspaceId,
         professionalPlan.code,
         key,
       )
@@ -205,7 +220,7 @@ export function BillingPage() {
   }
 
   async function payInvoice(invoice: BillingInvoice) {
-    if (!currentWorkspace || !canManageBilling) return
+    if (!workspaceId || !canManageBilling) return
     const isSubscriptionPayment = pendingSubscriptionInvoice?.id === invoice.id
     const key = paymentKeys.current.get(invoice.id) ?? idempotencyKey()
     paymentKeys.current.set(invoice.id, key)
@@ -217,7 +232,7 @@ export function BillingPage() {
     }
     try {
       const paidInvoice = await billingApi.payInvoice(
-        currentWorkspace.id,
+        workspaceId,
         invoice.id,
         key,
       )
@@ -254,7 +269,7 @@ export function BillingPage() {
     <AppShell>
       <PageHeader
         title="Assinatura e cobrança"
-        description="Acompanhe seu plano, consumo e faturas deste workspace."
+        description={billingDescription}
       >
         <Button
           variant="ghost"
