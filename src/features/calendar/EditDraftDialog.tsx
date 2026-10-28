@@ -410,6 +410,11 @@ function EditDraftCard({
     }
     const updatedDraft = { ...form, hashtags }
     setHashtagInput('')
+    if (draft.status === 'scheduled' && !hasUnsavedChanges) {
+      // Nada mudou: não reenvia a aprovação.
+      setNotice('Nenhuma alteração para salvar.')
+      return
+    }
     if (draft.status === 'scheduled' && hasUnsavedChanges) {
       // Alterar um post aprovado exige nova aprovação: o servidor também o
       // devolve a "Não agendado" quando o conteúdo muda.
@@ -434,10 +439,19 @@ function EditDraftCard({
     setIsSaving(true)
     try {
       await onDateChange(draft, date)
-      setNotice('Post movido para a nova data na agenda.')
-    } catch {
+      setNotice(
+        draft.status === 'scheduled'
+          ? 'Post movido. Ele voltou para "Não agendado": aprove novamente para agendar.'
+          : 'Post movido para a nova data na agenda.',
+      )
+    } catch (error) {
       setForm((currentForm) => ({ ...currentForm, date: draft.date }))
-      setError('Não foi possível mover o post. A data original foi mantida.')
+      setError(
+        error instanceof ApiError &&
+          (error.status === 400 || error.status === 409)
+          ? `${error.message} A data original foi mantida.`
+          : 'Não foi possível mover o post. A data original foi mantida.',
+      )
     } finally {
       setIsSaving(false)
     }
