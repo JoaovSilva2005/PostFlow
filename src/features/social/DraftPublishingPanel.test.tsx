@@ -242,4 +242,46 @@ describe('DraftPublishingPanel', () => {
       ),
     )
   })
+  it('demoMode true mostra aviso curto e acompanhamento "Publicado (simulado)"', async () => {
+    const user = userEvent.setup()
+    vi.mocked(socialApi.overview).mockResolvedValue({
+      ...overview,
+      demoMode: true,
+    })
+    vi.mocked(socialApi.publish).mockResolvedValue({
+      id: 'pub-demo',
+      draftId: draft.id,
+      connectionId: otherNetworkConnection.id,
+      provider: 'facebook',
+      title: 'Post',
+      status: 'published',
+      scheduledAt: '2026-10-12T12:00:00Z',
+      remotePostId: 'demo-1',
+      remoteUrl: null,
+      error: null,
+      attempts: 1,
+      simulated: true,
+      createdAt: '2026-10-12T12:00:00Z',
+    })
+    renderPanel({ ...draft, platform: 'Facebook' })
+    expect(
+      await screen.findByText(
+        'Modo demonstração: nada é enviado às redes sociais.',
+      ),
+    ).toBeInTheDocument()
+    await user.click(await screen.findByLabelText('Aurora Facebook'))
+    await user.click(
+      screen.getByLabelText(/Confirmo a publicação desta prévia/),
+    )
+    await user.click(screen.getByRole('button', { name: 'Publicar agora' }))
+    expect(
+      await screen.findByText(/Publicado \(simulado\)/),
+    ).toBeInTheDocument()
+  })
+
+  it('demoMode false não mostra o aviso curto', async () => {
+    renderPanel()
+    await screen.findByLabelText('Aurora TikTok')
+    expect(screen.queryByText(/Modo demonstração/)).not.toBeInTheDocument()
+  })
 })
