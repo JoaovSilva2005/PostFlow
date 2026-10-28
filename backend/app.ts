@@ -127,7 +127,9 @@ export function createApp(options: AppOptions = {}) {
     options.socialService ??
     new SocialService({
       repository: new SupabaseSocialRepository(createSupabaseAdminDataClient()),
-      providers: Object.values(createSocialProviders()),
+      providers: Object.values(
+        createSocialProviders({ demoMode: environment.socialDemoMode }),
+      ),
       access: workspaceAccess,
       appUrl: environment.appUrl,
     })

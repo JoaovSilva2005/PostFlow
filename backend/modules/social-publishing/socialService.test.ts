@@ -8,6 +8,7 @@ import { SocialCrypto } from './socialCrypto.js'
 import { ProviderError, type SocialProvider } from './socialTypes.js'
 import { InMemorySocialRepository } from '../../test/InMemorySocialRepository.js'
 import { InMemoryWorkspaceAccessRepository } from '../tenancy/workspaceRepository.js'
+import { createSocialProviders } from './providers/index.js'
 import { createApp } from '../../app.js'
 import { AuthService } from '../auth/authService.js'
 import {
@@ -425,5 +426,264 @@ describe('social publishing safety and workflows', () => {
           .send({ ...input, unexpected: 'field' })
       ).status,
     ).toBe(400)
+  })
+})
+
+class NoPlanAccess extends InMemoryWorkspaceAccessRepository {
+  private readonly accountBrand: string | null
+  constructor(role: 'owner' | 'editor', accountBrand: string | null = null) {
+    super(workspace, role, null, 'none')
+    this.accountBrand = accountBrand
+  }
+  async getActiveBillingWorkspaceId() {
+    return this.accountBrand
+  }
+}
+class PlatformOwnerNoPlanAccess extends NoPlanAccess {
+  async getPlatformRole() {
+    return 'platform_owner' as const
+  }
+}
+describe('social publishing demo mode', () => {
+  const demoConfig: Record<string, string | undefined> = {
+    ...config,
+    SOCIAL_DEMO_MODE: 'true',
+  }
+  function demoFixture(
+    options: {
+      access?: InMemoryWorkspaceAccessRepository
+      config?: Record<string, string | undefined>
+    } = {},
+  ) {
+    const fetchSpy = vi.fn(async () => {
+      throw new Error('network call in demo mode')
+    })
+    const repo = new InMemorySocialRepository()
+    const service = new SocialService({
+      repository: repo,
+      providers: Object.values(
+        createSocialProviders({
+          demoMode: true,
+          fetch: fetchSpy as unknown as typeof fetch,
+        }),
+      ),
+      access:
+        options.access ??
+        new InMemoryWorkspaceAccessRepository(workspace, 'owner'),
+      crypto: encryption,
+      appUrl: 'https://postflow.test',
+      config: options.config ?? demoConfig,
+    })
+    repo.drafts.set(draftId, {
+      id: draftId,
+      workspaceId: workspace,
+      provider: 'Facebook',
+      title: input.expectedDraft.title,
+      caption: input.expectedDraft.caption,
+      hashtags: ['#post'],
+      format: 'static',
+      imagePath,
+      timezone: 'America/Sao_Paulo',
+    })
+    return { repo, service, fetchSpy }
+  }
+  async function connectDemo(f: ReturnType<typeof demoFixture>) {
+    const started = await f.service.startOAuth(workspace, userId, 'facebook')
+    const url = new URL(started.authorizationUrl)
+    expect(url.searchParams.get('code')).toBe('demo-code')
+    await f.service.callback(
+      userId,
+      'facebook',
+      url.searchParams.get('state')!,
+      url.searchParams.get('code')!,
+    )
+    const pending = (await f.service.overview(workspace, userId)).pending[0]
+    return f.service.connect(workspace, userId, pending.id, 'demo-facebook')
+  }
+  function seedDemoConnection(f: ReturnType<typeof demoFixture>) {
+    f.repo.connections.set(connectionId, {
+      id: connectionId,
+      workspaceId: workspace,
+      userId,
+      provider: 'facebook',
+      externalAccountId: 'demo-facebook',
+      displayName: 'Facebook — conta de demonstração',
+      accountType: 'demo',
+      status: 'connected',
+      expiresAt: null,
+      createdAt: new Date().toISOString(),
+      encryptedTokens: encryption.seal(
+        { accessToken: 'demo-token' },
+        `connection:${workspace}:facebook:demo-facebook`,
+      ),
+    })
+    return { id: connectionId }
+  }
+  it('runs the whole flow to a simulated published post without any network call', async () => {
+    const f = demoFixture()
+    await image(f.repo)
+    const connection = await connectDemo(f)
+    expect(connection).toMatchObject({
+      accountType: 'demo',
+      externalAccountId: 'demo-facebook',
+      displayName: 'Facebook — conta de demonstração',
+    })
+    const job = await f.service.enqueue(workspace, userId, {
+      ...input,
+      connectionId: connection.id,
+    })
+    const [result] = await f.service.runWorker()
+    expect(result.status).toBe('published')
+    const overview = await f.service.overview(workspace, userId)
+    expect(overview.demoMode).toBe(true)
+    const publication = overview.publications.find((p) => p.id === job.id)!
+    expect(publication).toMatchObject({
+      status: 'published',
+      simulated: true,
+      remoteUrl: null,
+    })
+    expect(publication.remotePostId).toMatch(/^demo-/)
+    expect(f.repo.publications.get(job.id)!.operation).toMatchObject({
+      demo: true,
+      _dispatched: true,
+    })
+    expect(f.fetchSpy).not.toHaveBeenCalled()
+  })
+  it('keeps simulated true when the worker reconciles an unknown dispatch', async () => {
+    const f = demoFixture()
+    await image(f.repo)
+    const connection = await connectDemo(f)
+    const job = await f.service.enqueue(workspace, userId, {
+      ...input,
+      connectionId: connection.id,
+    })
+    const record = f.repo.publications.get(job.id)!
+    record.status = 'unknown'
+    record.operation = { demo: true, _dispatched: true }
+    await f.service.runWorker()
+    expect(f.repo.publications.get(job.id)!.status).toBe('published')
+    expect(
+      (await f.service.overview(workspace, userId)).publications[0].simulated,
+    ).toBe(true)
+  })
+  it('still requires the cron secret and the encryption key', async () => {
+    const noCron = demoFixture({
+      config: { ...demoConfig, SOCIAL_CRON_SECRET: undefined },
+    })
+    await expect(
+      noCron.service.startOAuth(workspace, userId, 'facebook'),
+    ).rejects.toMatchObject({ statusCode: 503 })
+    const noKey = new SocialService({
+      repository: new InMemorySocialRepository(),
+      providers: Object.values(createSocialProviders({ demoMode: true })),
+      access: new InMemoryWorkspaceAccessRepository(workspace, 'owner'),
+      crypto: new SocialCrypto(''),
+      appUrl: 'https://postflow.test',
+      config: demoConfig,
+    })
+    await expect(
+      noKey.startOAuth(workspace, userId, 'facebook'),
+    ).rejects.toMatchObject({ statusCode: 503 })
+    const overview = await noKey.overview(workspace, userId)
+    expect(overview.providers.every((p) => !p.configured)).toBe(true)
+    expect(overview.providers[0].missingConfiguration).toContain(
+      'SOCIAL_TOKEN_ENCRYPTION_KEY',
+    )
+  })
+  it('does not require app credentials or TikTok approvals in demo mode', async () => {
+    const f = demoFixture({
+      config: {
+        SOCIAL_DEMO_MODE: 'true',
+        SOCIAL_CRON_SECRET: config.SOCIAL_CRON_SECRET,
+        SOCIAL_SCHEDULER_ENABLED: 'true',
+      },
+    })
+    const overview = await f.service.overview(workspace, userId)
+    expect(overview.providers.map((p) => p.configured)).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ])
+    expect(
+      overview.providers.every((p) => !p.missingConfiguration.length),
+    ).toBe(true)
+  })
+  it('keeps the member role check on the callback', async () => {
+    const f = demoFixture({
+      access: new InMemoryWorkspaceAccessRepository(workspace, 'editor'),
+    })
+    const started = await f.service.startOAuth(workspace, userId, 'facebook')
+    const state = new URL(started.authorizationUrl).searchParams.get('state')!
+    await expect(
+      f.service.callback(userId, 'facebook', state, 'demo-code'),
+    ).rejects.toMatchObject({ statusCode: 403 })
+    expect((await f.service.overview(workspace, userId)).pending).toEqual([])
+    expect(f.repo.connections.size).toBe(0)
+  })
+  it('cancels a demo job for a plan-less brand when the member has no account plan', async () => {
+    const f = demoFixture({ access: new NoPlanAccess('editor') })
+    await image(f.repo)
+    const connection = seedDemoConnection(f)
+    const job = await f.service.enqueue(workspace, userId, {
+      ...input,
+      connectionId: connection.id,
+    })
+    await f.service.runWorker()
+    expect(f.repo.publications.get(job.id)!.status).toBe('cancelled')
+    expect(f.fetchSpy).not.toHaveBeenCalled()
+  })
+  it('publishes for a brand owner who pays through an account-level brand', async () => {
+    const f = demoFixture({ access: new NoPlanAccess('owner', 'paid-brand') })
+    await image(f.repo)
+    const connection = seedDemoConnection(f)
+    const job = await f.service.enqueue(workspace, userId, {
+      ...input,
+      connectionId: connection.id,
+    })
+    await f.service.runWorker()
+    expect(f.repo.publications.get(job.id)!.status).toBe('published')
+  })
+  it('lets a platform owner publish for a plan-less brand', async () => {
+    const f = demoFixture({ access: new PlatformOwnerNoPlanAccess('editor') })
+    await image(f.repo)
+    const connection = seedDemoConnection(f)
+    const job = await f.service.enqueue(workspace, userId, {
+      ...input,
+      connectionId: connection.id,
+    })
+    await f.service.runWorker()
+    expect(f.repo.publications.get(job.id)!.status).toBe('published')
+  })
+  it('keeps the real adapters when the flag is absent or not exactly true', async () => {
+    for (const value of [undefined, 'false', 'TRUE', '1']) {
+      const service = new SocialService({
+        repository: new InMemorySocialRepository(),
+        providers: Object.values(createSocialProviders()),
+        access: new InMemoryWorkspaceAccessRepository(workspace, 'owner'),
+        crypto: encryption,
+        appUrl: 'https://postflow.test',
+        config: {
+          SOCIAL_CRON_SECRET: config.SOCIAL_CRON_SECRET,
+          SOCIAL_SCHEDULER_ENABLED: 'true',
+          SOCIAL_DEMO_MODE: value,
+        },
+      })
+      const overview = await service.overview(workspace, userId)
+      expect(overview.demoMode).toBe(false)
+      expect(overview.providers).toHaveLength(4)
+      expect(overview.providers.every((p) => !p.configured)).toBe(true)
+      expect(overview.providers[0].missingConfiguration).toEqual([
+        'META_APP_ID',
+        'META_APP_SECRET',
+      ])
+      expect(overview.providers[3].missingConfiguration).toEqual(
+        expect.arrayContaining([
+          'TIKTOK_CLIENT_KEY',
+          'TIKTOK_MEDIA_DOMAIN_VERIFIED',
+          'TIKTOK_DIRECT_POST_APPROVED',
+        ]),
+      )
+    }
   })
 })

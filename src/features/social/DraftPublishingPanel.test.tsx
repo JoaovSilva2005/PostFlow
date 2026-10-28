@@ -62,6 +62,7 @@ const otherNetworkConnection = {
   accountType: 'page',
 }
 const overview: SocialOverview = {
+  demoMode: false,
   providers: [
     {
       id: 'tiktok',
@@ -123,6 +124,7 @@ describe('DraftPublishingPanel', () => {
       remoteUrl: null,
       error: null,
       attempts: 0,
+      simulated: false,
       createdAt: '2026-10-12T12:00:00Z',
     })
   })

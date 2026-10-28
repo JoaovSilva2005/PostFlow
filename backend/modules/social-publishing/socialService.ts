@@ -78,6 +78,7 @@ export function publicPublication(p: PublicationRecord): PublicationDTO {
     error: p.error,
     attempts: p.attempts,
     createdAt: p.createdAt,
+    simulated: p.operation?.demo === true,
     cancellable:
       !p.leaseToken &&
       !p.operation?._dispatched &&
@@ -118,8 +119,13 @@ export class SocialService {
     if (!p) throw new HttpError(400, 'Rede não suportada.')
     return p
   }
+  private get demoMode() {
+    return this.config.SOCIAL_DEMO_MODE === 'true'
+  }
   private missing(id: SocialProviderId) {
-    const result = metadata[id].keys.filter((k) => !this.config[k]?.trim())
+    const result = this.demoMode
+      ? []
+      : metadata[id].keys.filter((k) => !this.config[k]?.trim())
     if (!this.crypto.configured) result.push('SOCIAL_TOKEN_ENCRYPTION_KEY')
     if (
       !this.config.SOCIAL_CRON_SECRET ||
@@ -133,7 +139,7 @@ export class SocialService {
       this.config.NODE_ENV === 'production'
     )
       result.push('APP_URL')
-    if (id === 'tiktok') {
+    if (id === 'tiktok' && !this.demoMode) {
       if (this.config.TIKTOK_MEDIA_DOMAIN_VERIFIED !== 'true')
         result.push('TIKTOK_MEDIA_DOMAIN_VERIFIED')
       if (this.config.TIKTOK_DIRECT_POST_APPROVED !== 'true')
@@ -160,6 +166,7 @@ export class SocialService {
       this.repository.listPublications(workspaceId),
     ])
     return {
+      demoMode: this.demoMode,
       providers: SOCIAL_PROVIDERS.map((id) => ({
         id,
         label: metadata[id].label,
@@ -680,6 +687,8 @@ export class SocialService {
       const billing = await this.access.getBillingStatus(job.workspaceId)
       const active =
         ['active', 'trialing'].includes(billing) ||
+        (member?.role === 'owner' &&
+          Boolean(await this.access.getActiveBillingWorkspaceId(job.userId))) ||
         (await this.access.getPlatformRole(job.userId)) === 'platform_owner'
       if (
         !c ||
