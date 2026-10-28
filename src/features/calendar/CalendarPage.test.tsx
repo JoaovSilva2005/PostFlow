@@ -630,6 +630,78 @@ describe('CalendarPage', () => {
       ).toBeInTheDocument()
     })
 
+    it('mover a data de um post agendado envia status draft, nunca scheduled', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      const repository = createTestRepository({
+        drafts: [postWith({ status: 'scheduled' })],
+      })
+      const update = vi.spyOn(repository, 'updateDraft')
+      renderApp('/calendar', repository)
+
+      await user.click(
+        await screen.findByRole('button', { name: /Café especial/ }),
+      )
+      const dialog = screen.getByRole('dialog')
+      const nextDate = dateInCurrentMonth(16)
+      fireEvent.change(within(dialog).getByLabelText('Data'), {
+        target: { value: nextDate },
+      })
+
+      await waitFor(() =>
+        expect(repository.snapshot().drafts[0]).toMatchObject({
+          date: nextDate,
+          status: 'draft',
+        }),
+      )
+      expect(
+        update.mock.calls.every(([, sent]) => sent.status !== 'scheduled'),
+      ).toBe(true)
+      expect(await within(dialog).findByRole('status')).toHaveTextContent(
+        'aprove novamente',
+      )
+    })
+
+    it('salvar um post agendado sem alterações não reenvia a aprovação', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      const repository = createTestRepository({
+        drafts: [postWith({ status: 'scheduled' })],
+      })
+      const update = vi.spyOn(repository, 'updateDraft')
+      renderApp('/calendar', repository)
+
+      await user.click(
+        await screen.findByRole('button', { name: /Café especial/ }),
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'Salvar alterações' }),
+      )
+      expect(update).not.toHaveBeenCalled()
+      expect(repository.snapshot().drafts[0].status).toBe('scheduled')
+    })
+
+    it('mostra a mensagem do servidor quando mover a data é recusado', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      const repository = createTestRepository({ drafts })
+      vi.spyOn(repository, 'updateDraft').mockRejectedValue(
+        new ApiError('Este post já está em publicação.', 409),
+      )
+      renderApp('/calendar', repository)
+
+      await user.click(
+        await screen.findByRole('button', { name: /Café especial/ }),
+      )
+      const dialog = screen.getByRole('dialog')
+      fireEvent.change(within(dialog).getByLabelText('Data'), {
+        target: { value: dateInCurrentMonth(16) },
+      })
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'Este post já está em publicação.',
+      )
+    })
+
     it('mostra a mensagem do servidor quando o horário já passou', async () => {
       authenticateDemo()
       const user = userEvent.setup()
@@ -747,6 +819,24 @@ describe('CalendarPage', () => {
         window.dispatchEvent(new Event('focus'))
       })
       await waitFor(() => expect(load).toHaveBeenCalledTimes(2))
+    })
+
+    it('volta a atualizar depois de um erro e restaura "Serviços disponíveis"', async () => {
+      const { load, repository } = await renderWithServerState()
+      vi.spyOn(repository, 'updateDraft').mockRejectedValue(new Error('rede'))
+      const user = userEvent.setup()
+      await user.click(screen.getAllByRole('button', { name: 'Aprovar' })[0])
+      expect(
+        await screen.findByText('Serviços indisponíveis'),
+      ).toBeInTheDocument()
+
+      await tick(60_000)
+      expect(load).toHaveBeenCalledTimes(1)
+      await waitFor(() =>
+        expect(
+          screen.queryByText('Serviços indisponíveis'),
+        ).not.toBeInTheDocument(),
+      )
     })
 
     it('não empilha intervalos e para ao desmontar', async () => {

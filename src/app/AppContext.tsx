@@ -231,6 +231,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         drafts: mergeRefreshedDrafts(state.drafts, action.payload),
+        databaseStatus: 'connected',
+        databaseError: null,
       }
     case 'REMOVE_DRAFT':
       return {
@@ -740,7 +742,7 @@ export function AppProvider({
         }),
       refreshDrafts: async () => {
         const workspace = state.currentWorkspace
-        if (!workspace || state.databaseStatus !== 'connected') return
+        if (!workspace || state.databaseStatus === 'connecting') return
         if (draftMutations.current.inflight > 0) return
         const startedAt = draftMutations.current.started
         const billingWorkspaceId = billingWorkspaceIdFor(state) ?? undefined

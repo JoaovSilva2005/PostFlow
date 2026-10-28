@@ -174,7 +174,12 @@ export function CalendarPage() {
     async (draft: PostDraft, date: string) => {
       // Use the last persisted post as the base so unsaved caption/time/status
       // edits in the open dialog are not included in this automatic update.
-      const updatedDraft = { ...draft, date }
+      // Mover um post agendado exige nova aprovação: ele volta a "Não agendado".
+      const updatedDraft: PostDraft = {
+        ...draft,
+        date,
+        status: draft.status === 'scheduled' ? 'draft' : draft.status,
+      }
       await updateDraft(updatedDraft)
       setSelectedDate(date)
     },
