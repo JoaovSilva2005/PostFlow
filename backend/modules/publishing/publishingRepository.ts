@@ -57,6 +57,7 @@ export class SupabasePublishingRepository implements PublishingRepository {
         'post_id',
         rows.map((row) => row.id),
       )
+      .order('hashtag', { ascending: true })
     if (tagError) {
       throw new Error(
         `Falha ao consultar hashtags dos posts: ${tagError.message}`,
@@ -72,10 +73,28 @@ export class SupabasePublishingRepository implements PublishingRepository {
       tagsByPost.set(tag.post_id, list)
     }
 
+    const platformIds = [...new Set(rows.map((row) => row.platform_id))]
+    const { data: platformRows, error: platformError } = await this.supabase
+      .from('social_platforms')
+      .select('id,name')
+      .in('id', platformIds)
+    if (platformError) {
+      throw new Error(
+        `Falha ao consultar as plataformas dos posts: ${platformError.message}`,
+      )
+    }
+    const platformNames = new Map<string, string>()
+    for (const platform of (platformRows ?? []) as {
+      id: string
+      name: string
+    }[]) {
+      platformNames.set(platform.id, platform.name)
+    }
+
     return rows.map((row) => ({
       id: row.id,
       brandId: row.brand_id,
-      platform: row.platform_id,
+      platform: platformNames.get(row.platform_id) ?? '',
       caption: row.caption ?? '',
       hashtags: tagsByPost.get(row.id) ?? [],
       imagePath: row.image_path,
