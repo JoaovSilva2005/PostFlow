@@ -46,6 +46,7 @@ export function CalendarPage() {
   const {
     brand,
     currentWorkspace,
+    billingWorkspaceId,
     availableWorkspaces,
     drafts,
     updateDraft,
@@ -170,6 +171,7 @@ export function CalendarPage() {
         const imageUrl = await generationService.generateImage(
           {
             workspaceId: currentWorkspace.id,
+            billingWorkspaceId: billingWorkspaceId ?? undefined,
             prompt: `${draft.title}\n\n${draft.caption}`,
             platform: draft.platform as Platform,
             date: draft.date,
@@ -186,7 +188,7 @@ export function CalendarPage() {
         window.clearTimeout(timeout)
       }
     },
-    [brand, currentWorkspace, saveDraftImage],
+    [billingWorkspaceId, brand, currentWorkspace, saveDraftImage],
   )
 
   const handleDeleteDraft = useCallback(
@@ -260,8 +262,17 @@ export function CalendarPage() {
       const selectedBrand = selectedWorkspace?.brand ?? brand
       targetWorkspaceId = selectedWorkspace?.id ?? currentWorkspace?.id
       if (!targetWorkspaceId) throw new Error('Selecione uma marca para gerar.')
+      // Cobrança no nível da conta: uma marca sem plano consome a franquia
+      // da marca da mesma conta que mantém a assinatura ativa.
+      const selectedWorkspaceHasPlan =
+        selectedWorkspace?.billingStatus === 'active' ||
+        selectedWorkspace?.billingStatus === 'trialing'
+      const imageBillingWorkspaceId = selectedWorkspaceHasPlan
+        ? targetWorkspaceId
+        : (billingWorkspaceId ?? targetWorkspaceId)
       const request = {
         workspaceId: targetWorkspaceId,
+        billingWorkspaceId: imageBillingWorkspaceId,
         prompt: values.prompt,
         dates: values.dates,
         time: values.time,
@@ -287,7 +298,11 @@ export function CalendarPage() {
       )
       controller.signal.throwIfAborted()
       setGenerationPhase('saving')
-      savedDrafts = await addDraftsForWorkspace(targetWorkspaceId, generated)
+      savedDrafts = await addDraftsForWorkspace(
+        targetWorkspaceId,
+        generated,
+        imageBillingWorkspaceId,
+      )
       pendingGeneration.current = null
       if (targetWorkspaceId !== currentWorkspace?.id) {
         await selectWorkspace(targetWorkspaceId)
