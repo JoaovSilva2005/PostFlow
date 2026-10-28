@@ -117,10 +117,15 @@ export class SupabasePublishingRepository implements PublishingRepository {
       throw new Error(`Falha ao consultar o dono da marca: ${error.message}`)
     }
     if (!data?.user_id) return false
-    const workspaceId = await this.workspaceAccess.getActiveBillingWorkspaceId(
-      data.user_id as string,
+    const ownerUserId = data.user_id as string
+    const workspaceId =
+      await this.workspaceAccess.getActiveBillingWorkspaceId(ownerUserId)
+    if (workspaceId !== null) return true
+    // Mesma regra das rotas (authorizationMiddleware): platform_owner ignora a cobrança.
+    return (
+      (await this.workspaceAccess.getPlatformRole(ownerUserId)) ===
+      'platform_owner'
     )
-    return workspaceId !== null
   }
 
   async signedImageUrl(imagePath: string): Promise<string | null> {

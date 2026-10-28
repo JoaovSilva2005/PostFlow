@@ -51,6 +51,7 @@ type SavedDraftRow = ReturnType<typeof savedDraft> & { image_path?: string }
 function createSupabaseMock(
   rpcResult: { data: unknown; error: unknown },
   currentDraft: SavedDraftRow = savedDraft(),
+  draftExists = true,
 ) {
   const rpc = vi.fn().mockResolvedValue(rpcResult)
   const storageBucket = {
@@ -67,6 +68,27 @@ function createSupabaseMock(
     let selectedColumns = ''
     let updatedRow: SavedDraftRow | null = null
     const chain = {
+      delete: vi.fn(() => {
+        const allowed: unknown[] = []
+        const deleteChain = {
+          eq: vi.fn(() => deleteChain),
+          in: vi.fn((_column: string, values: unknown[]) => {
+            allowed.push(...values)
+            return deleteChain
+          }),
+          select: vi.fn(() => deleteChain),
+          then: (resolve: (value: unknown) => void) =>
+            resolve({
+              data:
+                draftExists &&
+                (allowed.length === 0 || allowed.includes(currentDraft.status))
+                  ? [{ id: currentDraft.id, image_path: null }]
+                  : [],
+              error: null,
+            }),
+        }
+        return deleteChain
+      }),
       select: vi.fn((columns: string) => {
         selectedColumns = columns
         return chain
@@ -104,6 +126,8 @@ function createSupabaseMock(
                   }
           return { data: platform, error: null }
         }
+        if (table === 'post_drafts' && selectedColumns === 'id')
+          return { data: draftExists ? { id: currentDraft.id } : null, error: null }
         if (
           table === 'post_drafts' &&
           selectedColumns.startsWith('image_path')
@@ -663,5 +687,63 @@ describe('aprovação para agendamento', () => {
       publishError: 'falha antiga',
       externalPostUrl: 'https://demo.postflow.local/p/1',
     })
+  })
+})
+
+describe('DELETE /drafts/:id', () => {
+  const url = `/api/workspaces/${workspaceId}/drafts/${draft.id}`
+
+  it('exclui post em status editável e devolve 204', async () => {
+    const { client } = createSupabaseMock({ data: null, error: null })
+    const response = await request(createTestApp(client)).delete(url)
+    expect(response.status).toBe(204)
+  })
+
+  it.each(['published', 'publishing'])(
+    'devolve 409 e não exclui post com status %s',
+    async (status) => {
+      const { client } = createSupabaseMock(
+        { data: null, error: null },
+        savedDraft({ ...draft, status }),
+      )
+      const response = await request(createTestApp(client)).delete(url)
+      expect(response.status).toBe(409)
+      expect(response.body.error).toBe(
+        'Este post já está em publicação ou foi publicado e não pode ser alterado.',
+      )
+    },
+  )
+
+  it('devolve 404 quando o post não existe', async () => {
+    const { client } = createSupabaseMock(
+      { data: null, error: null },
+      savedDraft(),
+      false,
+    )
+    const response = await request(createTestApp(client)).delete(url)
+    expect(response.status).toBe(404)
+  })
+})
+
+describe('status inicial na criação de rascunhos', () => {
+  it.each(['published', 'failed'])(
+    'POST /drafts com status %s devolve 400 e não chama a RPC',
+    async (status) => {
+      const { client, rpc } = createSupabaseMock({ data: null, error: null })
+      const response = await request(createTestApp(client))
+        .post(`/api/workspaces/${workspaceId}/drafts`)
+        .send({ ...draft, status })
+      expect(response.status).toBe(400)
+      expect(rpc).not.toHaveBeenCalled()
+    },
+  )
+
+  it('POST /drafts/batch com item scheduled devolve 400 e não chama a RPC', async () => {
+    const { client, rpc } = createSupabaseMock({ data: null, error: null })
+    const response = await request(createTestApp(client))
+      .post(`/api/workspaces/${workspaceId}/drafts/batch`)
+      .send([{ ...draft, status: 'scheduled' }])
+    expect(response.status).toBe(400)
+    expect(rpc).not.toHaveBeenCalled()
   })
 })

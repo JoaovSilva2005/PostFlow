@@ -428,11 +428,11 @@ export function CalendarPage() {
       const draftLabel = draftCount === 1 ? 'rascunho' : 'rascunhos'
       if (generationService.generateImage) {
         setGenerationNotice(
-          `${draftCount} ${draftLabel} com imagens salvos na agenda para revisão. A publicação é manual.`,
+          `${draftCount} ${draftLabel} com imagens salvos na agenda para revisão. Aprove cada post para agendar a publicação.`,
         )
       } else {
         setGenerationNotice(
-          `${draftCount} ${draftLabel} salvos na agenda para revisão. A publicação é manual.`,
+          `${draftCount} ${draftLabel} salvos na agenda para revisão. Aprove cada post para agendar a publicação.`,
         )
       }
       setIsGeneratorOpen(false)
@@ -453,7 +453,7 @@ export function CalendarPage() {
       } else if (draftsWereSaved) {
         const draftCount = savedDrafts.length
         setGenerationNotice(
-          `${draftCount} ${draftCount === 1 ? 'rascunho foi salvo' : 'rascunhos foram salvos'} com as imagens geradas. A publicação é manual.`,
+          `${draftCount} ${draftCount === 1 ? 'rascunho foi salvo' : 'rascunhos foram salvos'} com as imagens geradas. Aprove cada post para agendar a publicação.`,
         )
         setIsGeneratorOpen(false)
       } else {

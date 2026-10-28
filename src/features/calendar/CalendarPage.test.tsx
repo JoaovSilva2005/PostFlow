@@ -114,7 +114,7 @@ describe('CalendarPage', () => {
       within(dialog).getByRole('button', { name: 'Gerar 21 rascunhos' }),
     )
     expect(await screen.findByRole('status')).toHaveTextContent(
-      '21 rascunhos salvos na agenda para revisão. A publicação é manual.',
+      '21 rascunhos salvos na agenda para revisão. Aprove cada post para agendar a publicação.',
     )
     const created = repository.snapshot().drafts.slice(drafts.length)
     expect(created).toHaveLength(21)

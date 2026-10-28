@@ -67,3 +67,39 @@ describe('SupabasePublishingRepository.claimDue', () => {
     expect(calls).toContain('post_hashtags.order(hashtag)')
   })
 })
+
+describe('SupabasePublishingRepository.isPublishingAllowed', () => {
+  function build(platformRole: string | null) {
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      limit: () => builder,
+      maybeSingle: async () => ({ data: { user_id: 'owner-1' }, error: null }),
+    }
+    const supabase = { from: () => builder } as unknown as SupabaseClient
+    const roleLookups: string[] = []
+    const access = {
+      getBillingStatus: async () => 'canceled',
+      getActiveBillingWorkspaceId: async () => null,
+      getPlatformRole: async (userId: string) => {
+        roleLookups.push(userId)
+        return platformRole
+      },
+    } as unknown as WorkspaceAccessRepository
+    return {
+      repository: new SupabasePublishingRepository(supabase, access),
+      roleLookups,
+    }
+  }
+
+  it('libera dono platform_owner sem assinatura (mesmo bypass das rotas)', async () => {
+    const { repository, roleLookups } = build('platform_owner')
+    await expect(repository.isPublishingAllowed('b1')).resolves.toBe(true)
+    expect(roleLookups).toEqual(['owner-1'])
+  })
+
+  it('bloqueia dono comum sem assinatura', async () => {
+    const { repository } = build(null)
+    await expect(repository.isPublishingAllowed('b1')).resolves.toBe(false)
+  })
+})
