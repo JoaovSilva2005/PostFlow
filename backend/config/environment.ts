@@ -97,6 +97,8 @@ export const environment = {
       serviceRoleKey ?? requiredEnvironmentVariable('SUPABASE_SERVICE_ROLE_KEY')
     )
   },
+  /** Segredo Bearer do pg_cron para a rota interna do agendador. */
+  cronSecret: process.env.CRON_SECRET?.trim() || '',
   openAiApiKey: () => requiredEnvironmentVariable('OPENAI_API_KEY'),
   openAiTextModel: process.env.OPENAI_TEXT_MODEL?.trim() || 'gpt-6-luna',
   openAiImageModel:

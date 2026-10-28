@@ -58,6 +58,10 @@ import { createBrandRouter } from './modules/brand/brandRoutes.js'
 import { createAiUsageRouter } from './modules/ai-usage/aiUsageRoutes.js'
 import { AiUsageService } from './modules/ai-usage/aiUsageService.js'
 import { SupabaseAiUsageRepository } from './modules/ai-usage/aiUsageRepository.js'
+import { PublishingService } from './modules/publishing/publishingService.js'
+import { SupabasePublishingRepository } from './modules/publishing/publishingRepository.js'
+import { DemoSocialPublisher } from './modules/publishing/demoSocialPublisher.js'
+import { createInternalPublishingRouter } from './modules/publishing/publishingRoutes.js'
 
 interface AppOptions {
   authService?: AuthService
@@ -67,6 +71,7 @@ interface AppOptions {
   workspaceAccessRepository?: WorkspaceAccessRepository
   billingRepository?: BillingRepository
   aiUsageService?: AiUsageService
+  publishingService?: Pick<PublishingService, 'publishDue'>
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -122,6 +127,15 @@ export function createApp(options: AppOptions = {}) {
       : new AiUsageService(
           new SupabaseAiUsageRepository(createSupabaseAdminDataClient()),
         ))
+  const publishingService =
+    options.publishingService ??
+    new PublishingService(
+      new SupabasePublishingRepository(
+        createSupabaseAdminDataClient(),
+        workspaceAccess,
+      ),
+      new DemoSocialPublisher(),
+    )
 
   app.use(
     cors({
@@ -289,6 +303,12 @@ export function createApp(options: AppOptions = {}) {
       requirePlatformRole(workspaceAccess, 'platform_owner', 'finance_admin'),
       requirePlatformRole(workspaceAccess, 'platform_owner'),
     ),
+  )
+
+  // Chamada servidor a servidor do pg_cron: autenticada apenas pelo segredo Bearer.
+  app.use(
+    '/api/internal',
+    createInternalPublishingRouter(publishingService, environment.cronSecret),
   )
 
   app.use((_request, response) => {
