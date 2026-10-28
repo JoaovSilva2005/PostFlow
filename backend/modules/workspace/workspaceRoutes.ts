@@ -13,6 +13,12 @@ import {
   isValidTimeZone,
   localDateTimeToIso,
 } from '../../../shared/domain/contentTime.js'
+import {
+  CLIENT_SETTABLE_STATUSES,
+  isEditableStatus,
+  resolveStatusAfterClientPatch,
+  type PostStatus,
+} from '../../../shared/domain/postPublishing.js'
 import { socialPlatformSchema } from '../../../shared/domain/socialPlatforms.js'
 
 const brandSchema = z
@@ -46,7 +52,7 @@ const draftSchema = z
     visualText: z.string().trim().min(1).max(160),
     color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
     date: z.iso.date(),
-    status: z.enum(['draft', 'scheduled', 'published']),
+    status: z.enum(CLIENT_SETTABLE_STATUSES),
     format: contentFormatSchema.optional(),
     formatData: contentFormatDataSchema.optional(),
     persona: z.string().trim().max(160).optional(),
@@ -188,6 +194,24 @@ function validateCaptionLength(
   }
 }
 
+const NOT_EDITABLE_MESSAGE =
+  'Este post já está em publicação ou foi publicado e não pode ser alterado.'
+const FUTURE_SCHEDULE_MESSAGE = 'Escolha um horário futuro para agendar o post.'
+
+function assertFutureSchedule(scheduledAt: string | null | undefined) {
+  const time = scheduledAt ? new Date(scheduledAt).getTime() : Number.NaN
+  if (!(time > Date.now())) throw new HttpError(400, FUTURE_SCHEDULE_MESSAGE)
+}
+
+function approvalPatch() {
+  return {
+    status: 'scheduled',
+    approved_at: new Date().toISOString(),
+    publish_error: null,
+    publish_attempts: 0,
+  }
+}
+
 function throwDraftWriteError(error: unknown, operation: string): never {
   const details =
     error && typeof error === 'object'
@@ -235,6 +259,9 @@ function dbDraft(
     image_path: imagePath ?? null,
   }
 }
+function optionalString(value: unknown) {
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
 function toDraft(row: any) {
   const timezone = row.schedule_timezone ?? DEFAULT_POST_TIMEZONE
   const scheduled = dateTimePartsInZone(row.scheduled_at, timezone)
@@ -258,6 +285,13 @@ function toDraft(row: any) {
       typeof row.image_path === 'string' && row.image_path.length > 0,
     format,
     persona: row.audience_persona ?? '',
+    publishedAt: optionalString(row.published_at),
+    publishError: optionalString(row.publish_error),
+    publishMode:
+      row.publish_mode === 'demo' || row.publish_mode === 'live'
+        ? (row.publish_mode as 'demo' | 'live')
+        : undefined,
+    externalPostUrl: optionalString(row.external_post_url),
     formatData: formatData.success
       ? formatData.data
       : {
@@ -481,19 +515,25 @@ export function createWorkspaceRouter(
       const brandId = workspaceId(request)
       const { data: current, error: currentError } = await supabase
         .from('post_drafts')
-        .select('image_path')
+        .select('image_path,status')
         .eq('id', id)
         .eq('brand_id', brandId)
         .maybeSingle()
       if (currentError)
         throw new Error(`Falha ao consultar post: ${currentError.message}`)
       if (!current) throw new HttpError(404, 'Post não encontrado.')
+      if (!isEditableStatus(current.status as PostStatus))
+        throw new HttpError(409, NOT_EDITABLE_MESSAGE)
 
       const nextImagePath = `${brandId}/${id}/${crypto.randomUUID()}`
       await uploadDraftImage(supabase, nextImagePath, imageUrl)
       const { data: updated, error: updateError } = await supabase
         .from('post_drafts')
-        .update({ image_path: nextImagePath })
+        .update(
+          current.status === 'scheduled'
+            ? { image_path: nextImagePath, status: 'draft' }
+            : { image_path: nextImagePath },
+        )
         .eq('id', id)
         .eq('brand_id', brandId)
         .select('*,social_platforms(name),post_hashtags(hashtag)')
@@ -523,7 +563,15 @@ export function createWorkspaceRouter(
     const platform = await platformInfoByName(supabase, input.platform)
     validateCaptionLength(platform, input.caption, input.hashtags)
     const id = input.id ?? crypto.randomUUID()
-    const draftToSave = { ...input, id }
+    // O RPC de criação não grava os campos de aprovação: cria como rascunho
+    // e, se o pedido era agendar, aprova em seguida pelo RPC de atualização.
+    const draftToSave = { ...input, id, status: 'draft' as const }
+    const approveOnCreate = input.status === 'scheduled'
+    if (approveOnCreate) {
+      assertFutureSchedule(
+        dbDraft(draftToSave, workspaceId(request), platform.id).scheduled_at,
+      )
+    }
     const imagePath = input.imageUrl
       ? `${workspaceId(request)}/${id}`
       : undefined
@@ -555,6 +603,20 @@ export function createWorkspaceRouter(
     } catch (error) {
       if (imagePath) await removeDraftImage(supabase, imagePath)
       throw error
+    }
+    if (approveOnCreate) {
+      const { data, error } = await supabase.rpc(
+        'update_post_draft_with_hashtags',
+        {
+          p_brand_id: workspaceId(request),
+          p_post_id: id,
+          p_patch: approvalPatch(),
+          p_hashtags: null,
+        },
+      )
+      if (error) throwDraftWriteError(error, 'Falha ao agendar post')
+      created = Array.isArray(data) ? data[0] : data
+      if (!created) throw new HttpError(404, 'Post não encontrado.')
     }
     response.status(201).json({
       data: await toDraftWithImage(supabase, created),
@@ -604,7 +666,7 @@ export function createWorkspaceRouter(
       const { data: current, error: currentError } = await supabase
         .from('post_drafts')
         .select(
-          'scheduled_at,schedule_timezone,caption,platform_id,post_hashtags(hashtag)',
+          'status,scheduled_at,schedule_timezone,caption,platform_id,post_hashtags(hashtag)',
         )
         .eq('id', id)
         .eq('brand_id', workspaceId(request))
@@ -612,6 +674,8 @@ export function createWorkspaceRouter(
       if (currentError)
         throw new Error(`Falha ao consultar rascunho: ${currentError.message}`)
       if (!current) throw new HttpError(404, 'Post não encontrado.')
+      if (!isEditableStatus(current.status as PostStatus))
+        throw new HttpError(409, NOT_EDITABLE_MESSAGE)
 
       const patch: Record<string, unknown> = {}
       let targetPlatform: PlatformInfo | undefined
@@ -663,7 +727,30 @@ export function createWorkspaceRouter(
       if (input.format !== undefined) patch.content_format = input.format
       if (input.formatData !== undefined) patch.format_data = input.formatData
       if (input.persona !== undefined) patch.audience_persona = input.persona
-      if (input.status !== undefined) patch.status = input.status
+      const contentOrScheduleChanged = [
+        'title',
+        'caption',
+        'hashtags',
+        'visualText',
+        'platform',
+        'date',
+        'time',
+        'timezone',
+        'format',
+        'formatData',
+      ].some((key) => key in input)
+      const nextStatus = resolveStatusAfterClientPatch({
+        current: current.status as PostStatus,
+        requested: input.status,
+        contentOrScheduleChanged,
+      })
+      if (nextStatus !== current.status) patch.status = nextStatus
+      if (input.status === 'scheduled') {
+        assertFutureSchedule(
+          (patch.scheduled_at as string | undefined) ?? current.scheduled_at,
+        )
+        Object.assign(patch, approvalPatch())
+      }
       const { data, error } = await supabase.rpc(
         'update_post_draft_with_hashtags',
         {
