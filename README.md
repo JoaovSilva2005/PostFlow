@@ -14,7 +14,7 @@ O PostFlow reúne autenticação, configuração da marca, geração de textos, 
 - separação dos dados por workspace e níveis de acesso;
 - seleção de várias marcas como workspaces independentes;
 - configuração da identidade da marca;
-- geração de título, legenda, hashtags, texto visual e arte quadrada por IA;
+- geração de título, legenda, hashtags, texto visual e arte ajustada à rede por IA;
 - revisão do conteúdo antes de salvar;
 - agenda com criação, edição e exclusão de rascunhos;
 - consulta de plano, consumo, faturas e comprovantes;
@@ -97,7 +97,7 @@ O comando inicia:
 | `OPENAI_IMAGE_MODEL`                                 | Modelo de imagem padrão; padrão `gpt-image-2.5-flare` |
 | `OPENAI_IMAGE_QUALITY_MODEL`                         | Modelo opcional de maior qualidade; padrão `gpt-image-2.5-sunburst` |
 | `OPENAI_IMAGE_QUALITY`                               | Qualidade da API de imagens: `low`, `medium`, `high`, `xhigh`, `max` ou `auto`; padrão `medium` |
-| `OPENAI_IMAGE_SIZE`                                  | Tamanho da imagem, por padrão `1024x1024`          |
+| `OPENAI_IMAGE_SIZE`                                  | Dimensões explícitas só são usadas quando a proporção coincide com a rede; caso contrário, vale o formato da rede |
 | `APP_URL`                                            | Origem autorizada e retorno da recuperação de senha |
 | `APP_ALLOWED_ORIGINS`                               | Origens HTTPS adicionais confiáveis, separadas por vírgula |
 

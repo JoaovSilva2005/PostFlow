@@ -6,7 +6,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
-import type { PostDraft } from '../../domain/models'
+import type { BrandProfile, PostDraft } from '../../domain/models'
 import {
   generationError,
   generationService,
@@ -42,6 +42,7 @@ export function CalendarPage() {
   const {
     brand,
     currentWorkspace,
+    billingWorkspaceId,
     availableWorkspaces,
     drafts,
     updateDraft,
@@ -49,7 +50,6 @@ export function CalendarPage() {
     addDraftsForWorkspace,
     selectWorkspace,
     refreshDraftImageUrl,
-    saveDraftImage,
   } = useApp()
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const draftDate = location.state?.draftDate
@@ -71,10 +71,14 @@ export function CalendarPage() {
   const [generatorPrompt, setGeneratorPrompt] = useState('')
   const [generatorError, setGeneratorError] = useState('')
   const [generationPhase, setGenerationPhase] = useState<
-    'idle' | 'generating' | 'saving'
+    'idle' | 'generating' | 'generating-images' | 'saving'
   >('idle')
   const isGenerating = generationPhase !== 'idle'
   const [generationNotice, setGenerationNotice] = useState('')
+  const [imageProgress, setImageProgress] = useState<{
+    completed: number
+    total: number
+  } | null>(null)
   const generationController = useRef<AbortController | null>(null)
   const visibleMonthKey = toDateKey(visibleMonth).slice(0, 7)
   const monthDrafts = useMemo(
@@ -151,34 +155,36 @@ export function CalendarPage() {
     [updateDraft],
   )
 
-  const handleGenerateDraftImage = useCallback(
-    async (draft: PostDraft) => {
-      if (!currentWorkspace?.id || !generationService.generateImage) {
+  const generateDraftImage = useCallback(
+    async (
+      draft: PostDraft,
+      workspaceId: string,
+      imageBillingWorkspaceId: string | undefined,
+      imageBrand: BrandProfile | null,
+      signal: AbortSignal,
+      prompt = `${draft.title}\n\n${draft.caption}`,
+    ) => {
+      if (!generationService.generateImage) {
         throw new Error('Geração de imagem indisponível neste momento.')
       }
-      const controller = new AbortController()
-      const timeout = window.setTimeout(() => controller.abort(), 90_000)
-      try {
-        const imageUrl = await generationService.generateImage(
-          {
-            workspaceId: currentWorkspace.id,
-            prompt: `${draft.title}\n\n${draft.caption}`,
-            platform: draft.platform as Platform,
-            date: draft.date,
-            brand,
-            history: [],
-            previousDraft: draft,
-            imageTier: 'standard',
-          },
-          controller.signal,
-        )
-        const savedDraft = await saveDraftImage(draft.id, imageUrl)
-        return savedDraft.imageUrl ?? null
-      } finally {
-        window.clearTimeout(timeout)
-      }
+      return generationService.generateImage(
+        {
+          workspaceId,
+          billingWorkspaceId: imageBillingWorkspaceId,
+          prompt,
+          platform: draft.platform as Platform,
+          date: draft.date,
+          brand: imageBrand,
+          history: [],
+          previousDraft: draft,
+          imageTier: 'standard',
+          format: draft.format,
+          formatData: draft.formatData,
+        },
+        signal,
+      )
     },
-    [brand, currentWorkspace, saveDraftImage],
+    [],
   )
 
   const handleDeleteDraft = useCallback(
@@ -241,6 +247,11 @@ export function CalendarPage() {
     setGenerationPhase('generating')
     setGeneratorError('')
     setGenerationNotice('')
+    setImageProgress(null)
+    let savedDrafts: PostDraft[] = []
+    let draftsWereSaved = false
+    let generatedImages = 0
+    let targetWorkspaceId: string | undefined
 
     try {
       if (!generationService.generateBatch) {
@@ -250,10 +261,20 @@ export function CalendarPage() {
         ({ id }) => id === values.brandId,
       )
       const selectedBrand = selectedWorkspace?.brand ?? brand
-      const targetWorkspaceId = selectedWorkspace?.id ?? currentWorkspace?.id
+      const selectedWorkspaceId =
+        selectedWorkspace?.id ?? currentWorkspace?.id
+      if (!selectedWorkspaceId) throw new Error('Selecione uma marca para gerar.')
+      targetWorkspaceId = selectedWorkspaceId
+      const selectedWorkspaceHasPlan =
+        selectedWorkspace?.billingStatus === 'active' ||
+        selectedWorkspace?.billingStatus === 'trialing'
+      const imageBillingWorkspaceId = selectedWorkspaceHasPlan
+        ? selectedWorkspace?.id
+        : billingWorkspaceId ?? selectedWorkspaceId
       const generated = await generationService.generateBatch(
         {
-          workspaceId: targetWorkspaceId,
+          workspaceId: selectedWorkspaceId,
+          billingWorkspaceId: imageBillingWorkspaceId,
           prompt: values.prompt,
           dates: values.dates,
           time: values.time,
@@ -266,15 +287,69 @@ export function CalendarPage() {
         controller.signal,
       )
       controller.signal.throwIfAborted()
-      setGenerationPhase('saving')
-      if (!targetWorkspaceId) throw new Error('Selecione uma marca para gerar.')
-      const savedDrafts = await addDraftsForWorkspace(
-        targetWorkspaceId,
-        generated,
-      )
-      if (targetWorkspaceId !== currentWorkspace?.id) {
-        await selectWorkspace(targetWorkspaceId)
+      const draftsByDate = new Map<string, PostDraft[]>()
+      for (const draft of generated) {
+        const dateDrafts = draftsByDate.get(draft.date) ?? []
+        dateDrafts.push(draft)
+        draftsByDate.set(draft.date, dateDrafts)
       }
+      const imageGroups = [...draftsByDate.values()]
+      const imagesByDate = new Map<string, string>()
+
+      let imageFailure: unknown = null
+      if (generationService.generateImage && generated.length > 0) {
+        setGenerationPhase('generating-images')
+        setImageProgress({ completed: 0, total: imageGroups.length })
+        let nextImageGroupIndex = 0
+        const generateNextDateImage = async () => {
+          while (!controller.signal.aborted && !imageFailure) {
+            const imageGroupIndex = nextImageGroupIndex++
+            const draftsForDate = imageGroups[imageGroupIndex]
+            const representativeDraft = draftsForDate?.[0]
+            if (!draftsForDate || !representativeDraft) return
+            try {
+              const imageUrl = await generateDraftImage(
+                representativeDraft,
+                selectedWorkspaceId,
+                imageBillingWorkspaceId,
+                selectedBrand,
+                controller.signal,
+                values.prompt,
+              )
+              imagesByDate.set(representativeDraft.date, imageUrl)
+              generatedImages += 1
+              setImageProgress({
+                completed: generatedImages,
+                total: imageGroups.length,
+              })
+            } catch (error) {
+              if (!controller.signal.aborted) imageFailure = error
+              return
+            }
+          }
+        }
+        await Promise.all(
+          Array.from(
+            { length: Math.min(3, imageGroups.length) },
+            () => generateNextDateImage(),
+          ),
+        )
+        controller.signal.throwIfAborted()
+        if (imageFailure) throw imageFailure
+      }
+
+      const completedDrafts = generated.map((draft) => {
+        const imageUrl = imagesByDate.get(draft.date)
+        return imageUrl ? { ...draft, imageUrl } : draft
+      })
+      controller.signal.throwIfAborted()
+      setGenerationPhase('saving')
+      savedDrafts = await addDraftsForWorkspace(
+        selectedWorkspaceId,
+        completedDrafts,
+        imageBillingWorkspaceId,
+      )
+      draftsWereSaved = true
       const generatedDate = new Date(
         `${savedDrafts[0]?.date ?? generated[0]?.date}T12:00:00`,
       )
@@ -283,21 +358,54 @@ export function CalendarPage() {
           new Date(generatedDate.getFullYear(), generatedDate.getMonth(), 1),
         )
       }
+
+      if (selectedWorkspaceId !== currentWorkspace?.id) {
+        await selectWorkspace(selectedWorkspaceId)
+      }
       setGeneratorPrompt('')
-      setGenerationNotice(
-        `${savedDrafts.length} ${savedDrafts.length === 1 ? 'rascunho salvo' : 'rascunhos salvos'} na agenda para revisão. A publicação é manual.`,
-      )
+      const draftCount = savedDrafts.length
+      const draftLabel = draftCount === 1 ? 'rascunho' : 'rascunhos'
+      if (generationService.generateImage) {
+        setGenerationNotice(
+          `${draftCount} ${draftLabel} com imagens salvos na agenda para revisão. A publicação é manual.`,
+        )
+      } else {
+        setGenerationNotice(
+          `${draftCount} ${draftLabel} salvos na agenda para revisão. A publicação é manual.`,
+        )
+      }
       setIsGeneratorOpen(false)
     } catch (error) {
       if (controller.signal.aborted) {
-        setGeneratorError('Geração cancelada. Sua agenda não foi alterada.')
+        if (draftsWereSaved) {
+          const draftCount = savedDrafts.length
+          setGenerationNotice(
+            `${draftCount} ${draftCount === 1 ? 'rascunho salvo' : 'rascunhos salvos'} com as imagens geradas.`,
+          )
+          if (
+            targetWorkspaceId &&
+            targetWorkspaceId !== currentWorkspace?.id
+          ) {
+            await selectWorkspace(targetWorkspaceId)
+          }
+          setIsGeneratorOpen(false)
+        } else {
+          setGeneratorError('Geração cancelada. Sua agenda não foi alterada.')
+        }
+      } else if (draftsWereSaved) {
+        const draftCount = savedDrafts.length
+        setGenerationNotice(
+          `${draftCount} ${draftCount === 1 ? 'rascunho foi salvo' : 'rascunhos foram salvos'} com as imagens geradas. A publicação é manual.`,
+        )
+        setIsGeneratorOpen(false)
       } else {
-        setGeneratorError(generationError(error))
+        setGeneratorError(`${generationError(error)} Nenhum rascunho foi salvo.`)
       }
     } finally {
       if (generationController.current === controller) {
         generationController.current = null
       }
+      setImageProgress(null)
       setGenerationPhase('idle')
     }
   }
@@ -546,11 +654,6 @@ export function CalendarPage() {
           onSave={handleSaveDraft}
           onDateChange={handleDraftDateChange}
           onRefreshImage={refreshDraftImageUrl}
-          onGenerateImage={
-            generationService.generateImage
-              ? handleGenerateDraftImage
-              : undefined
-          }
           onDelete={handleDeleteDraft}
           onDuplicate={handleDuplicateDraft}
         />
@@ -573,6 +676,7 @@ export function CalendarPage() {
           }
           initialPrompt={generatorPrompt}
           phase={generationPhase}
+          imageProgress={imageProgress}
           error={generatorError}
           onClose={closeGenerator}
           onCancel={cancelGeneration}
