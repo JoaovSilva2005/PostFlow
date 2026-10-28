@@ -600,7 +600,7 @@ describe('aprovação para agendamento', () => {
     from.mockImplementation((table: string) => {
       const chain = original(table) as any
       const inFn = chain.in
-      chain.in = (column: string, values: unknown[]) => {
+      chain.in = (column: string) => {
         inFn(column, ['__nenhum__'])
         return chain
       }
