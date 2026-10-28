@@ -9,7 +9,9 @@ import type {
   WorkspaceAccess,
 } from './auth'
 
-export type PostStatus = 'draft' | 'scheduled' | 'published'
+import type { PostStatus } from '../../shared/domain/postPublishing'
+
+export type { PostStatus }
 
 export interface BrandProfile {
   name: string

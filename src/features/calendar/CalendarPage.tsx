@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
+import { postStatusLabel } from '../../../shared/domain/postPublishing'
 import type { BrandProfile, PostDraft } from '../../domain/models'
 import {
   generationError,
@@ -29,12 +30,6 @@ import {
   type GenerateContentValues,
 } from './GenerateContentSidebar'
 import styles from './CalendarPage.module.css'
-
-const STATUS_LABELS: Record<PostDraft['status'], string> = {
-  draft: 'Rascunho',
-  scheduled: 'Agendado',
-  published: 'Publicado',
-}
 
 export function CalendarPage() {
   const navigate = useNavigate()
@@ -574,7 +569,7 @@ export function CalendarPage() {
                                 />
                                 {draft.platform}
                               </span>{' '}
-                              · {STATUS_LABELS[draft.status]}
+                              · {postStatusLabel(draft.status)}
                             </small>
                           </div>
                         </button>
@@ -613,7 +608,7 @@ export function CalendarPage() {
                         />
                         {draft.platform}
                       </span>{' '}
-                      · {STATUS_LABELS[draft.status]}
+                      · {postStatusLabel(draft.status)}
                     </small>
                   </div>
                   <span>Editar</span>
