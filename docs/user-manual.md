@@ -40,6 +40,10 @@ Acompanhe cada destino em **Integrações**: estar na fila ou em processamento a
 
 TikTok exige escolhas explícitas de privacidade, indicação de conteúdo gerado por IA e opções comerciais. Esta primeira entrega aceita imagem estática; carrossel, vídeo/Reels, LinkedIn Páginas e X não têm publicação direta. Consulte o [guia de ativação](social-publishing-setup.md).
 
+### Demonstrar a publicação (modo demonstração)
+
+Quando o servidor está em modo demonstração, a tela **Integrações** exibe "Modo demonstração: as conexões e publicações são simuladas e nada é enviado às redes sociais." Para demonstrar: em **Integrações**, clique em **Conectar conta** na rede desejada e conclua o retorno imediato; a conta aparece como "Instagram — conta de demonstração" (ou da rede escolhida). Abra um post na **Agenda**, confira a prévia em **Publicar nas redes**, escolha a conta, informe uma data poucos minutos à frente em **Agendar (opcional)** e clique em **Agendar publicação** (ou em **Publicar agora**). Em seguida acompanhe em **Integrações**: ao ser processada, a publicação aparece como **Publicado (simulado)**. Nada é enviado às redes sociais reais.
+
 ## Administração interna do PostFlow
 
 A seção **Administração** aparece apenas para membros internos da plataforma:

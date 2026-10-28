@@ -100,6 +100,7 @@ O comando inicia:
 | `OPENAI_IMAGE_SIZE`                                  | Tamanho da imagem, por padrão `1024x1024`                                                       |
 | `APP_URL`                                            | Origem autorizada e retorno da recuperação de senha                                             |
 | `APP_ALLOWED_ORIGINS`                                | Origens HTTPS adicionais confiáveis, separadas por vírgula                                      |
+| `SOCIAL_DEMO_MODE`                                   | `true` simula redes sociais, sem chamadas externas; veja `docs/social-publishing-setup.md`      |
 
 Nunca use uma chave administrativa do Supabase ou uma chave de IA em variável iniciada com `VITE_`. Em produção, configure também um SMTP próprio no Supabase para evitar o limite reduzido do serviço de e-mail de teste.
 
