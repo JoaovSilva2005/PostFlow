@@ -105,5 +105,8 @@ export const environment = {
     process.env.OPENAI_IMAGE_QUALITY_MODEL?.trim() ||
     'gpt-image-2.5-sunburst',
   openAiImageQuality: process.env.OPENAI_IMAGE_QUALITY?.trim() || 'medium',
-  openAiImageSize: process.env.OPENAI_IMAGE_SIZE?.trim() || '1024x1024',
+  openAiImageSize: process.env.OPENAI_IMAGE_SIZE?.trim() || 'auto',
+  aiCostUsdBrlFallbackRate: Number(
+    process.env.AI_COST_USD_BRL_FALLBACK_RATE ?? 0,
+  ),
 }

@@ -20,12 +20,18 @@ vulnerável o provisionamento inicial baseado em leitura seguida de inserção.
 - A reserva bloqueia `usage_counters` do workspace e período, soma consumo e
   reservas ativas e compara com os limites carregados do plano no banco.
 - Uma geração individual conta um texto e uma imagem. Cada item do lote conta um
-  texto e nenhuma imagem. O provedor só é chamado depois da reserva.
+  texto; depois de salvar os rascunhos, o planejador reserva uma imagem por data
+  e reutiliza a arte nos destinos dessa data. O provedor só é chamado depois da
+  reserva correspondente.
 - Sucesso consome as unidades; falha do provedor as libera. Reservas pendentes
   expiram após uma hora e são limpas na leitura da cobrança ou na próxima
   tentativa daquele workspace e período.
 - RPCs persistem rascunho/hashtags, marca/membership e workspace inicial
   atomicamente. O provisionamento usa advisory lock por usuário.
+- A criação de marcas usa o mesmo lock para limitar contas comuns a duas marcas
+  próprias e permitir que `platform_owner` ignore o limite.
+- A assinatura ativa é resolvida entre as marcas criadas pela conta. Gerações
+  em outras marcas próprias reservam consumo no workspace que mantém o plano.
 - As funções usam `search_path` vazio e permissões explícitas para
   `service_role`; não são chamadas diretamente por `anon` ou `authenticated`.
 - Migrações históricas permanecem em seus diretórios. Novas migrações são

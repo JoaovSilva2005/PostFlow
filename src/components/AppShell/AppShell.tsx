@@ -13,6 +13,7 @@ import {
   ChartNoAxesCombined,
   ShieldCheck,
   BadgeDollarSign,
+  Coins,
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
@@ -56,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
   const {
     authUser,
-    billingStatus,
+    hasActivePlan,
     brand,
     currentWorkspace,
     databaseStatus,
@@ -76,8 +77,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     setMenuOpen(false)
     setSearch('')
   }, [pathname])
-  const hasActivePlan =
-    billingStatus === 'active' || billingStatus === 'trialing'
   const canUseProduct = hasActivePlan || platformRole === 'platform_owner'
   const visibleWorkspaceNavigation = canUseProduct
     ? workspaceNavigation
@@ -93,6 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           label: 'Administração',
           links: [
             { to: '/admin/finance', label: 'Financeiro', icon: WalletCards },
+            { to: '/admin/ai-usage', label: 'Custos de IA', icon: Coins },
             { to: '/admin/fiscal', label: 'Fiscal', icon: ReceiptText },
             { to: '/admin/accounting', label: 'Contábil', icon: ChartNoAxesCombined },
             {
