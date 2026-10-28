@@ -33,6 +33,38 @@ function readProviderError(error: unknown): {
   }
 }
 
+const NETWORK_ERROR_CODES = new Set([
+  'ENOTFOUND',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'EAI_AGAIN',
+  'UND_ERR_CONNECT_TIMEOUT',
+])
+
+function hasNetworkCode(value: unknown) {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    typeof (value as { code?: unknown }).code === 'string' &&
+    NETWORK_ERROR_CODES.has((value as { code: string }).code)
+  )
+}
+
+// Distingue falha do provedor (rede, 5xx) de credenciais inválidas.
+export function isAuthProviderUnavailable(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+
+  const { status } = readProviderError(error)
+  if ((error as { name?: unknown }).name === 'AuthRetryableFetchError') return true
+  if (status !== undefined && status >= 500) return true
+  if (error instanceof TypeError) return true
+
+  return (
+    hasNetworkCode(error) || hasNetworkCode((error as { cause?: unknown }).cause)
+  )
+}
+
 function registrationError(error: unknown) {
   const providerError = readProviderError(error)
   const searchableError = `${providerError.code} ${providerError.message}`.toLowerCase()
@@ -107,7 +139,14 @@ export class AuthService {
   async login(email: string, password: string) {
     try {
       return await this.provider.login(email, password)
-    } catch {
+    } catch (error) {
+      if (isAuthProviderUnavailable(error)) {
+        throw new HttpError(
+          503,
+          'Serviço de autenticação indisponível. Tente novamente em instantes.',
+        )
+      }
+
       throw new HttpError(401, 'E-mail ou senha inválidos.')
     }
   }

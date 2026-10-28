@@ -96,6 +96,59 @@ describe('autenticação', () => {
     expect(response.body.error).toBe('E-mail ou senha inválidos.')
   })
 
+  it('provedor lança AuthRetryableFetchError → 503 com a mensagem exata', async () => {
+    const provider = new InMemoryAuthProvider()
+    provider.login = async () => {
+      throw Object.assign(new Error('fetch failed'), {
+        name: 'AuthRetryableFetchError',
+        status: 0,
+      })
+    }
+    const { app } = testApp(provider)
+    const response = await request(app).post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    expect(response.status).toBe(503)
+    expect(response.body.error).toBe(
+      'Serviço de autenticação indisponível. Tente novamente em instantes.',
+    )
+  })
+
+  it('provedor lança erro com status 503 → 503', async () => {
+    const provider = new InMemoryAuthProvider()
+    provider.login = async () => {
+      throw Object.assign(new Error('upstream'), { status: 503 })
+    }
+    const { app } = testApp(provider)
+    const response = await request(app).post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    expect(response.status).toBe(503)
+  })
+
+  it('provedor lança invalid_credentials (status 400) → 401', async () => {
+    const provider = new InMemoryAuthProvider()
+    provider.login = async () => {
+      throw Object.assign(new Error('Invalid login credentials'), {
+        name: 'AuthApiError',
+        code: 'invalid_credentials',
+        status: 400,
+      })
+    }
+    const { app } = testApp(provider)
+    const response = await request(app).post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.body.error).toBe('E-mail ou senha inválidos.')
+  })
+
   it('autentica e mantém os tokens somente em cookies HttpOnly', async () => {
     const { app } = testApp()
     const agent = request.agent(app)
