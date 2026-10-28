@@ -95,6 +95,9 @@ describe('migração do agendador de publicação', () => {
     expect(body).toContain("p_patch ? 'approved_at'")
     expect(body).toContain("p_patch ? 'publish_error'")
     expect(body).toContain("p_patch ? 'publish_attempts'")
+    expect(body).toMatch(
+      /and post\.status in \('draft', 'scheduled', 'failed'\)\s+returning post\.\* into v_post/,
+    )
     expect(migration).toMatch(
       /revoke all on function public\.update_post_draft_with_hashtags\(uuid, uuid, jsonb, text\[\]\)\s+from public, anon, authenticated/,
     )
