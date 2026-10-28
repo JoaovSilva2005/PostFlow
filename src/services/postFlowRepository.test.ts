@@ -36,7 +36,7 @@ describe('ApiPostFlowRepository', () => {
       visualText: 'Uma ideia',
       color: '#123456',
       imageUrl: 'data:image/webp;base64,aW1hZ2U=',
-    })
+    }, 'paid-workspace')
 
     const body = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)) as Record<
       string,
@@ -46,6 +46,9 @@ describe('ApiPostFlowRepository', () => {
     expect(body).toMatchObject({
       title: 'Post de teste',
       caption: 'Legenda de teste.',
+    })
+    expect(fetch.mock.calls[0]?.[1]?.headers).toMatchObject({
+      'X-Billing-Workspace-Id': 'paid-workspace',
     })
   })
 
