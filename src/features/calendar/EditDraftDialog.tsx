@@ -24,6 +24,7 @@ import {
 import { Button } from '../../components/ui/Button'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import type { PostDraft } from '../../domain/models'
+import { postStatusLabel } from '../../../shared/domain/postPublishing'
 import { DraftSchedulePanel } from './DraftSchedulePanel'
 import { PostCreativePreview } from './PostCreativePreview'
 import styles from './CalendarPage.module.css'
@@ -495,11 +496,7 @@ function EditDraftCard({
         </div>
         <span className={styles.statusBadge} data-status={form.status}>
           <span />
-          {form.status === 'draft'
-            ? 'Rascunho'
-            : form.status === 'scheduled'
-              ? 'Agendado'
-              : 'Publicado'}
+          {postStatusLabel(form.status)}
         </span>
         <div className={styles.metaDate}>
           <CalendarClock size={15} />
