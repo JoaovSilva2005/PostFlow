@@ -2,12 +2,17 @@ import { Router, type RequestHandler } from 'express'
 import { z } from 'zod'
 import { HttpError } from '../../shared/HttpError.js'
 import type { ContentService } from './contentService.js'
+import type { ContentUsageReporter } from '../ai-usage/aiUsageTypes.js'
+import type { AiUsageService } from '../ai-usage/aiUsageService.js'
 import {
   CONTENT_PLATFORMS,
   type BatchContentGenerationInput,
   type ContentGenerationInput,
 } from './contentTypes.js'
-import { CONTENT_FORMATS } from '../../../shared/domain/contentFormats.js'
+import {
+  CONTENT_FORMATS,
+  contentFormatDataSchema,
+} from '../../../shared/domain/contentFormats.js'
 import type { ContentQuotaService, ContentQuotaUnits } from './contentQuota.js'
 import {
   DEFAULT_POST_TIMEZONE,
@@ -25,6 +30,8 @@ const generatedDraftSchema = z.object({
   status: z.literal('draft'),
   visualText: z.string().trim().min(1).max(160),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  format: z.enum(CONTENT_FORMATS).optional(),
+  formatData: contentFormatDataSchema.optional(),
   imageUrl: z
     .string()
     .max(6_000_000)
@@ -75,6 +82,8 @@ const requestSchema = z
       .max(12),
     previousDraft: generatedDraftSchema.nullable(),
     imageTier: z.enum(['standard', 'quality']).default('standard'),
+    format: z.enum(CONTENT_FORMATS).optional(),
+    formatData: contentFormatDataSchema.optional(),
   })
   .strict()
 
@@ -107,6 +116,12 @@ function requestWorkspaceId(request: Parameters<RequestHandler>[0]) {
   return workspaceId
 }
 
+function requestBillingWorkspaceId(
+  request: Parameters<RequestHandler>[0],
+) {
+  return request.billingWorkspaceId ?? requestWorkspaceId(request)
+}
+
 async function generateWithReservation<T>(
   quota: ContentQuotaService,
   workspaceId: string,
@@ -137,8 +152,41 @@ export function createContentRouter(
   service: ContentService,
   quota: ContentQuotaService,
   authorizeGeneration: RequestHandler = allowGeneration,
+  aiUsage?: AiUsageService,
 ) {
   const router = Router()
+
+  function usageReporter(
+    request: Parameters<RequestHandler>[0],
+    generationId: string,
+    draftCount: number,
+  ): ContentUsageReporter | undefined {
+    if (!aiUsage || !request.authUser) return undefined
+    const user = request.authUser
+    const workspaceId = requestBillingWorkspaceId(request)
+
+    return async (usage) => {
+      try {
+        await aiUsage.record({
+          ...usage,
+          generationId,
+          userId: user.id,
+          userEmail: user.email,
+          userDisplayName: user.displayName,
+          workspaceId,
+          draftCount:
+            usage.operation === 'text_generation' ? draftCount : 0,
+          occurredAt: new Date().toISOString(),
+        })
+      } catch (error) {
+        console.error('Não foi possível registrar o custo de IA.', {
+          generationId,
+          operation: usage.operation,
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+        })
+      }
+    }
+  }
 
   router.post('/generate', authorizeGeneration, async (request, response) => {
     const parsed = requestSchema.safeParse(request.body)
@@ -162,15 +210,17 @@ export function createContentRouter(
     response.once('close', abortIfDisconnected)
 
     try {
+      const generationId = crypto.randomUUID()
       response.json({
         data: await generateWithReservation(
           quota,
-          requestWorkspaceId(request),
+          requestBillingWorkspaceId(request),
           { text: 1, image: 1 },
           () =>
             service.generate(
               parsed.data as ContentGenerationInput,
               abortController.signal,
+              usageReporter(request, generationId, 1),
             ),
         ),
       })
@@ -209,15 +259,17 @@ export function createContentRouter(
       response.once('close', abortIfDisconnected)
 
       try {
+        const generationId = crypto.randomUUID()
         response.json({
           data: await generateWithReservation(
             quota,
-            requestWorkspaceId(request),
+            requestBillingWorkspaceId(request),
             { text: 0, image: 1 },
             () =>
               service.generateImage(
                 parsed.data as ContentGenerationInput,
                 abortController.signal,
+                usageReporter(request, generationId, 0),
               ),
           ),
         })
@@ -269,15 +321,17 @@ export function createContentRouter(
       request.once('close', onRequestClose)
       response.once('close', abortIfDisconnected)
       try {
+        const generationId = crypto.randomUUID()
         response.json({
           data: await generateWithReservation(
             quota,
-            requestWorkspaceId(request),
+            requestBillingWorkspaceId(request),
             { text: items.length, image: 0 },
             () =>
               service.generateBatch(
                 { ...parsed.data, items } as BatchContentGenerationInput,
                 abortController.signal,
+                usageReporter(request, generationId, items.length),
               ),
           ),
         })

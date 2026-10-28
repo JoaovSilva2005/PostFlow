@@ -55,6 +55,9 @@ import {
 } from './modules/billing/billingRoutes.js'
 import { createWorkspaceRouter } from './modules/workspace/workspaceRoutes.js'
 import { createBrandRouter } from './modules/brand/brandRoutes.js'
+import { createAiUsageRouter } from './modules/ai-usage/aiUsageRoutes.js'
+import { AiUsageService } from './modules/ai-usage/aiUsageService.js'
+import { SupabaseAiUsageRepository } from './modules/ai-usage/aiUsageRepository.js'
 
 interface AppOptions {
   authService?: AuthService
@@ -63,6 +66,7 @@ interface AppOptions {
   contentQuotaService?: ContentQuotaService
   workspaceAccessRepository?: WorkspaceAccessRepository
   billingRepository?: BillingRepository
+  aiUsageService?: AiUsageService
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -111,6 +115,13 @@ export function createApp(options: AppOptions = {}) {
   const contentQuotaService =
     options.contentQuotaService ??
     new SupabaseContentQuotaService(createSupabaseAdminDataClient())
+  const aiUsageService =
+    options.aiUsageService ??
+    (options.financialRepository
+      ? undefined
+      : new AiUsageService(
+          new SupabaseAiUsageRepository(createSupabaseAdminDataClient()),
+        ))
 
   app.use(
     cors({
@@ -169,6 +180,7 @@ export function createApp(options: AppOptions = {}) {
       contentService,
       contentQuotaService,
       requireWorkspaceRole('owner', 'admin', 'editor'),
+      aiUsageService,
     ),
   )
   app.use(
@@ -216,6 +228,19 @@ export function createApp(options: AppOptions = {}) {
         : options.financialRepository ? 'test' : 'supabase',
     ),
   )
+  if (aiUsageService) {
+    app.use(
+      '/api/admin/ai-usage',
+      requireAuthentication(authService),
+      requirePlatformRole(
+        workspaceAccess,
+        'platform_owner',
+        'finance_admin',
+        'support',
+      ),
+      createAiUsageRouter(aiUsageService),
+    )
+  }
   // Compatibilidade exclusiva para os testes unitários que injetam o
   // repositório em memória. Em produção, os aliases antigos não existem:
   // Financeiro e Fiscal ficam somente no backoffice `/api/admin/*`.
