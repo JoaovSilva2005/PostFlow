@@ -290,6 +290,7 @@ describe('geração de conteúdo', () => {
       expect.objectContaining({ previousDraft }),
       'Uma dica prática',
       expect.any(AbortSignal),
+      undefined,
     )
     expect(quota.getUsage()).toMatchObject({
       text: 0,
@@ -332,6 +333,67 @@ describe('geração de conteúdo', () => {
 
     expect(response.status).toBe(402)
     expect(response.body.error).toMatch(/plano ativo/i)
+  })
+
+  it('usa a assinatura de outro workspace acessível e cobra nele a franquia', async () => {
+    const workspaceAccess = new InMemoryWorkspaceAccessRepository(
+      'content-workspace',
+      'editor',
+      null,
+      'none',
+    )
+    vi.spyOn(workspaceAccess, 'getMembership').mockImplementation(
+      async (userId, workspaceId) => {
+        if (workspaceId === 'content-workspace') {
+          return { workspaceId, userId, role: 'editor' }
+        }
+        if (workspaceId === 'paid-workspace') {
+          return { workspaceId, userId, role: 'owner' }
+        }
+        return null
+      },
+    )
+    vi.spyOn(workspaceAccess, 'getBillingStatus').mockImplementation(
+      async (workspaceId) =>
+        workspaceId === 'paid-workspace' ? 'active' : 'none',
+    )
+    const quota = new InMemoryContentQuotaService({ text: 10, image: 0 })
+    const app = createApp({
+      authService: new AuthService(new InMemoryAuthProvider('editor')),
+      financialRepository: new InMemoryFinancialRepository(),
+      contentService: new ContentService(provider),
+      contentQuotaService: quota,
+      workspaceAccessRepository: workspaceAccess,
+    })
+
+    const generated = await authorize(
+      request(app)
+        .post('/api/content/generate-batch')
+        .set('X-Workspace-Id', 'content-workspace')
+        .set('X-Billing-Workspace-Id', 'paid-workspace'),
+    ).send(validBatchRequest)
+
+    const unownedBillingWorkspace = await authorize(
+      request(app)
+        .post('/api/content/generate-batch')
+        .set('X-Workspace-Id', 'content-workspace')
+        .set('X-Billing-Workspace-Id', 'someone-elses-workspace'),
+    ).send(validBatchRequest)
+
+    expect(generated.status).toBe(200)
+    expect(quota.getUsage('paid-workspace')).toMatchObject({
+      text: 2,
+      image: 0,
+      textReserved: 0,
+      imageReserved: 0,
+    })
+    expect(quota.getUsage('content-workspace')).toMatchObject({
+      text: 0,
+      image: 0,
+      textReserved: 0,
+      imageReserved: 0,
+    })
+    expect(unownedBillingWorkspace.status).toBe(403)
   })
 
   it('autoriza o lote e devolve uma variação distinta por rede e data', async () => {

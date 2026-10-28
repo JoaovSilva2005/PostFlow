@@ -8,6 +8,7 @@ import { FiscalPage } from '../features/fiscal/FiscalPage'
 import { AccountingPage } from '../features/accounting/AccountingPage'
 import { BillingPage } from '../features/billing/BillingPage'
 import { AdminPlansPage } from '../features/admin/AdminPlansPage'
+import { AiUsagePage } from '../features/admin/AiUsagePage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { SocialConnectionsPage } from '../features/social/SocialConnectionsPage'
 function LegacySocialRedirect() {
@@ -123,6 +124,16 @@ export function App() {
             platformRoles={['platform_owner', 'finance_admin', 'support']}
           >
             <AdminPlansPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/ai-usage"
+        element={
+          <ProtectedRoute
+            platformRoles={['platform_owner', 'finance_admin', 'support']}
+          >
+            <AiUsagePage />
           </ProtectedRoute>
         }
       />

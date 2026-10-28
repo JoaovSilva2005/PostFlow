@@ -5,12 +5,14 @@ import type {
   GeneratedBatchCopy,
   GeneratedDraft,
 } from './contentTypes.js'
+import type { ContentUsageReporter } from '../ai-usage/aiUsageTypes.js'
 import { HttpError } from '../../shared/HttpError.js'
 
 type AbortableContentProvider = {
   generate: (
     input: ContentGenerationInput,
     signal?: AbortSignal,
+    reportUsage?: ContentUsageReporter,
   ) => ReturnType<ContentProvider['generate']>
 }
 
@@ -32,9 +34,15 @@ export class ContentService {
   async generate(
     input: ContentGenerationInput,
     signal?: AbortSignal,
+    reportUsage?: ContentUsageReporter,
   ): Promise<GeneratedDraft> {
     const provider = this.provider as AbortableContentProvider
-    const generated = await provider.generate.call(this.provider, input, signal)
+    const generated = await provider.generate.call(
+      this.provider,
+      input,
+      signal,
+      reportUsage,
+    )
 
     return {
       id: input.previousDraft?.id ?? crypto.randomUUID(),
@@ -43,12 +51,15 @@ export class ContentService {
       date: input.date,
       status: 'draft',
       color: input.brand?.primaryColor ?? '#4F46E5',
+      format: input.format ?? input.previousDraft?.format,
+      formatData: input.formatData ?? input.previousDraft?.formatData,
     }
   }
 
   async generateImage(
     input: ContentGenerationInput,
     signal?: AbortSignal,
+    reportUsage?: ContentUsageReporter,
   ): Promise<string> {
     const provider = this.provider as ContentProvider &
       Partial<ImageContentProvider>
@@ -63,12 +74,14 @@ export class ContentService {
       input,
       input.previousDraft?.visualText ?? input.prompt,
       signal,
+      reportUsage,
     )
   }
 
   async generateBatch(
     input: BatchContentGenerationInput,
     signal?: AbortSignal,
+    reportUsage?: ContentUsageReporter,
   ): Promise<GeneratedDraft[]> {
     const provider = this.provider as ContentProvider &
       Partial<BatchContentProvider>
@@ -83,6 +96,7 @@ export class ContentService {
       this.provider,
       input,
       signal,
+      reportUsage,
     )
     const byKey = new Map(generated.map((item) => [item.key, item]))
     if (

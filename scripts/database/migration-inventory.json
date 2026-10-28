@@ -22,6 +22,7 @@
     "20260925183820_keep_access_for_existing_subscriptions.sql",
     "20260925212250_security_minimum_api_table_privileges.sql",
     "20260928172236_account_billing_and_brand_limit.sql",
+    "20260928205117_ai_usage_cost_accounting.sql",
     "20261012181805_social_publishing.sql"
   ]
 }
