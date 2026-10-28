@@ -167,6 +167,7 @@ describe('geração de conteúdo', () => {
         }),
         'Agenda organizada',
         expect.any(AbortSignal),
+        undefined,
       )
     },
   )
