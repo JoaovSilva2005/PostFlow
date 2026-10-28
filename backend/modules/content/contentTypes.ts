@@ -3,6 +3,7 @@ import type {
   ContentFormatData,
 } from '../../../shared/domain/contentFormats.js'
 import { SOCIAL_PLATFORMS } from '../../../shared/domain/socialPlatforms.js'
+import type { ContentUsageReporter } from '../ai-usage/aiUsageTypes.js'
 
 export const CONTENT_PLATFORMS = SOCIAL_PLATFORMS
 
@@ -88,6 +89,8 @@ export interface GeneratedBatchCopy {
 export interface ContentProvider {
   generate(
     input: ContentGenerationInput,
+    signal?: AbortSignal,
+    reportUsage?: ContentUsageReporter,
   ): Promise<
     Omit<GeneratedDraft, 'id' | 'date' | 'platform' | 'status' | 'color'>
   >
@@ -95,9 +98,11 @@ export interface ContentProvider {
     input: ContentGenerationInput,
     visualText: string,
     signal?: AbortSignal,
+    reportUsage?: ContentUsageReporter,
   ): Promise<string>
   generateBatch?(
     input: BatchContentGenerationInput,
     signal?: AbortSignal,
+    reportUsage?: ContentUsageReporter,
   ): Promise<GeneratedBatchCopy[]>
 }

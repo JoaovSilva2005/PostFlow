@@ -6,11 +6,12 @@ Data da revisão do código: 2026-09-25.
 
 O repositório contém um BFF com sessão por cookies HttpOnly, integração real
 opcional com OpenAI e regras de franquia transacionais no código e nas
-migrações versionadas. Isso descreve a implementação local, não comprova que
-as migrações tenham sido aplicadas em qualquer projeto Supabase remoto nem que
-um deploy esteja atualizado. A aplicação ainda não deve ser tratada como
-pronta para clientes reais até reconciliar a base remota e validar os fluxos em
-PostgreSQL descartável/homologação.
+migrações versionadas. A consulta remota somente leitura confirmou a coluna de
+caminho da imagem e o bucket privado usados pelos rascunhos; ela não comprova
+que um deploy esteja atualizado nem reconcilia as duas linhagens históricas de
+migrações. A aplicação ainda não deve ser tratada como pronta para clientes
+reais até validar essas diferenças e os fluxos em PostgreSQL descartável ou
+homologação.
 
 ## O que o código implementa
 
@@ -36,6 +37,10 @@ PostgreSQL descartável/homologação.
 - `POST /drafts` e `PATCH /drafts/:draftId` agrupam post e hashtags por RPC
   transacional. Criação de marca e membership também é atômica; provisionamento
   inicial usa lock por usuário.
+- Imagens dos rascunhos são enviadas ao bucket privado `post-draft-images`, e o
+  caminho fica associado ao rascunho. A API entrega URLs assinadas temporárias;
+  exclusão do rascunho e rollback removem o objeto correspondente. O bucket
+  aceita PNG/JPEG/WebP até 5 MiB.
 - O BFF impõe legenda de até 5.000 caracteres, texto visual de até 160 e o
   limite cadastrado da plataforma para legenda mais hashtags. JSON acima de
   8 MiB recebe `413`.
@@ -45,12 +50,12 @@ PostgreSQL descartável/homologação.
 
 ## Limitações ainda abertas
 
-1. **Estado remoto não confirmado.** As migrações estão divididas entre
-   `database/migrations` e `supabase/migrations`. Algumas podem ter sido
-   aplicadas manualmente e não aparecer no histórico do CLI. A aplicação da
-   migração que adiciona as RPCs transacionais e as reservas precisa ser
-   confirmada pelo responsável pelo projeto, comparando o schema real e o
-   histórico remoto após backup e em homologação.
+1. **Histórico de migrações não reconciliado.** As migrações estão divididas
+   entre `database/migrations` e `supabase/migrations`; o histórico remoto e a
+   coluna/bucket de imagens foram consultados somente para leitura, mas não
+   comprovam que um deploy corresponda ao workspace atual. A nova migração de
+   privilégios mínimos ainda está apenas no repositório e precisa ser revisada,
+   testada em homologação e aplicada pelo processo de release.
 2. **Transações ainda sem execução local de integração.** Testes unitários e
    verificações estáticas cobrem chamadas, locks e grants descritos no SQL; só
    um Postgres local descartável comprova a sintaxe e o comportamento de lock,
@@ -66,8 +71,6 @@ PostgreSQL descartável/homologação.
 5. **Cobrança e fiscal não são reais.** O sistema não deve receber pagamentos
    nem emitir documentos fiscais legais até integrar provedores apropriados e
    rever a imutabilidade, conciliação e obrigações aplicáveis.
-6. **Imagem não é persistida.** A imagem permanece como data URL da prévia e
-   não é enviada ao Supabase Storage ao salvar o rascunho.
 
 ## Sequência recomendada antes de liberar dados reais
 
