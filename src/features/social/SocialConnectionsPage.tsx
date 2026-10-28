@@ -22,7 +22,11 @@ import {
   integrationCatalog,
   type IntegrationDefinition,
 } from './integrationCatalog'
-import type { SocialConnectionDTO } from '../../../shared/domain/socialPublishing'
+import {
+  DEMO_ACCOUNT_TYPE,
+  type PublicationDTO,
+  type SocialConnectionDTO,
+} from '../../../shared/domain/socialPublishing'
 
 const providerNames: Record<SocialProviderId, string> = {
   instagram: 'Instagram',
@@ -303,6 +307,9 @@ export function SocialConnectionsPage() {
                     <small>
                       {connection.accountType} · {expiryLabel(connection)}
                     </small>
+                    {connection.accountType === DEMO_ACCOUNT_TYPE && (
+                      <span className={styles.demoBadge}>Demonstração</span>
+                    )}
                   </div>
                   <span
                     className={styles.accountBadge}
@@ -431,6 +438,12 @@ export function SocialConnectionsPage() {
           </div>
         </header>
         <div className={styles.integrationsContent}>
+          {overview?.demoMode && (
+            <p className={styles.demoNotice} role="status">
+              Modo demonstração: as conexões e publicações são simuladas e nada
+              é enviado às redes sociais.
+            </p>
+          )}
           {notice && (
             <p className={styles.positiveNotice} role="status">
               {notice}
@@ -496,7 +509,7 @@ export function SocialConnectionsPage() {
                   {overview.publications.map((publication) => (
                     <article key={publication.id}>
                       <span data-status={publication.status}>
-                        {statusLabel(publication.status)}
+                        {statusLabel(publication)}
                       </span>
                       <span>{providerNames[publication.provider]}</span>
                       <span>
@@ -571,7 +584,12 @@ function expiryLabel(connection: SocialConnectionDTO) {
   return days === 1 ? 'Expira em 1 dia' : 'Expira em ' + days + ' dias'
 }
 
-function statusLabel(status: string) {
+function statusLabel(
+  publication: Pick<PublicationDTO, 'status' | 'simulated'>,
+) {
+  const { status } = publication
+  if (status === 'published' && publication.simulated)
+    return 'Publicado (simulado)'
   return (
     (
       {

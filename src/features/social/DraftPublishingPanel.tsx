@@ -19,6 +19,7 @@ interface Props {
 interface Outcome {
   provider: string
   status: string
+  label?: string
   message: string
 }
 
@@ -30,6 +31,7 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
   const [connections, setConnections] = useState<
     Awaited<ReturnType<typeof socialApi.overview>>['connections']
   >([])
+  const [demoMode, setDemoMode] = useState(false)
   const [hasUnavailableSetup, setHasUnavailableSetup] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [creatorInfo, setCreatorInfo] = useState<
@@ -58,6 +60,7 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
       .overview(currentWorkspace.id)
       .then((overview) => {
         if (active) {
+          setDemoMode(overview.demoMode)
           const configured = overview.providers.filter(
             (provider) =>
               provider.configured && provider.formats.includes('static'),
@@ -186,6 +189,10 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
           return {
             provider: connection.displayName,
             status: publication.status,
+            label:
+              publication.status === 'published' && publication.simulated
+                ? 'Publicado (simulado)'
+                : undefined,
             message: `Solicitação registrada: ${publication.status}.`,
           }
         } catch (cause) {
@@ -446,6 +453,11 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
             ? 'Agendar publicação'
             : 'Publicar agora'}
       </Button>
+      {demoMode && (
+        <p className={styles.demoNotice} role="status">
+          Modo demonstração: nada é enviado às redes sociais.
+        </p>
+      )}
       {notice && (
         <p className={styles.notice} role="status">
           <CheckCircle2 size={15} /> {notice}
@@ -461,7 +473,7 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
           {outcomes.map((result) => (
             <li key={result.provider}>
               <strong>
-                {result.provider} · {result.status}
+                {result.provider} · {result.label ?? result.status}
               </strong>
               <span>{result.message}</span>
             </li>

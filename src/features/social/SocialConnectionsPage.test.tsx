@@ -231,4 +231,75 @@ describe('SocialConnectionsPage', () => {
       }),
     ).not.toBeInTheDocument()
   })
+  describe('modo demonstração', () => {
+    const demoNotice =
+      'Modo demonstração: as conexões e publicações são simuladas e nada é enviado às redes sociais.'
+
+    it('demoMode true mostra o aviso exato', async () => {
+      vi.mocked(socialApi.overview).mockResolvedValue({
+        ...overview,
+        demoMode: true,
+      })
+      renderConnections()
+      expect(await screen.findByText(demoNotice)).toBeInTheDocument()
+    })
+
+    it('demoMode false não mostra o aviso', async () => {
+      renderConnections()
+      await screen.findByText('Na fila')
+      expect(screen.queryByText(demoNotice)).not.toBeInTheDocument()
+    })
+
+    it('publicação published com simulated mostra "Publicado (simulado)"', async () => {
+      vi.mocked(socialApi.overview).mockResolvedValue({
+        ...overview,
+        publications: [
+          {
+            ...overview.publications[0],
+            status: 'published',
+            simulated: true,
+            remotePostId: 'demo-1',
+          },
+        ],
+      })
+      renderConnections()
+      expect(
+        await screen.findByText('Publicado (simulado)'),
+      ).toBeInTheDocument()
+    })
+
+    it('published sem simulated mostra "Publicado"', async () => {
+      vi.mocked(socialApi.overview).mockResolvedValue({
+        ...overview,
+        publications: [
+          {
+            ...overview.publications[0],
+            status: 'published',
+            simulated: false,
+          },
+        ],
+      })
+      renderConnections()
+      expect(await screen.findByText('Publicado')).toBeInTheDocument()
+      expect(screen.queryByText('Publicado (simulado)')).not.toBeInTheDocument()
+    })
+
+    it('conexão demo mostra o selo "Demonstração"', async () => {
+      vi.mocked(socialApi.overview).mockResolvedValue({
+        ...overview,
+        demoMode: true,
+        connections: [
+          {
+            ...overview.connections[0],
+            status: 'connected',
+            externalAccountId: 'demo-facebook',
+            displayName: 'Facebook — conta de demonstração',
+            accountType: 'demo',
+          },
+        ],
+      })
+      renderConnections()
+      expect(await screen.findByText('Demonstração')).toBeInTheDocument()
+    })
+  })
 })
