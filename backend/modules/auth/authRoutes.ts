@@ -85,10 +85,22 @@ export function createAuthRouter(
     const platformRole = workspaceAccess
       ? await workspaceAccess.getPlatformRole(user.id)
       : null
-    const billingStatus =
+    const workspaceBillingStatus =
       workspace && workspaceAccess
         ? await workspaceAccess.getBillingStatus(workspace.workspaceId)
         : 'none'
+    const billingWorkspaceId =
+      workspace &&
+      (workspaceBillingStatus === 'active' ||
+        workspaceBillingStatus === 'trialing')
+        ? workspace.workspaceId
+        : workspaceAccess
+          ? await workspaceAccess.getActiveBillingWorkspaceId(user.id)
+          : null
+    const billingStatus =
+      workspaceAccess && billingWorkspaceId
+        ? await workspaceAccess.getBillingStatus(billingWorkspaceId)
+        : workspaceBillingStatus
 
     return {
       user,
@@ -97,6 +109,7 @@ export function createAuthRouter(
         : null,
       platformRole,
       billingStatus,
+      billingWorkspaceId,
     }
   }
 
@@ -142,20 +155,25 @@ export function createAuthRouter(
     const refreshToken = readRefreshToken(request)
 
     if (!refreshToken) {
+      clearSessionCookies(response)
       throw new HttpError(401, 'Sessão não pode ser renovada.')
     }
 
-    const session = await service.refresh(refreshToken)
-    setSessionCookies(response, session)
-    response.json({ data: { user: session.user } })
+    try {
+      const session = await service.refresh(refreshToken)
+      setSessionCookies(response, session)
+      response.json({ data: { user: session.user } })
+    } catch (error) {
+      if (error instanceof HttpError && error.statusCode === 401) {
+        clearSessionCookies(response)
+      }
+      throw error
+    }
   })
 
   router.post('/logout', async (request, response) => {
     try {
-      await service.logout(
-        readAccessToken(request),
-        readRefreshToken(request),
-      )
+      await service.logout(readAccessToken(request), readRefreshToken(request))
     } finally {
       clearSessionCookies(response)
     }

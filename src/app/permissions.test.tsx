@@ -1,7 +1,12 @@
-import { screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { authenticateDemo, renderApp } from '../test/testUtils'
 import { createTestAuthGateway } from '../test/testAuthGateway'
+import { createTestRepository } from '../test/testRepository'
+import {
+  SESSION_EXPIRED_EVENT,
+  SESSION_EXPIRED_MESSAGE,
+} from '../services/apiClient'
 
 const clientSession = {
   user: {
@@ -68,6 +73,77 @@ describe('limites de autorização da interface', () => {
     expect(screen.queryByRole('link', { name: 'Minha marca' })).toBeNull()
     expect(
       screen.getByRole('link', { name: 'Assinatura e cobrança' }),
+    ).toBeInTheDocument()
+  })
+
+  it('mantém acesso ao produto usando o plano ativo de outra marca acessível', async () => {
+    authenticateDemo()
+    const workspaceWithoutPlan = {
+      ...clientSession,
+      billingStatus: 'none' as const,
+    }
+    const repository = createTestRepository()
+    repository.listWorkspaces = async () => [
+      {
+        id: 'brand-client',
+        role: 'owner',
+        billingStatus: 'none',
+        brand: {
+          name: 'Marca de conteúdo',
+          segment: 'Marketing',
+          toneOfVoice: 'Profissional',
+          primaryColor: '#123456',
+        },
+      },
+      {
+        id: 'paid-workspace',
+        role: 'owner',
+        billingStatus: 'active',
+        brand: {
+          name: 'Workspace com plano',
+          segment: 'Marketing',
+          toneOfVoice: 'Profissional',
+          primaryColor: '#654321',
+        },
+      },
+    ]
+    renderApp(
+      '/calendar',
+      repository,
+      createTestAuthGateway(workspaceWithoutPlan),
+    )
+
+    expect(
+      await screen.findByRole('link', { name: 'Criar com IA' }),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Agenda de conteúdo' }),
+    ).toBeInTheDocument()
+  })
+
+  it('encerra a sessão expirada, informa o motivo e volta à tela anterior após login', async () => {
+    const user = userEvent.setup()
+    authenticateDemo()
+    renderApp('/calendar')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Agenda de conteúdo' }),
+    ).toBeInTheDocument()
+    act(() => window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT)))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Bem-vindo de volta' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(SESSION_EXPIRED_MESSAGE)
+
+    await user.type(screen.getByLabelText('E-mail'), 'aluno@postflow.com')
+    await user.type(screen.getByLabelText('Senha'), '123456')
+    await user.click(
+      screen.getByRole('button', { name: 'Entrar no PostFlow' }),
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Agenda de conteúdo' }),
     ).toBeInTheDocument()
   })
 

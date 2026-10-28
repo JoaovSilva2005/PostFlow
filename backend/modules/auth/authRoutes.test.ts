@@ -122,6 +122,40 @@ describe('autenticação', () => {
     expect(currentUser.body.data.billingStatus).toBe('active')
   })
 
+  it('remove os cookies quando o refresh token expirou', async () => {
+    const provider = new InMemoryAuthProvider()
+    vi.spyOn(provider, 'refresh').mockRejectedValue(
+      Object.assign(new Error('Refresh inválido.'), { status: 400 }),
+    )
+    const { app } = testApp(provider)
+    const response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', 'postflow_refresh_token=expired-token')
+
+    const cookies = response.headers['set-cookie']
+    const serializedCookies = Array.isArray(cookies)
+      ? cookies.join(';')
+      : cookies
+
+    expect(response.status).toBe(401)
+    expect(serializedCookies).toContain('postflow_access_token=;')
+    expect(serializedCookies).toContain('postflow_refresh_token=;')
+  })
+
+  it('preserva os cookies quando o provedor de sessão está indisponível', async () => {
+    const provider = new InMemoryAuthProvider()
+    vi.spyOn(provider, 'refresh').mockRejectedValue(
+      Object.assign(new Error('Serviço indisponível.'), { status: 503 }),
+    )
+    const { app } = testApp(provider)
+    const response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', 'postflow_refresh_token=valid-token')
+
+    expect(response.status).toBe(503)
+    expect(response.headers['set-cookie']).toBeUndefined()
+  })
+
   it('revoga a sessão no provedor e limpa os cookies no logout', async () => {
     const { app, provider } = testApp()
     const agent = request.agent(app)

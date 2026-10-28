@@ -19,6 +19,7 @@ export interface AuthSession {
   workspace: WorkspaceAccess | null
   platformRole: PlatformRole
   billingStatus: BillingAccessStatus
+  billingWorkspaceId?: string | null
 }
 
 export interface LoginCredentials {

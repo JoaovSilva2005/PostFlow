@@ -124,6 +124,7 @@ export function createBrandRouter(supabase: SupabaseClient) {
           return {
             id: membership.brand_id,
             role: membership.role,
+            isOwnedByUser: brand.user_id === userId,
             brand: brandProfile(brand),
             billingStatus: billingById.get(membership.brand_id) ?? 'none',
           }
@@ -140,6 +141,12 @@ export function createBrandRouter(supabase: SupabaseClient) {
       { p_user_id: userId, p_brand: toDatabaseBrand(input) },
     )
     const brand = Array.isArray(data) ? data[0] : data
+    if (
+      brandError?.code === '23514' &&
+      brandError.message === 'brand_limit_reached'
+    ) {
+      throw new HttpError(409, 'Sua conta pode cadastrar até duas marcas.')
+    }
     if (brandError || !brand)
       throw new Error(
         `Falha ao criar marca: ${brandError?.message ?? 'marca não retornada'}`,
@@ -149,6 +156,7 @@ export function createBrandRouter(supabase: SupabaseClient) {
       data: {
         id: brand.id,
         role: 'owner',
+        isOwnedByUser: true,
         brand: brandProfile(brand),
         billingStatus: 'none',
       },
