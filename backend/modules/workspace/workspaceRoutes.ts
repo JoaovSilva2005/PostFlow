@@ -780,9 +780,21 @@ export function createWorkspaceRouter(
         .delete()
         .eq('id', id)
         .eq('brand_id', workspaceId(request))
+        .in('status', EDITABLE_STATUSES)
         .select('id,image_path')
       if (error) throw new Error(`Falha ao excluir post: ${error.message}`)
-      if (!data?.length) throw new HttpError(404, 'Post não encontrado.')
+      if (!data?.length) {
+        const { data: existing, error: existingError } = await supabase
+          .from('post_drafts')
+          .select('id')
+          .eq('id', id)
+          .eq('brand_id', workspaceId(request))
+          .maybeSingle()
+        if (existingError)
+          throw new Error(`Falha ao consultar post: ${existingError.message}`)
+        if (existing) throw new HttpError(409, NOT_EDITABLE_MESSAGE)
+        throw new HttpError(404, 'Post não encontrado.')
+      }
       const imagePath = data[0].image_path
       if (typeof imagePath === 'string' && imagePath)
         await removeDraftImage(supabase, imagePath)
