@@ -74,6 +74,14 @@ create table if not exists public.post_drafts (
   schedule_timezone text not null default 'America/Sao_Paulo',
   format_data jsonb,
   status text not null default 'draft',
+  published_at timestamptz,
+  publishing_started_at timestamptz,
+  publish_attempts integer not null default 0,
+  publish_error text,
+  publish_mode text,
+  external_post_id text,
+  external_post_url text,
+  approved_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint post_drafts_brand_id_fkey
@@ -86,7 +94,13 @@ create table if not exists public.post_drafts (
     length(trim(title)) >= 3
   ),
   constraint post_drafts_status_check check (
-    status in ('draft', 'scheduled', 'published')
+    status in ('draft', 'scheduled', 'publishing', 'published', 'failed')
+  ),
+  constraint post_drafts_publish_mode_check check (
+    publish_mode is null or publish_mode in ('demo', 'live')
+  ),
+  constraint post_drafts_publish_error_length_check check (
+    publish_error is null or char_length(publish_error) <= 500
   ),
   constraint post_drafts_color_check check (color ~ '^#[0-9A-Fa-f]{6}$'),
   constraint post_drafts_content_format_check check (
