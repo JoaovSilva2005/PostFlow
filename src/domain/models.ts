@@ -56,6 +56,11 @@ export interface PostDraft {
   persona?: string
   time?: string
   timezone?: string
+  /** Preenchidos só pelo servidor ao publicar ou falhar. */
+  publishedAt?: string
+  publishError?: string
+  publishMode?: 'demo' | 'live'
+  externalPostUrl?: string
 }
 
 export interface AppState {

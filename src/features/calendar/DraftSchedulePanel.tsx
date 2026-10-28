@@ -1,23 +1,15 @@
 import { CalendarClock } from 'lucide-react'
-import { SelectField, TextField } from '../../components/ui/FormField'
+import { TextField } from '../../components/ui/FormField'
 import type { PostDraft } from '../../domain/models'
 import { DEFAULT_POST_TIMEZONE } from '../../../shared/domain/contentTime'
+import { postStatusLabel } from '../../../shared/domain/postPublishing'
 import styles from './CalendarPage.module.css'
-
-const STATUS_OPTIONS = [
-  { label: 'Rascunho', value: 'draft' },
-  { label: 'Agendado', value: 'scheduled' },
-  { label: 'Publicado', value: 'published' },
-]
 
 interface DraftSchedulePanelProps {
   draft: PostDraft
   disabled: boolean
   onDateChange: (date: string) => Promise<void>
-  onChange: <Key extends 'time' | 'status'>(
-    field: Key,
-    value: PostDraft[Key],
-  ) => void
+  onChange: (field: 'time', value: string) => void
 }
 
 export function DraftSchedulePanel({
@@ -53,22 +45,17 @@ export function DraftSchedulePanel({
           disabled={disabled}
           onChange={(event) => onChange('time', event.target.value)}
         />
-        <SelectField
-          label="Situação"
-          name="draft-status"
-          value={draft.status}
-          disabled={disabled}
-          onChange={(event) =>
-            onChange('status', event.target.value as PostDraft['status'])
-          }
-          options={STATUS_OPTIONS}
-        />
       </div>
 
       <p className={styles.scheduleNote}>
-        Fuso horário de Brasília. A situação organiza sua agenda; a publicação
-        nas redes ainda é manual.
+        Fuso horário de Brasília. Só posts aprovados são publicados, no horário
+        escolhido.
       </p>
+
+      <div className={styles.timezoneLabel}>
+        <span>Situação</span>
+        <strong>{postStatusLabel(draft.status, draft.publishMode)}</strong>
+      </div>
 
       <div className={styles.timezoneLabel}>
         <span>Fuso</span>

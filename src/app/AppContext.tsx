@@ -25,6 +25,7 @@ import {
   type PostFlowDataRepository,
 } from '../services/postFlowRepository'
 import {
+  ApiError,
   SESSION_EXPIRED_EVENT,
   SESSION_EXPIRED_MESSAGE,
 } from '../services/apiClient'
@@ -48,6 +49,7 @@ type AppAction =
   | { type: 'ADD_DRAFT'; payload: PostDraft }
   | { type: 'ADD_DRAFTS'; payload: PostDraft[] }
   | { type: 'UPDATE_DRAFT'; payload: PostDraft }
+  | { type: 'REFRESH_DRAFTS'; payload: PostDraft[] }
   | { type: 'REMOVE_DRAFT'; payload: string }
 
 interface AppContextValue extends AppState {
@@ -77,6 +79,8 @@ interface AppContextValue extends AppState {
     billingWorkspaceId?: string,
   ) => Promise<PostDraft>
   updateDraft: (draft: PostDraft) => Promise<void>
+  /** Recarrega os posts do workspace ativo sem alterar marca nem status de conexão. */
+  refreshDrafts: () => Promise<void>
   removeDraft: (id: string) => Promise<void>
 }
 
@@ -223,6 +227,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ),
         databaseError: null,
       }
+    case 'REFRESH_DRAFTS':
+      return {
+        ...state,
+        drafts: mergeRefreshedDrafts(state.drafts, action.payload),
+      }
     case 'REMOVE_DRAFT':
       return {
         ...state,
@@ -230,6 +239,38 @@ function appReducer(state: AppState, action: AppAction): AppState {
         databaseError: null,
       }
   }
+}
+
+function sameDraftContent(left: PostDraft, right: PostDraft) {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+/**
+ * Mantém a identidade dos posts que não mudaram (evita reiniciar editores
+ * abertos) e preserva a URL assinada da imagem já carregada, que muda a cada
+ * listagem sem que a imagem tenha mudado.
+ */
+function mergeRefreshedDrafts(current: PostDraft[], incoming: PostDraft[]) {
+  const currentById = new Map(current.map((draft) => [draft.id, draft]))
+  let changed = incoming.length !== current.length
+  const merged = incoming.map((draft, index) => {
+    const previous = currentById.get(draft.id)
+    if (!previous) {
+      changed = true
+      return draft
+    }
+    const candidate =
+      previous.imageUrl && draft.imageAvailable
+        ? { ...draft, imageUrl: previous.imageUrl }
+        : draft
+    if (sameDraftContent(previous, candidate)) {
+      if (current[index] !== previous) changed = true
+      return previous
+    }
+    changed = true
+    return candidate
+  })
+  return changed ? merged : current
 }
 
 function errorMessage(error: unknown): string {
@@ -281,6 +322,9 @@ export function AppProvider({
     createInitialState,
   )
   const authOperation = useRef(0)
+  const draftMutations = useRef({ started: 0, inflight: 0 })
+  const currentWorkspaceIdRef = useRef<string | null>(null)
+  currentWorkspaceIdRef.current = state.currentWorkspace?.id ?? null
 
   useEffect(() => {
     const handleExpiredSession = () => {
@@ -418,8 +462,19 @@ export function AppProvider({
     state.platformRole,
   ])
 
-  const value = useMemo<AppContextValue>(
-    () => ({
+  const value = useMemo<AppContextValue>(() => {
+    async function trackDraftMutation<T>(operation: () => Promise<T>) {
+      draftMutations.current.started += 1
+      draftMutations.current.inflight += 1
+      try {
+        return await operation()
+      } finally {
+        draftMutations.current.inflight -= 1
+        draftMutations.current.started += 1
+      }
+    }
+
+    return {
       ...state,
       billingWorkspaceId: billingWorkspaceIdFor(state),
       hasActivePlan:
@@ -526,90 +581,94 @@ export function AppProvider({
           throw error
         }
       },
-      addDraft: async (draft) => {
-        if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
-        try {
-          const createdDraft = await repository.createDraft(
-            state.currentWorkspace.id,
-            draft,
-            billingWorkspaceIdFor(state) ?? undefined,
-          )
-          dispatch({ type: 'ADD_DRAFT', payload: createdDraft })
-        } catch (error) {
-          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
-          throw error
-        }
-      },
-      addDraftForWorkspace: async (workspaceId, draft) => {
-        try {
-          const createdDraft = await repository.createDraft(
-            workspaceId,
-            draft,
-            billingWorkspaceIdFor(state) ?? undefined,
-          )
-          if (state.currentWorkspace?.id === workspaceId)
+      addDraft: (draft) =>
+        trackDraftMutation(async () => {
+          if (!state.currentWorkspace)
+            throw new Error('Nenhum workspace ativo.')
+          try {
+            const createdDraft = await repository.createDraft(
+              state.currentWorkspace.id,
+              draft,
+              billingWorkspaceIdFor(state) ?? undefined,
+            )
             dispatch({ type: 'ADD_DRAFT', payload: createdDraft })
-        } catch (error) {
-          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
-          throw error
-        }
-      },
-      addDraftsForWorkspace: async (
-        workspaceId,
-        drafts,
-        billingWorkspaceId,
-      ) => {
-        try {
-          const createdDrafts = repository.createDrafts
-            ? await repository.createDrafts(
-                workspaceId,
-                drafts,
-                billingWorkspaceId ?? billingWorkspaceIdFor(state) ?? undefined,
-              )
-            : await Promise.all(
-                drafts.map((draft) =>
-                  repository.createDraft(
-                    workspaceId,
-                    draft,
-                    billingWorkspaceId ??
-                      billingWorkspaceIdFor(state) ??
-                      undefined,
+          } catch (error) {
+            dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+            throw error
+          }
+        }),
+      addDraftForWorkspace: (workspaceId, draft) =>
+        trackDraftMutation(async () => {
+          try {
+            const createdDraft = await repository.createDraft(
+              workspaceId,
+              draft,
+              billingWorkspaceIdFor(state) ?? undefined,
+            )
+            if (state.currentWorkspace?.id === workspaceId)
+              dispatch({ type: 'ADD_DRAFT', payload: createdDraft })
+          } catch (error) {
+            dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+            throw error
+          }
+        }),
+      addDraftsForWorkspace: (workspaceId, drafts, billingWorkspaceId) =>
+        trackDraftMutation(async () => {
+          try {
+            const createdDrafts = repository.createDrafts
+              ? await repository.createDrafts(
+                  workspaceId,
+                  drafts,
+                  billingWorkspaceId ??
+                    billingWorkspaceIdFor(state) ??
+                    undefined,
+                )
+              : await Promise.all(
+                  drafts.map((draft) =>
+                    repository.createDraft(
+                      workspaceId,
+                      draft,
+                      billingWorkspaceId ??
+                        billingWorkspaceIdFor(state) ??
+                        undefined,
+                    ),
                   ),
-                ),
-              )
-          if (state.currentWorkspace?.id === workspaceId)
+                )
+            if (state.currentWorkspace?.id === workspaceId)
+              dispatch({ type: 'ADD_DRAFTS', payload: createdDrafts })
+            return createdDrafts
+          } catch (error) {
+            dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+            throw error
+          }
+        }),
+      addDrafts: (drafts) =>
+        trackDraftMutation(async () => {
+          if (!state.currentWorkspace)
+            throw new Error('Nenhum workspace ativo.')
+          try {
+            const createdDrafts = repository.createDrafts
+              ? await repository.createDrafts(
+                  state.currentWorkspace.id,
+                  drafts,
+                  billingWorkspaceIdFor(state) ?? undefined,
+                )
+              : await Promise.all(
+                  drafts.map((draft) =>
+                    repository.createDraft(
+                      state.currentWorkspace!.id,
+                      draft,
+                      billingWorkspaceIdFor(state) ?? undefined,
+                    ),
+                  ),
+                )
             dispatch({ type: 'ADD_DRAFTS', payload: createdDrafts })
-          return createdDrafts
-        } catch (error) {
-          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
-          throw error
-        }
-      },
-      addDrafts: async (drafts) => {
-        if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
-        try {
-          const createdDrafts = repository.createDrafts
-            ? await repository.createDrafts(
-                state.currentWorkspace.id,
-                drafts,
-                billingWorkspaceIdFor(state) ?? undefined,
-              )
-            : await Promise.all(
-                drafts.map((draft) =>
-                  repository.createDraft(
-                    state.currentWorkspace!.id,
-                    draft,
-                    billingWorkspaceIdFor(state) ?? undefined,
-                  ),
-                ),
-              )
-          dispatch({ type: 'ADD_DRAFTS', payload: createdDrafts })
-          return createdDrafts
-        } catch (error) {
-          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
-          throw error
-        }
-      },
+            return createdDrafts
+          } catch (error) {
+            dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+            throw error
+          }
+        }),
       refreshDraftImageUrl: async (draftId) => {
         const workspaceId = state.currentWorkspace?.id
         if (!workspaceId || !repository.refreshDraftImageUrl) return null
@@ -629,63 +688,99 @@ export function AppProvider({
         }
         return imageUrl
       },
-      saveDraftImage: async (
+      saveDraftImage: (
         draftId,
         imageUrl,
         requestedWorkspaceId,
         billingWorkspaceId,
-      ) => {
-        const workspaceId = requestedWorkspaceId ?? state.currentWorkspace?.id
-        if (!workspaceId || !repository.saveDraftImage) {
-          throw new Error('Não foi possível salvar a imagem neste workspace.')
-        }
-        try {
-          const updatedDraft = await repository.saveDraftImage(
-            workspaceId,
-            draftId,
-            imageUrl,
-            billingWorkspaceId ?? billingWorkspaceIdFor(state) ?? undefined,
-          )
-          if (state.currentWorkspace?.id === workspaceId) {
-            dispatch({ type: 'UPDATE_DRAFT', payload: updatedDraft })
+      ) =>
+        trackDraftMutation(async () => {
+          const workspaceId = requestedWorkspaceId ?? state.currentWorkspace?.id
+          if (!workspaceId || !repository.saveDraftImage) {
+            throw new Error('Não foi possível salvar a imagem neste workspace.')
           }
-          return updatedDraft
-        } catch (error) {
-          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
-          throw error
+          try {
+            const updatedDraft = await repository.saveDraftImage(
+              workspaceId,
+              draftId,
+              imageUrl,
+              billingWorkspaceId ?? billingWorkspaceIdFor(state) ?? undefined,
+            )
+            if (state.currentWorkspace?.id === workspaceId) {
+              dispatch({ type: 'UPDATE_DRAFT', payload: updatedDraft })
+            }
+            return updatedDraft
+          } catch (error) {
+            dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+            throw error
+          }
+        }),
+      updateDraft: (draft) =>
+        trackDraftMutation(async () => {
+          if (!state.currentWorkspace)
+            throw new Error('Nenhum workspace ativo.')
+          try {
+            const updatedDraft = await repository.updateDraft(
+              state.currentWorkspace.id,
+              draft,
+              billingWorkspaceIdFor(state) ?? undefined,
+            )
+            dispatch({ type: 'UPDATE_DRAFT', payload: updatedDraft })
+          } catch (error) {
+            // Regras de negócio (400/409) são mostradas no diálogo; não devem
+            // derrubar o indicador global de conexão.
+            const isBusinessRule =
+              error instanceof ApiError &&
+              (error.status === 400 || error.status === 409)
+            if (!isBusinessRule) {
+              dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+            }
+            throw error
+          }
+        }),
+      refreshDrafts: async () => {
+        const workspace = state.currentWorkspace
+        if (!workspace || state.databaseStatus !== 'connected') return
+        if (draftMutations.current.inflight > 0) return
+        const startedAt = draftMutations.current.started
+        const billingWorkspaceId = billingWorkspaceIdFor(state) ?? undefined
+        if (!billingWorkspaceId && state.platformRole !== 'platform_owner') {
+          return
         }
-      },
-      updateDraft: async (draft) => {
-        if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
         try {
-          const updatedDraft = await repository.updateDraft(
-            state.currentWorkspace.id,
-            draft,
-            billingWorkspaceIdFor(state) ?? undefined,
-          )
-          dispatch({ type: 'UPDATE_DRAFT', payload: updatedDraft })
-        } catch (error) {
-          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
-          throw error
+          const data = await repository.load(workspace.id, billingWorkspaceId)
+          // Descarta a resposta se o usuário mudou de marca ou alterou posts
+          // enquanto a listagem estava a caminho (evita sobrescrever dados novos).
+          if (
+            currentWorkspaceIdRef.current !== workspace.id ||
+            draftMutations.current.inflight > 0 ||
+            draftMutations.current.started !== startedAt
+          ) {
+            return
+          }
+          dispatch({ type: 'REFRESH_DRAFTS', payload: data.drafts })
+        } catch {
+          // A atualização automática é silenciosa; a próxima tentativa corrige.
         }
       },
-      removeDraft: async (id) => {
-        if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
-        try {
-          await repository.deleteDraft(
-            state.currentWorkspace.id,
-            id,
-            billingWorkspaceIdFor(state) ?? undefined,
-          )
-          dispatch({ type: 'REMOVE_DRAFT', payload: id })
-        } catch (error) {
-          dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
-          throw error
-        }
-      },
-    }),
-    [authGateway, repository, state],
-  )
+      removeDraft: (id) =>
+        trackDraftMutation(async () => {
+          if (!state.currentWorkspace)
+            throw new Error('Nenhum workspace ativo.')
+          try {
+            await repository.deleteDraft(
+              state.currentWorkspace.id,
+              id,
+              billingWorkspaceIdFor(state) ?? undefined,
+            )
+            dispatch({ type: 'REMOVE_DRAFT', payload: id })
+          } catch (error) {
+            dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+            throw error
+          }
+        }),
+    }
+  }, [authGateway, repository, state])
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

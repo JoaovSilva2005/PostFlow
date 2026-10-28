@@ -1,5 +1,27 @@
 import type { BrandProfile, BrandWorkspace, PostDraft } from '../domain/models'
+import {
+  CLIENT_SETTABLE_STATUSES,
+  type ClientSettableStatus,
+} from '../../shared/domain/postPublishing'
 import { apiRequest } from './apiClient'
+
+/**
+ * Campos de publicação são definidos só pelo servidor (a API é estrita) e o
+ * navegador só pode enviar `draft` ou `scheduled` como status.
+ */
+function toClientPayload(draft: PostDraft) {
+  const {
+    publishedAt: _publishedAt,
+    publishError: _publishError,
+    publishMode: _publishMode,
+    externalPostUrl: _externalPostUrl,
+    status,
+    ...payload
+  } = draft
+  return CLIENT_SETTABLE_STATUSES.includes(status as ClientSettableStatus)
+    ? { ...payload, status }
+    : payload
+}
 
 interface ProjectData {
   brand: BrandProfile | null
@@ -88,7 +110,8 @@ export const ApiPostFlowRepository: PostFlowDataRepository = {
     }),
 
   createDraft: (workspaceId, draft, billingWorkspaceId) => {
-    const { imageAvailable: _imageAvailable, ...payload } = draft
+    const { imageAvailable: _imageAvailable, ...payload } =
+      toClientPayload(draft)
     return apiRequest<PostDraft>(workspacePath(workspaceId, 'drafts'), {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -149,7 +172,7 @@ export const ApiPostFlowRepository: PostFlowDataRepository = {
     // The planner batch endpoint has a strict text-only contract.
     const textualDrafts = drafts.map(
       ({ imageUrl: _imageUrl, imageAvailable: _imageAvailable, ...draft }) =>
-        draft,
+        toClientPayload(draft),
     )
     return apiRequest<PostDraft[]>(workspacePath(workspaceId, 'drafts/batch'), {
       method: 'POST',
@@ -164,7 +187,7 @@ export const ApiPostFlowRepository: PostFlowDataRepository = {
         imageUrl: _imageUrl,
         imageAvailable: _imageAvailable,
         ...persistedDraft
-      } = draft
+      } = toClientPayload(draft)
       return apiRequest<PostDraft>(
         workspacePath(workspaceId, `drafts/${encodeURIComponent(draft.id)}`),
         {

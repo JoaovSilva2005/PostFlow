@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Sparkles,
+} from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -7,6 +14,7 @@ import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import { postStatusLabel } from '../../../shared/domain/postPublishing'
+import { ApiError } from '../../services/apiClient'
 import type { BrandProfile, PostDraft } from '../../domain/models'
 import {
   generationError,
@@ -41,6 +49,7 @@ export function CalendarPage() {
     availableWorkspaces,
     drafts,
     updateDraft,
+    refreshDrafts,
     removeDraft,
     addDraftsForWorkspace,
     selectWorkspace,
@@ -75,6 +84,10 @@ export function CalendarPage() {
     total: number
   } | null>(null)
   const generationController = useRef<AbortController | null>(null)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [approvalError, setApprovalError] = useState('')
+  const refreshDraftsRef = useRef(refreshDrafts)
+  refreshDraftsRef.current = refreshDrafts
   const visibleMonthKey = toDateKey(visibleMonth).slice(0, 7)
   const monthDrafts = useMemo(
     () =>
@@ -138,6 +151,24 @@ export function CalendarPage() {
     },
     [updateDraft],
   )
+
+  async function handleQuickApprove(draft: PostDraft) {
+    if (approvingId) return
+    setApprovingId(draft.id)
+    setApprovalError('')
+    try {
+      await updateDraft({ ...draft, status: 'scheduled' })
+    } catch (error) {
+      setApprovalError(
+        error instanceof ApiError &&
+          (error.status === 400 || error.status === 409)
+          ? error.message
+          : 'Não foi possível aprovar o post. Tente novamente.',
+      )
+    } finally {
+      setApprovingId(null)
+    }
+  }
 
   const handleDraftDateChange = useCallback(
     async (draft: PostDraft, date: string) => {
@@ -221,6 +252,10 @@ export function CalendarPage() {
         title: `${draft.title} (cópia)`.slice(0, 160),
         status: 'draft',
         imageUrl: undefined,
+        publishedAt: undefined,
+        publishError: undefined,
+        publishMode: undefined,
+        externalPostUrl: undefined,
       }
       const [createdDraft] = await addDraftsForWorkspace(currentWorkspace.id, [
         duplicate,
@@ -233,6 +268,33 @@ export function CalendarPage() {
 
   useEffect(() => {
     return () => generationController.current?.abort()
+  }, [])
+
+  // Mantém a agenda em dia enquanto o scheduler publica: recarrega a cada 60 s
+  // (só com a aba visível) e quando a aba volta a ficar visível ou ganha foco.
+  useEffect(() => {
+    let isMounted = true
+    let isRefreshing = false
+    const refreshIfVisible = () => {
+      if (!isMounted || isRefreshing) return
+      if (document.visibilityState !== 'visible') return
+      isRefreshing = true
+      void refreshDraftsRef
+        .current()
+        .catch(() => undefined)
+        .finally(() => {
+          isRefreshing = false
+        })
+    }
+    const interval = window.setInterval(refreshIfVisible, 60_000)
+    document.addEventListener('visibilitychange', refreshIfVisible)
+    window.addEventListener('focus', refreshIfVisible)
+    return () => {
+      isMounted = false
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', refreshIfVisible)
+      window.removeEventListener('focus', refreshIfVisible)
+    }
   }, [])
 
   async function handleGenerate(values: GenerateContentValues) {
@@ -256,16 +318,16 @@ export function CalendarPage() {
         ({ id }) => id === values.brandId,
       )
       const selectedBrand = selectedWorkspace?.brand ?? brand
-      const selectedWorkspaceId =
-        selectedWorkspace?.id ?? currentWorkspace?.id
-      if (!selectedWorkspaceId) throw new Error('Selecione uma marca para gerar.')
+      const selectedWorkspaceId = selectedWorkspace?.id ?? currentWorkspace?.id
+      if (!selectedWorkspaceId)
+        throw new Error('Selecione uma marca para gerar.')
       targetWorkspaceId = selectedWorkspaceId
       const selectedWorkspaceHasPlan =
         selectedWorkspace?.billingStatus === 'active' ||
         selectedWorkspace?.billingStatus === 'trialing'
       const imageBillingWorkspaceId = selectedWorkspaceHasPlan
         ? selectedWorkspace?.id
-        : billingWorkspaceId ?? selectedWorkspaceId
+        : (billingWorkspaceId ?? selectedWorkspaceId)
       const generated = await generationService.generateBatch(
         {
           workspaceId: selectedWorkspaceId,
@@ -324,9 +386,8 @@ export function CalendarPage() {
           }
         }
         await Promise.all(
-          Array.from(
-            { length: Math.min(3, imageGroups.length) },
-            () => generateNextDateImage(),
+          Array.from({ length: Math.min(3, imageGroups.length) }, () =>
+            generateNextDateImage(),
           ),
         )
         controller.signal.throwIfAborted()
@@ -377,10 +438,7 @@ export function CalendarPage() {
           setGenerationNotice(
             `${draftCount} ${draftCount === 1 ? 'rascunho salvo' : 'rascunhos salvos'} com as imagens geradas.`,
           )
-          if (
-            targetWorkspaceId &&
-            targetWorkspaceId !== currentWorkspace?.id
-          ) {
+          if (targetWorkspaceId && targetWorkspaceId !== currentWorkspace?.id) {
             await selectWorkspace(targetWorkspaceId)
           }
           setIsGeneratorOpen(false)
@@ -394,7 +452,9 @@ export function CalendarPage() {
         )
         setIsGeneratorOpen(false)
       } else {
-        setGeneratorError(`${generationError(error)} Nenhum rascunho foi salvo.`)
+        setGeneratorError(
+          `${generationError(error)} Nenhum rascunho foi salvo.`,
+        )
       }
     } finally {
       if (generationController.current === controller) {
@@ -476,6 +536,11 @@ export function CalendarPage() {
             : 'Rascunho adicionado à agenda. Selecione o post para fazer novos ajustes.'}
         </p>
       ) : null}
+      {approvalError ? (
+        <p className={styles.dialogError} role="alert">
+          {approvalError}
+        </p>
+      ) : null}
       <section className={styles.calendarCard} aria-label="Calendário mensal">
         <div className={styles.calendarToolbar}>
           <div>
@@ -550,29 +615,52 @@ export function CalendarPage() {
                     </span>
                     <div className={styles.dayDrafts}>
                       {dateDrafts.map((draft) => (
-                        <button
-                          key={draft.id}
-                          type="button"
-                          className={styles.draft}
-                          data-status={draft.status}
-                          onClick={() => setSelectedDate(draft.date)}
-                        >
-                          <span />
-                          <div>
-                            <strong>{draft.title}</strong>
-                            <small>
-                              {draft.time ? `${draft.time} · ` : ''}
-                              <span className={styles.platformLabel}>
-                                <SocialPlatformIcon
-                                  platform={draft.platform}
-                                  size={12}
-                                />
-                                {draft.platform}
-                              </span>{' '}
-                              · {postStatusLabel(draft.status)}
-                            </small>
-                          </div>
-                        </button>
+                        <div key={draft.id} className={styles.draftItem}>
+                          <button
+                            type="button"
+                            className={styles.draft}
+                            data-status={draft.status}
+                            onClick={() => setSelectedDate(draft.date)}
+                          >
+                            <span />
+                            <div>
+                              <strong>{draft.title}</strong>
+                              <small>
+                                {draft.time ? `${draft.time} · ` : ''}
+                                <span className={styles.platformLabel}>
+                                  <SocialPlatformIcon
+                                    platform={draft.platform}
+                                    size={12}
+                                  />
+                                  {draft.platform}
+                                </span>{' '}
+                                ·{' '}
+                                {postStatusLabel(
+                                  draft.status,
+                                  draft.publishMode,
+                                )}
+                              </small>
+                            </div>
+                            {draft.status === 'failed' ? (
+                              <AlertTriangle
+                                className={styles.failedMark}
+                                size={13}
+                                aria-hidden="true"
+                              />
+                            ) : null}
+                          </button>
+                          {draft.status === 'draft' ? (
+                            <button
+                              type="button"
+                              className={styles.approveButton}
+                              disabled={approvingId === draft.id}
+                              onClick={() => void handleQuickApprove(draft)}
+                            >
+                              <Check size={12} aria-hidden="true" />
+                              Aprovar
+                            </button>
+                          ) : null}
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -590,29 +678,49 @@ export function CalendarPage() {
           <div className={styles.agendaList}>
             {monthDrafts.length ? (
               monthDrafts.map((draft) => (
-                <button
-                  key={draft.id}
-                  type="button"
-                  className={styles.agendaEntry}
-                  onClick={() => setSelectedDate(draft.date)}
-                >
-                  <time dateTime={draft.date}>{draft.date.slice(-2)}</time>
-                  <div>
-                    <strong>{draft.title}</strong>
-                    <small>
-                      {draft.time ? `${draft.time} · ` : ''}
-                      <span className={styles.platformLabel}>
-                        <SocialPlatformIcon
-                          platform={draft.platform}
-                          size={14}
-                        />
-                        {draft.platform}
-                      </span>{' '}
-                      · {postStatusLabel(draft.status)}
-                    </small>
-                  </div>
-                  <span>Editar</span>
-                </button>
+                <div key={draft.id} className={styles.agendaItem}>
+                  <button
+                    type="button"
+                    className={styles.agendaEntry}
+                    data-status={draft.status}
+                    onClick={() => setSelectedDate(draft.date)}
+                  >
+                    <time dateTime={draft.date}>{draft.date.slice(-2)}</time>
+                    <div>
+                      <strong>{draft.title}</strong>
+                      <small>
+                        {draft.time ? `${draft.time} · ` : ''}
+                        <span className={styles.platformLabel}>
+                          <SocialPlatformIcon
+                            platform={draft.platform}
+                            size={14}
+                          />
+                          {draft.platform}
+                        </span>{' '}
+                        · {postStatusLabel(draft.status, draft.publishMode)}
+                      </small>
+                    </div>
+                    {draft.status === 'failed' ? (
+                      <AlertTriangle
+                        className={styles.failedMark}
+                        size={15}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                    <span>Editar</span>
+                  </button>
+                  {draft.status === 'draft' ? (
+                    <button
+                      type="button"
+                      className={styles.approveButton}
+                      disabled={approvingId === draft.id}
+                      onClick={() => void handleQuickApprove(draft)}
+                    >
+                      <Check size={13} aria-hidden="true" />
+                      Aprovar
+                    </button>
+                  ) : null}
+                </div>
               ))
             ) : (
               <div className={styles.empty}>
