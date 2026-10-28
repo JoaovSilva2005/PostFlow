@@ -25,18 +25,22 @@ describe('ApiPostFlowRepository', () => {
     )
     vi.stubGlobal('fetch', fetch)
 
-    await ApiPostFlowRepository.createDraft('workspace-1', {
-      id: 'draft-1',
-      title: 'Post de teste',
-      caption: 'Legenda de teste.',
-      hashtags: ['#Teste'],
-      platform: 'Instagram',
-      date: '2026-09-20',
-      status: 'draft',
-      visualText: 'Uma ideia',
-      color: '#123456',
-      imageUrl: 'data:image/webp;base64,aW1hZ2U=',
-    }, 'paid-workspace')
+    await ApiPostFlowRepository.createDraft(
+      'workspace-1',
+      {
+        id: 'draft-1',
+        title: 'Post de teste',
+        caption: 'Legenda de teste.',
+        hashtags: ['#Teste'],
+        platform: 'Instagram',
+        date: '2026-09-20',
+        status: 'draft',
+        visualText: 'Uma ideia',
+        color: '#123456',
+        imageUrl: 'data:image/webp;base64,aW1hZ2U=',
+      },
+      'paid-workspace',
+    )
 
     const body = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)) as Record<
       string,
@@ -155,5 +159,57 @@ describe('ApiPostFlowRepository', () => {
     expect(body).toHaveLength(2)
     expect(body[0]).not.toHaveProperty('imageUrl')
     expect(body[1]).not.toHaveProperty('imageUrl')
+  })
+
+  describe('payload de atualização', () => {
+    const base: PostDraft = {
+      id: 'draft-1',
+      title: 'Post de teste',
+      caption: 'Legenda de teste.',
+      hashtags: ['#Teste'],
+      platform: 'Instagram',
+      date: '2026-09-20',
+      status: 'draft',
+      visualText: 'Uma ideia',
+      color: '#123456',
+      publishedAt: '2026-09-20T12:00:00.000Z',
+      publishError: 'erro antigo',
+      publishMode: 'demo',
+      externalPostUrl: 'https://example.com/p',
+    }
+
+    async function sentBody(draft: PostDraft) {
+      const fetch = vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ data: draft })))
+      vi.stubGlobal('fetch', fetch)
+      await ApiPostFlowRepository.updateDraft('workspace-1', draft)
+      return JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)) as Record<
+        string,
+        unknown
+      >
+    }
+
+    it('não envia campos de publicação definidos só pelo servidor', async () => {
+      const body = await sentBody({ ...base, status: 'scheduled' })
+      expect(body).toMatchObject({ status: 'scheduled' })
+      for (const key of [
+        'publishedAt',
+        'publishError',
+        'publishMode',
+        'externalPostUrl',
+      ]) {
+        expect(body).not.toHaveProperty(key)
+      }
+    })
+
+    it.each(['failed', 'publishing', 'published'] as const)(
+      'omite o status %s, que o navegador não pode definir',
+      async (status) => {
+        const body = await sentBody({ ...base, status })
+        expect(body).not.toHaveProperty('status')
+        expect(body).toMatchObject({ caption: 'Legenda de teste.' })
+      },
+    )
   })
 })

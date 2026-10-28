@@ -1,8 +1,9 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { PostDraft } from '../../domain/models'
 import { createTestRepository } from '../../test/testRepository'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
+import { ApiError } from '../../services/apiClient'
 import { toDateKey } from './calendarUtils'
 
 function dateInCurrentMonth(day: number) {
@@ -239,7 +240,6 @@ describe('CalendarPage', () => {
     fireEvent.change(screen.getByLabelText('Horário'), {
       target: { value: '16:30' },
     })
-    await user.selectOptions(screen.getByLabelText('Situação'), 'scheduled')
     await user.clear(screen.getByLabelText('Legenda'))
     await user.type(screen.getByLabelText('Legenda'), 'Legenda revisada')
     await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
@@ -251,7 +251,7 @@ describe('CalendarPage', () => {
       caption: 'Legenda revisada',
       date: nextDate,
       time: '16:30',
-      status: 'scheduled',
+      status: 'draft',
     })
   })
 
@@ -423,5 +423,383 @@ describe('CalendarPage', () => {
     expect(
       screen.getByRole('button', { name: /Segundo post/ }),
     ).toBeInTheDocument()
+  })
+
+  describe('aprovação e estados de publicação', () => {
+    function postWith(overrides: Partial<PostDraft>): PostDraft {
+      return { ...drafts[0], ...overrides }
+    }
+
+    it('post draft mostra "Não agendado" e o botão Aprovar', async () => {
+      authenticateDemo()
+      renderApp('/calendar', createTestRepository({ drafts }))
+
+      const card = await screen.findByRole('button', { name: /Café especial/ })
+      expect(card).toHaveTextContent('Não agendado')
+      expect(screen.getAllByRole('button', { name: 'Aprovar' })).toHaveLength(2)
+    })
+
+    it('clicar em Aprovar envia PATCH com status scheduled', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      const repository = createTestRepository({ drafts })
+      renderApp('/calendar', repository)
+
+      await screen.findByRole('button', { name: /Café especial/ })
+      await user.click(screen.getAllByRole('button', { name: 'Aprovar' })[0])
+
+      await waitFor(() =>
+        expect(repository.snapshot().drafts[0]).toMatchObject({
+          id: 'draft-1',
+          status: 'scheduled',
+        }),
+      )
+      expect(repository.snapshot().drafts[1].status).toBe('draft')
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: /Café especial/ }),
+        ).toHaveTextContent('Agendado'),
+      )
+      expect(screen.getAllByRole('button', { name: 'Aprovar' })).toHaveLength(1)
+    })
+
+    it('mostra o motivo quando a aprovação rápida é recusada pelo servidor', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      const repository = createTestRepository({ drafts })
+      vi.spyOn(repository, 'updateDraft').mockRejectedValue(
+        new ApiError('Escolha um horário futuro para agendar o post.', 400),
+      )
+      renderApp('/calendar', repository)
+
+      await screen.findByRole('button', { name: /Café especial/ })
+      await user.click(screen.getAllByRole('button', { name: 'Aprovar' })[0])
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Escolha um horário futuro para agendar o post.',
+      )
+      expect(
+        screen.getByRole('button', { name: /Café especial/ }),
+      ).toHaveTextContent('Não agendado')
+    })
+
+    it('post published com publishMode demo mostra "Publicado (simulado)" e campos desabilitados', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      renderApp(
+        '/calendar',
+        createTestRepository({
+          drafts: [
+            postWith({
+              status: 'published',
+              publishMode: 'demo',
+              publishedAt: '2026-10-28T15:00:00.000Z',
+              externalPostUrl: 'https://example.com/post/1',
+            }),
+          ],
+        }),
+      )
+
+      const card = await screen.findByRole('button', { name: /Café especial/ })
+      expect(card).toHaveTextContent('Publicado (simulado)')
+      expect(
+        screen.queryByRole('button', { name: 'Aprovar' }),
+      ).not.toBeInTheDocument()
+
+      await user.click(card)
+      const dialog = screen.getByRole('dialog')
+      expect(
+        within(dialog).getAllByText('Publicado (simulado)').length,
+      ).toBeGreaterThan(0)
+      expect(within(dialog).getByLabelText('Legenda')).toBeDisabled()
+      expect(within(dialog).getByLabelText('Data')).toBeDisabled()
+      expect(within(dialog).getByLabelText('Horário')).toBeDisabled()
+      expect(
+        within(dialog).queryByRole('button', { name: 'Excluir post' }),
+      ).not.toBeInTheDocument()
+      expect(
+        within(dialog).queryByRole('button', { name: 'Salvar alterações' }),
+      ).not.toBeInTheDocument()
+      expect(
+        within(dialog).getByRole('link', { name: /Ver publicação/ }),
+      ).toHaveAttribute('href', 'https://example.com/post/1')
+    })
+
+    it('post published fora do modo demo mostra "Publicado"', async () => {
+      authenticateDemo()
+      renderApp(
+        '/calendar',
+        createTestRepository({
+          drafts: [postWith({ status: 'published', publishMode: 'live' })],
+        }),
+      )
+      const card = await screen.findByRole('button', { name: /Café especial/ })
+      expect(card).toHaveTextContent(/Publicado$/)
+      expect(card).not.toHaveTextContent('simulado')
+    })
+
+    it('post failed mostra o motivo da falha e permite aprovar novamente', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      const repository = createTestRepository({
+        drafts: [
+          postWith({
+            status: 'failed',
+            publishError: 'Token da rede social expirado.',
+          }),
+        ],
+      })
+      renderApp('/calendar', repository)
+
+      const card = await screen.findByRole('button', { name: /Café especial/ })
+      expect(card).toHaveTextContent('Falhou')
+      expect(card).toHaveAttribute('data-status', 'failed')
+      await user.click(card)
+      const dialog = screen.getByRole('dialog')
+      expect(
+        within(dialog).getByText('Token da rede social expirado.'),
+      ).toBeInTheDocument()
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Aprovar novamente' }),
+      )
+      await waitFor(() =>
+        expect(repository.snapshot().drafts[0].status).toBe('scheduled'),
+      )
+      expect(await within(dialog).findByRole('status')).toHaveTextContent(
+        'Post aprovado e agendado.',
+      )
+    })
+
+    it('"Aprovar e agendar" agenda o post e "Cancelar agendamento" o devolve a não agendado', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      const repository = createTestRepository({ drafts })
+      renderApp('/calendar', repository)
+
+      await user.click(
+        await screen.findByRole('button', { name: /Café especial/ }),
+      )
+      const dialog = screen.getByRole('dialog')
+      expect(
+        within(dialog).queryByRole('button', { name: 'Cancelar agendamento' }),
+      ).not.toBeInTheDocument()
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Aprovar e agendar' }),
+      )
+      expect(await within(dialog).findByRole('status')).toHaveTextContent(
+        'Post aprovado e agendado.',
+      )
+      expect(repository.snapshot().drafts[0].status).toBe('scheduled')
+
+      await user.click(
+        await within(dialog).findByRole('button', {
+          name: 'Cancelar agendamento',
+        }),
+      )
+      await waitFor(() =>
+        expect(repository.snapshot().drafts[0].status).toBe('draft'),
+      )
+    })
+
+    it('editar um post agendado o devolve a não agendado', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      const repository = createTestRepository({
+        drafts: [postWith({ status: 'scheduled' })],
+      })
+      renderApp('/calendar', repository)
+
+      await user.click(
+        await screen.findByRole('button', { name: /Café especial/ }),
+      )
+      const dialog = screen.getByRole('dialog')
+      await user.type(within(dialog).getByLabelText('Legenda'), ' nova')
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Salvar alterações' }),
+      )
+      await waitFor(() =>
+        expect(repository.snapshot().drafts[0]).toMatchObject({
+          status: 'draft',
+          caption: 'Legenda original nova',
+        }),
+      )
+      expect(
+        await within(dialog).findByRole('button', {
+          name: 'Aprovar e agendar',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('mostra a mensagem do servidor quando o horário já passou', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      const repository = createTestRepository({ drafts })
+      vi.spyOn(repository, 'updateDraft').mockRejectedValue(
+        new ApiError('Escolha um horário futuro para agendar o post.', 400),
+      )
+      renderApp('/calendar', repository)
+
+      await user.click(
+        await screen.findByRole('button', { name: /Café especial/ }),
+      )
+      const dialog = screen.getByRole('dialog')
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Aprovar e agendar' }),
+      )
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'Escolha um horário futuro para agendar o post.',
+      )
+    })
+
+    it('o painel de agendamento não oferece mais a opção Publicado', async () => {
+      authenticateDemo()
+      const user = userEvent.setup()
+      renderApp('/calendar', createTestRepository({ drafts }))
+
+      await user.click(
+        await screen.findByRole('button', { name: /Café especial/ }),
+      )
+      const dialog = screen.getByRole('dialog')
+      expect(
+        within(dialog).queryByLabelText('Situação'),
+      ).not.toBeInTheDocument()
+      expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument()
+      expect(
+        within(dialog).queryByRole('option', { name: 'Publicado' }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  describe('atualização automática', () => {
+    function setVisibility(value: 'visible' | 'hidden') {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => value,
+      })
+    }
+
+    afterEach(() => {
+      vi.useRealTimers()
+      setVisibility('visible')
+    })
+
+    async function renderWithServerState() {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      authenticateDemo()
+      const repository = createTestRepository({ drafts })
+      let server = drafts
+      const load = vi
+        .spyOn(repository, 'load')
+        .mockImplementation(async () => ({
+          brand: null,
+          drafts: server.map((draft) => ({ ...draft })),
+        }))
+      const view = renderApp('/calendar', repository)
+      await screen.findByRole('button', { name: /Café especial/ })
+      load.mockClear()
+      return {
+        repository,
+        load,
+        view,
+        setServer: (next: PostDraft[]) => {
+          server = next
+        },
+      }
+    }
+
+    async function tick(ms: number) {
+      await act(async () => {
+        vi.advanceTimersByTime(ms)
+        await Promise.resolve()
+      })
+    }
+
+    it('recarrega os posts a cada 60 s e mostra a nova situação', async () => {
+      const { load, setServer } = await renderWithServerState()
+      setServer([
+        { ...drafts[0], status: 'published', publishMode: 'demo' },
+        drafts[1],
+      ])
+
+      await tick(59_000)
+      expect(load).not.toHaveBeenCalled()
+      await tick(1_000)
+      expect(load).toHaveBeenCalledTimes(1)
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: /Café especial/ }),
+        ).toHaveTextContent('Publicado (simulado)'),
+      )
+    })
+
+    it('não recarrega com a aba oculta e recarrega ao voltar o foco', async () => {
+      const { load } = await renderWithServerState()
+      setVisibility('hidden')
+      await tick(120_000)
+      expect(load).not.toHaveBeenCalled()
+
+      setVisibility('visible')
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+      await waitFor(() => expect(load).toHaveBeenCalledTimes(1))
+      await act(async () => {
+        window.dispatchEvent(new Event('focus'))
+      })
+      await waitFor(() => expect(load).toHaveBeenCalledTimes(2))
+    })
+
+    it('não empilha intervalos e para ao desmontar', async () => {
+      const { load, view } = await renderWithServerState()
+      await tick(60_000)
+      expect(load).toHaveBeenCalledTimes(1)
+      await tick(60_000)
+      expect(load).toHaveBeenCalledTimes(2)
+
+      view.unmount()
+      load.mockClear()
+      await tick(300_000)
+      expect(load).not.toHaveBeenCalled()
+    })
+
+    it('não apaga a edição aberta no diálogo ao atualizar', async () => {
+      const { setServer } = await renderWithServerState()
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: /Café especial/ }))
+      const dialog = screen.getByRole('dialog')
+      await user.clear(within(dialog).getByLabelText('Legenda'))
+      await user.type(within(dialog).getByLabelText('Legenda'), 'Em edição')
+
+      setServer([
+        { ...drafts[0], status: 'failed', publishError: 'Falha de rede.' },
+        drafts[1],
+      ])
+      await tick(60_000)
+
+      await waitFor(() =>
+        expect(within(dialog).getByText('Falha de rede.')).toBeInTheDocument(),
+      )
+      expect(within(dialog).getByLabelText('Legenda')).toHaveValue('Em edição')
+    })
+
+    it('trava o diálogo aberto quando o post passa a publicado', async () => {
+      const { setServer } = await renderWithServerState()
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: /Café especial/ }))
+      const dialog = screen.getByRole('dialog')
+
+      setServer([
+        { ...drafts[0], status: 'published', publishMode: 'demo' },
+        drafts[1],
+      ])
+      await tick(60_000)
+
+      await waitFor(() =>
+        expect(within(dialog).getByLabelText('Legenda')).toBeDisabled(),
+      )
+      expect(
+        within(dialog).getAllByText('Publicado (simulado)').length,
+      ).toBeGreaterThan(0)
+    })
   })
 })

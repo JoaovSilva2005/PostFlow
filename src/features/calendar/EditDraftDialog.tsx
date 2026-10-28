@@ -11,11 +11,13 @@ import {
 } from 'react'
 import {
   CalendarClock,
+  Ban,
   Check,
   ChevronLeft,
   ChevronRight,
   Copy,
   CopyCheck,
+  ExternalLink,
   Hash,
   Plus,
   Trash2,
@@ -24,7 +26,11 @@ import {
 import { Button } from '../../components/ui/Button'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import type { PostDraft } from '../../domain/models'
-import { postStatusLabel } from '../../../shared/domain/postPublishing'
+import {
+  isEditableStatus,
+  postStatusLabel,
+} from '../../../shared/domain/postPublishing'
+import { ApiError } from '../../services/apiClient'
 import { DraftSchedulePanel } from './DraftSchedulePanel'
 import { PostCreativePreview } from './PostCreativePreview'
 import styles from './CalendarPage.module.css'
@@ -46,6 +52,44 @@ interface EditDraftDialogProps {
 interface CardState {
   hasUnsavedChanges: boolean
   isSaving: boolean
+}
+
+const PUBLISHING_LOCKED_MESSAGE =
+  'Este post já está em publicação ou foi publicado e não pode ser alterado.'
+
+function formatPublishedAt(value?: string) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'America/Sao_Paulo',
+  }).format(date)
+}
+
+function safeExternalUrl(value?: string) {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+      ? url.href
+      : null
+  } catch {
+    return null
+  }
+}
+
+function saveErrorMessage(error: unknown) {
+  // Regras de negócio da API (horário no passado, post já publicado) vêm em
+  // português e dizem ao usuário exatamente o que corrigir.
+  if (
+    error instanceof ApiError &&
+    (error.status === 400 || error.status === 409)
+  ) {
+    return error.message
+  }
+  return 'Não foi possível salvar as alterações. Confira os campos e tente novamente.'
 }
 
 function formatDateLabel(date: string) {
@@ -248,6 +292,10 @@ function EditDraftCard({
   const [copied, setCopied] = useState(false)
   const [hashtagInput, setHashtagInput] = useState('')
   const captionId = useId()
+  const isEditable = isEditableStatus(draft.status)
+  const fieldsDisabled = isSaving || !isEditable
+  const externalUrl = safeExternalUrl(draft.externalPostUrl)
+  const publishedAtLabel = formatPublishedAt(draft.publishedAt)
   const normalizedPendingHashtag = hashtagInput.trim().replace(/[#\s,]+/g, '')
   const pendingHashtag = normalizedPendingHashtag
     ? `#${normalizedPendingHashtag}`
@@ -266,11 +314,24 @@ function EditDraftCard({
     )
 
   useEffect(() => {
-    setForm((currentForm) =>
-      currentForm.id === draft.id
-        ? { ...currentForm, date: draft.date, imageUrl: draft.imageUrl }
-        : draft,
-    )
+    setForm((currentForm) => {
+      if (currentForm.id !== draft.id) return draft
+      // Posts em publicação ou publicados não aceitam edição: descarta
+      // alterações locais pendentes e mostra o que o servidor tem.
+      if (!isEditableStatus(draft.status)) return draft
+      // Caso contrário preserva o que o usuário está digitando e atualiza só
+      // os campos controlados pelo servidor.
+      return {
+        ...currentForm,
+        date: draft.date,
+        imageUrl: draft.imageUrl,
+        status: draft.status,
+        publishedAt: draft.publishedAt,
+        publishError: draft.publishError,
+        publishMode: draft.publishMode,
+        externalPostUrl: draft.externalPostUrl,
+      }
+    })
     setError('')
     setCopied(false)
   }, [draft])
@@ -327,10 +388,8 @@ function EditDraftCard({
       await onSave(nextDraft)
       setForm(nextDraft)
       setNotice(successMessage)
-    } catch {
-      setError(
-        'Não foi possível salvar as alterações. Confira os campos e tente novamente.',
-      )
+    } catch (error) {
+      setError(saveErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
@@ -351,6 +410,15 @@ function EditDraftCard({
     }
     const updatedDraft = { ...form, hashtags }
     setHashtagInput('')
+    if (draft.status === 'scheduled' && hasUnsavedChanges) {
+      // Alterar um post aprovado exige nova aprovação: o servidor também o
+      // devolve a "Não agendado" quando o conteúdo muda.
+      await persist(
+        { ...updatedDraft, status: 'draft' },
+        'Alterações salvas. O post voltou para "Não agendado": aprove novamente para agendar.',
+      )
+      return
+    }
     await persist(updatedDraft, 'Alterações salvas.')
   }
 
@@ -376,10 +444,15 @@ function EditDraftCard({
   }
 
   async function handleSchedule() {
-    await persist({ ...form, status: 'scheduled' }, 'Post salvo como agendado.')
+    await persist({ ...form, status: 'scheduled' }, 'Post aprovado e agendado.')
+  }
+
+  async function handleCancelSchedule() {
+    await persist({ ...form, status: 'draft' }, 'Agendamento cancelado.')
   }
 
   async function handleDelete() {
+    if (!isEditable) return
     setError('')
     setNotice('')
     setIsSaving(true)
@@ -494,9 +567,9 @@ function EditDraftCard({
           <SocialPlatformIcon platform={form.platform} size={24} />
           <h2>{form.platform}</h2>
         </div>
-        <span className={styles.statusBadge} data-status={form.status}>
+        <span className={styles.statusBadge} data-status={draft.status}>
           <span />
-          {postStatusLabel(form.status)}
+          {postStatusLabel(draft.status, draft.publishMode)}
         </span>
         <div className={styles.metaDate}>
           <CalendarClock size={15} />
@@ -506,12 +579,45 @@ function EditDraftCard({
         </div>
       </header>
 
+      {draft.status === 'failed' ? (
+        <section
+          className={styles.publishFailure}
+          aria-label="Falha na publicação"
+        >
+          <strong>Não foi possível publicar este post</strong>
+          <p>
+            {draft.publishError ||
+              'A publicação falhou. Aprove novamente para tentar de novo.'}
+          </p>
+        </section>
+      ) : null}
+      {draft.status === 'publishing' ? (
+        <p className={styles.publishInfo}>
+          Publicando agora… esta tela atualiza sozinha em instantes.
+        </p>
+      ) : null}
+      {draft.status === 'published' ? (
+        <section
+          className={styles.publishInfo}
+          aria-label="Dados da publicação"
+        >
+          <p>
+            {draft.publishMode === 'demo'
+              ? 'Publicação simulada: nada foi enviado às redes sociais.'
+              : 'Post publicado.'}
+            {publishedAtLabel ? ` Publicado em ${publishedAtLabel}.` : ''}
+          </p>
+          {externalUrl ? (
+            <a href={externalUrl} target="_blank" rel="noopener noreferrer">
+              Ver publicação <ExternalLink size={13} aria-hidden="true" />
+            </a>
+          ) : null}
+        </section>
+      ) : null}
+
       <form onSubmit={handleSubmit} className={styles.detailForm}>
         <div className={styles.detailBody}>
-          <PostCreativePreview
-            draft={form}
-            onRefreshImage={onRefreshImage}
-          />
+          <PostCreativePreview draft={form} onRefreshImage={onRefreshImage} />
 
           <section
             className={styles.detailEditor}
@@ -530,7 +636,7 @@ function EditDraftCard({
                 rows={10}
                 maxLength={5000}
                 value={form.caption}
-                disabled={isSaving}
+                disabled={fieldsDisabled}
                 onChange={(event) =>
                   updateFormField('caption', event.target.value)
                 }
@@ -546,7 +652,7 @@ function EditDraftCard({
                     <button
                       type="button"
                       aria-label={`Remover hashtag ${hashtag}`}
-                      disabled={isSaving}
+                      disabled={fieldsDisabled}
                       onClick={() => removeHashtag(hashtag)}
                     >
                       <X size={12} />
@@ -561,7 +667,7 @@ function EditDraftCard({
                   aria-label="Adicionar hashtag"
                   value={hashtagInput}
                   maxLength={80}
-                  disabled={isSaving || form.hashtags.length >= 30}
+                  disabled={fieldsDisabled || form.hashtags.length >= 30}
                   placeholder="Digite uma hashtag"
                   onChange={(event) => {
                     setHashtagInput(event.target.value)
@@ -576,7 +682,7 @@ function EditDraftCard({
                 />
                 <button
                   type="button"
-                  disabled={isSaving || !pendingHashtag}
+                  disabled={fieldsDisabled || !pendingHashtag}
                   onClick={addHashtag}
                 >
                   <Plus size={14} /> Adicionar
@@ -595,7 +701,7 @@ function EditDraftCard({
           <aside className={styles.detailSidebar}>
             <DraftSchedulePanel
               draft={form}
-              disabled={isSaving}
+              disabled={fieldsDisabled}
               onDateChange={handleDateChange}
               onChange={updateFormField}
             />
@@ -627,15 +733,19 @@ function EditDraftCard({
         </div>
 
         <footer className={styles.detailFooter}>
-          <Button
-            type="button"
-            variant="danger"
-            onClick={handleDelete}
-            disabled={isSaving}
-            aria-label="Excluir post"
-          >
-            <Trash2 size={16} /> Excluir
-          </Button>
+          {isEditable ? (
+            <Button
+              type="button"
+              variant="danger"
+              onClick={handleDelete}
+              disabled={isSaving}
+              aria-label="Excluir post"
+            >
+              <Trash2 size={16} /> Excluir
+            </Button>
+          ) : (
+            <span />
+          )}
           <div className={styles.detailFeedback}>
             {error ? (
               <p className={styles.dialogError} role="alert">
@@ -645,24 +755,42 @@ function EditDraftCard({
               <p className={styles.saveNotice} role="status">
                 {notice}
               </p>
+            ) : !isEditable ? (
+              <p className={styles.lockedNote}>{PUBLISHING_LOCKED_MESSAGE}</p>
             ) : null}
           </div>
-          <div className={styles.detailFooterActions}>
-            {form.status === 'draft' ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleSchedule}
-                disabled={isSaving}
-              >
-                <CalendarClock size={16} />
-                {isSaving ? 'Salvando...' : 'Salvar como agendado'}
+          {isEditable ? (
+            <div className={styles.detailFooterActions}>
+              {draft.status === 'scheduled' ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleCancelSchedule}
+                  disabled={isSaving}
+                >
+                  <Ban size={16} />
+                  {isSaving ? 'Salvando...' : 'Cancelar agendamento'}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleSchedule}
+                  disabled={isSaving}
+                >
+                  <CalendarClock size={16} />
+                  {isSaving
+                    ? 'Salvando...'
+                    : draft.status === 'failed'
+                      ? 'Aprovar novamente'
+                      : 'Aprovar e agendar'}
+                </Button>
+              )}
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? 'Salvando...' : 'Salvar alterações'}
               </Button>
-            ) : null}
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? 'Salvando...' : 'Salvar alterações'}
-            </Button>
-          </div>
+            </div>
+          ) : null}
         </footer>
       </form>
     </article>
