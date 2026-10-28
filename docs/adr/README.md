@@ -1,17 +1,18 @@
 # Architecture Decision Records
 
-| ADR                                                                   | Decisão                               | Status   |
-| --------------------------------------------------------------------- | ------------------------------------- | -------- |
-| [ADR-0001](ADR-0001-bff-and-tenant-isolation.md)                      | BFF e isolamento por membership       | Accepted |
-| [ADR-0002](ADR-0002-ai-provider-boundary.md)                          | Porta de provedor para IA             | Accepted |
-| [ADR-0003](ADR-0003-fail-closed-production.md)                        | Produção sem fallback silencioso      | Accepted |
-| [ADR-0004](ADR-0004-temporary-server-data-bridge.md)                  | Ponte temporária de dados server-side | Accepted |
-| [ADR-0005](ADR-0005-separate-platform-and-workspace-authorization.md) | Roles da plataforma e do workspace    | Accepted |
-| [ADR-0006](ADR-0006-ai-image-preview-boundary.md)                     | Arte gerada como preview da revisão   | Accepted |
-| [ADR-0007](ADR-0007-shared-contracts-and-boundaries.md)               | Contratos puros em `shared/`          | Accepted |
-| [ADR-0008](ADR-0008-batched-content-planner.md)                       | Planejador de conteúdo em lote        | Accepted |
-| [ADR-0009](ADR-0009-multi-brand-workspaces.md)                        | Marcas múltiplas como workspaces      | Accepted |
+| ADR                                                                   | Decisão                                | Status   |
+| --------------------------------------------------------------------- | -------------------------------------- | -------- |
+| [ADR-0001](ADR-0001-bff-and-tenant-isolation.md)                      | BFF e isolamento por membership        | Accepted |
+| [ADR-0002](ADR-0002-ai-provider-boundary.md)                          | Porta de provedor para IA              | Accepted |
+| [ADR-0003](ADR-0003-fail-closed-production.md)                        | Produção sem fallback silencioso       | Accepted |
+| [ADR-0004](ADR-0004-temporary-server-data-bridge.md)                  | Ponte temporária de dados server-side  | Accepted |
+| [ADR-0005](ADR-0005-separate-platform-and-workspace-authorization.md) | Roles da plataforma e do workspace     | Accepted |
+| [ADR-0006](ADR-0006-ai-image-preview-boundary.md)                     | Arte gerada como preview da revisão    | Accepted |
+| [ADR-0007](ADR-0007-shared-contracts-and-boundaries.md)               | Contratos puros em `shared/`           | Accepted |
+| [ADR-0008](ADR-0008-batched-content-planner.md)                       | Planejador de conteúdo em lote         | Accepted |
+| [ADR-0009](ADR-0009-multi-brand-workspaces.md)                        | Marcas múltiplas como workspaces       | Accepted |
 | [ADR-0010](ADR-0010-atomic-workflows-and-ai-quotas.md)                | RPCs atômicas e franquias de IA        | Accepted |
 | [ADR-0011](ADR-0011-derived-accounting-report.md)                     | DRE derivada do Financeiro e Fiscal    | Accepted |
-| [ADR-0011 — Agenda](ADR-0011-complete-calendar-posts.md)             | Posts com arte compartilhada na agenda | Accepted |
-| [ADR-0012](ADR-0012-social-publishing-integration.md)                | Publicação social multitenant          | Proposed |
+| [ADR-0011 — Agenda](ADR-0011-complete-calendar-posts.md)              | Posts com arte compartilhada na agenda | Accepted |
+| [ADR-0012](ADR-0012-social-publishing-integration.md)                 | Publicação social multitenant          | Proposed |
+| [ADR-0014](ADR-0014-social-publishing-demo-mode.md)                   | Modo demonstração da publicação social | Accepted |
