@@ -196,6 +196,7 @@ function validateCaptionLength(
 
 const NOT_EDITABLE_MESSAGE =
   'Este post já está em publicação ou foi publicado e não pode ser alterado.'
+const EDITABLE_STATUSES = ['draft', 'scheduled', 'failed']
 const FUTURE_SCHEDULE_MESSAGE = 'Escolha um horário futuro para agendar o post.'
 
 function assertFutureSchedule(scheduledAt: string | null | undefined) {
@@ -536,6 +537,7 @@ export function createWorkspaceRouter(
         )
         .eq('id', id)
         .eq('brand_id', brandId)
+        .in('status', EDITABLE_STATUSES)
         .select('*,social_platforms(name),post_hashtags(hashtag)')
         .maybeSingle()
       if (updateError || !updated) {
@@ -544,7 +546,7 @@ export function createWorkspaceRouter(
           throw new Error(
             `Falha ao salvar imagem do post: ${updateError.message}`,
           )
-        throw new HttpError(404, 'Post não encontrado.')
+        throw new HttpError(409, NOT_EDITABLE_MESSAGE)
       }
 
       const previousImagePath = current.image_path
@@ -762,7 +764,9 @@ export function createWorkspaceRouter(
       )
       if (error) throwDraftWriteError(error, 'Falha ao atualizar post')
       const updated = Array.isArray(data) ? data[0] : data
-      if (!updated) throw new HttpError(404, 'Post não encontrado.')
+      // O post existia na leitura prévia: sem retorno, o agendador o assumiu
+      // (publishing) no meio do caminho.
+      if (!updated) throw new HttpError(409, NOT_EDITABLE_MESSAGE)
       response.json({ data: await toDraftWithImage(supabase, updated) })
     },
   )

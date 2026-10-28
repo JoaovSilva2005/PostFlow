@@ -75,6 +75,15 @@ function createSupabaseMock(
         filters.set(column, value)
         return chain
       }),
+      in: vi.fn((column: string, values: unknown[]) => {
+        filters.set(column, values)
+        if (
+          column === 'status' &&
+          !values.includes(currentDraft.status)
+        )
+          updatedRow = null
+        return chain
+      }),
       update: vi.fn((values: Record<string, unknown>) => {
         updatedRow = { ...currentDraft, ...values } as SavedDraftRow
         return chain
@@ -111,6 +120,8 @@ function createSupabaseMock(
           table === 'post_drafts' &&
           selectedColumns === '*,social_platforms(name),post_hashtags(hashtag)'
         ) {
+          if (filters.has('status') && !updatedRow)
+            return { data: null, error: null }
           return { data: updatedRow ?? currentDraft, error: null }
         }
         return {
@@ -566,6 +577,41 @@ describe('aprovação para agendamento', () => {
       .send({ imageUrl: 'data:image/webp;base64,aW1hZ2U=' })
     expect(response.status).toBe(409)
     expect(storageBucket.upload).not.toHaveBeenCalled()
+  })
+
+  it('PATCH com RPC sem retorno após leitura prévia devolve 409', async () => {
+    const { client } = createSupabaseMock({ data: null, error: null })
+    const response = await request(createTestApp(client))
+      .patch(patchUrl)
+      .send({ caption: 'Nova legenda.' })
+    expect(response.status).toBe(409)
+    expect(response.body.error).toBe(
+      'Este post já está em publicação ou foi publicado e não pode ser alterado.',
+    )
+  })
+
+  it('PUT de imagem cujo update não casa nenhuma linha devolve 409 e remove o arquivo', async () => {
+    const { client, storageBucket, from } = createSupabaseMock(
+      { data: null, error: null },
+      savedDraft({ ...draft, status: 'scheduled' }),
+    )
+    // A leitura prévia enxerga scheduled; o guard do update vê publishing.
+    const original = from.getMockImplementation()!
+    from.mockImplementation((table: string) => {
+      const chain = original(table) as any
+      const inFn = chain.in
+      chain.in = (column: string, values: unknown[]) => {
+        inFn(column, ['__nenhum__'])
+        return chain
+      }
+      return chain
+    })
+    const response = await request(createTestApp(client))
+      .put(`/api/workspaces/${workspaceId}/drafts/${draft.id}/image`)
+      .send({ imageUrl: 'data:image/webp;base64,aW1hZ2U=' })
+    expect(response.status).toBe(409)
+    expect(storageBucket.upload).toHaveBeenCalledTimes(1)
+    expect(storageBucket.remove).toHaveBeenCalledTimes(1)
   })
 
   it('POST com status scheduled no passado devolve 400', async () => {

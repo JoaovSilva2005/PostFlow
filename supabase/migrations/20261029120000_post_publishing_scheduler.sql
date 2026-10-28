@@ -148,6 +148,7 @@ begin
          updated_at = now()
    where post.id = p_post_id
      and post.brand_id = p_brand_id
+     and post.status in ('draft', 'scheduled', 'failed')
   returning post.* into v_post;
   if not found then return null; end if;
 
