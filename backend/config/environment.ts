@@ -66,6 +66,7 @@ const explicitlyAllowedOrigins = (process.env.APP_ALLOWED_ORIGINS ?? '')
 export const environment = {
   apiPort: Number(process.env.API_PORT ?? 3001),
   appUrl,
+  socialDemoMode: process.env.SOCIAL_DEMO_MODE === 'true',
   isProduction,
   allowDemoFallback:
     !isProduction && process.env.POSTFLOW_ALLOW_DEMO_FALLBACK === 'true',

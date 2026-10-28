@@ -3,17 +3,26 @@ import { createFacebookPagesProvider } from './facebookPages.js'
 import { createInstagramLoginProvider } from './instagramLogin.js'
 import { createLinkedInMemberProvider } from './linkedinMember.js'
 import { createTikTokDirectPostProvider } from './tiktokDirectPost.js'
+import { createDemoProvider } from './demo.js'
 import type { ProviderFetch } from './common.js'
 
 export interface SocialProviderFactoryOptions {
   appUrl?: string
   fetch?: ProviderFetch
+  demoMode?: boolean
 }
 
 export function createSocialProviders(
   options: SocialProviderFactoryOptions = {},
 ): Record<SocialProvider['id'], SocialProvider> {
   void options.appUrl
+  if (options.demoMode)
+    return {
+      facebook: createDemoProvider('facebook'),
+      instagram: createDemoProvider('instagram'),
+      linkedin: createDemoProvider('linkedin'),
+      tiktok: createDemoProvider('tiktok'),
+    }
   const env = { fetch: options.fetch ?? globalThis.fetch, timeoutMs: 10_000 }
   const graphVersion = process.env.META_GRAPH_VERSION ?? 'v26.0'
   const instagramClientId = process.env.INSTAGRAM_APP_ID
@@ -42,6 +51,7 @@ export function createSocialProviders(
   }
 }
 
+export { createDemoProvider } from './demo.js'
 export { createFacebookPagesProvider } from './facebookPages.js'
 export { createInstagramLoginProvider } from './instagramLogin.js'
 export { createLinkedInMemberProvider } from './linkedinMember.js'

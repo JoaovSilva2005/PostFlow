@@ -4,6 +4,8 @@ export const SOCIAL_PROVIDERS = [
   'linkedin',
   'tiktok',
 ] as const
+/** Tipo de conta gravado pelos adaptadores de demonstração. */
+export const DEMO_ACCOUNT_TYPE = 'demo'
 export type SocialProviderId = (typeof SOCIAL_PROVIDERS)[number]
 export type PublicationStatus =
   | 'queued'
@@ -66,6 +68,7 @@ export interface PublicationDTO {
   error: string | null
   attempts: number
   cancellable?: boolean
+  simulated: boolean
   createdAt: string
 }
 export interface SocialProviderDTO {
@@ -77,6 +80,7 @@ export interface SocialProviderDTO {
   setupUrl: string
 }
 export interface SocialOverview {
+  demoMode: boolean
   providers: SocialProviderDTO[]
   connections: SocialConnectionDTO[]
   pending: PendingConnectionDTO[]

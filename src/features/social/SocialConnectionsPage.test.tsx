@@ -27,6 +27,7 @@ vi.mock('./socialApi', async (original) => ({
 }))
 
 const overview: SocialOverview = {
+  demoMode: false,
   providers: [
     {
       id: 'instagram',
@@ -100,6 +101,7 @@ const overview: SocialOverview = {
       error: null,
       attempts: 0,
       createdAt: '2026-10-12T12:00:00Z',
+      simulated: false,
     },
   ],
 }
