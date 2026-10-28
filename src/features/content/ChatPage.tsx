@@ -59,6 +59,7 @@ export function ChatPage({
   const {
     brand,
     currentWorkspace,
+    billingWorkspaceId,
     availableWorkspaces,
     addDraftsForWorkspace,
     selectWorkspace,
@@ -158,8 +159,14 @@ export function ChatPage({
     }
     setPromptError('')
     setSaveError('')
+    setMobilePanel('draft')
     const request = {
       workspaceId: selectedBrandId || currentWorkspace?.id,
+      billingWorkspaceId:
+        selectedWorkspace?.billingStatus === 'active' ||
+        selectedWorkspace?.billingStatus === 'trialing'
+          ? selectedWorkspace.id
+          : billingWorkspaceId ?? selectedBrandId ?? currentWorkspace?.id,
       prompt: prompt.trim(),
       imageTier,
       date,
@@ -199,7 +206,7 @@ export function ChatPage({
     for (const draft of studio.drafts) {
       const result = draftSchema.safeParse(draft)
       if (!result.success) {
-        studio.setActivePlatform(draft.platform)
+        studio.setActivePlatform(draft.platform as Platform)
         setSaveError(
           `Revise o rascunho de ${draft.platform}: título de 3 a 160 caracteres, legenda, texto da arte, hashtags sem espaços e uma data válida.`,
         )
@@ -449,10 +456,14 @@ export function ChatPage({
             ))}
             {studio.isGenerating && (
               <p className={styles.loading} role="status">
-                <LoaderCircle className={styles.spinner} size={16} /> Preparando
-                {platforms.length > 1
-                  ? ' seus rascunhos...'
-                  : ' seu rascunho...'}
+                <LoaderCircle className={styles.spinner} size={16} />
+                {service.mode === 'api'
+                  ? platforms.length > 1
+                    ? ' Gerando textos e imagens...'
+                    : ' Gerando texto e imagem...'
+                  : platforms.length > 1
+                    ? ' Preparando seus rascunhos...'
+                    : ' Preparando seu rascunho...'}
               </p>
             )}
             {studio.draft && !studio.isGenerating && (
@@ -559,9 +570,12 @@ export function ChatPage({
             brandName={selectedBrand?.name}
             draft={studio.draft}
             drafts={studio.drafts}
-            activePlatform={studio.draft?.platform ?? null}
+            activePlatform={studio.activePlatform}
             onSelectPlatform={studio.setActivePlatform}
             pendingCount={pendingCount}
+            platforms={platforms}
+            pendingPlatforms={studio.pendingPlatforms}
+            failedPlatforms={studio.failedPlatforms}
             generationIssue={studio.error}
             onRetry={studio.retry}
             isAdding={isAdding}
