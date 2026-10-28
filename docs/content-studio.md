@@ -40,6 +40,45 @@ Entrada JSON: `{ prompt, platform, date, brand, history, previousDraft }`. `hist
 
 A composição visual usa `visualText` e `color` no modo demonstrativo. No modo API, o `ContentProvider` gera texto com `gpt-6-luna` pela Responses API e, em seguida, uma imagem pela Image Generation API. O padrão é `gpt-image-2.5-flare`; no estúdio individual, o usuário pode escolher “Mais qualidade”, que o backend mapeia para `gpt-image-2.5-sunburst`. Por padrão, o gerador escolhe proporções adequadas por rede: Instagram e LinkedIn em 4:5, Facebook em 1:1, X e Blog em 16:9 e TikTok/Reels em 9:16. As prévias usam as mesmas proporções, e imagens antigas com outra proporção são exibidas por inteiro, com margens, em vez de serem cortadas. `OPENAI_IMAGE_SIZE=auto` escolhe as dimensões por rede; uma dimensão explícita no ambiente substitui essa seleção. Os modelos GPT Image 2.5 aceitam dimensões personalizadas, respeitando os limites da API. Modelos e qualidade também podem ser ajustados no backend, sem alterar o frontend. O servidor valida o nível recebido e não aceita um identificador de modelo enviado pelo navegador. A documentação oficial recomenda Flare para geração rápida do dia a dia e Sunburst para tarefas que pedem mais qualidade; os resultados devem ser avaliados com os prompts reais do produto. A geração retorna uma data URL para a revisão. Ao adicionar o post à agenda, o backend envia a imagem ao bucket privado `post-draft-images` e guarda apenas o caminho em `post_drafts.image_path`; a agenda recebe URLs assinadas de uma hora para mostrar a prévia. Posts antigos sem imagem persistida mantêm a prévia textual. O adapter não usa fallback silencioso se uma das chamadas falhar. O timeout do frontend é de 90 segundos para comportar as duas etapas.
 
+## Aprovação e publicação agendada
+
+> **A publicação é simulada.** Até existir o conector da Meta, nenhum post é
+> enviado a uma rede social real. O conector de demonstração apenas registra a
+> publicação, com ID e link fictícios, e a agenda mostra "Publicado (simulado)".
+
+Todo post criado pela IA começa como **"Não agendado"** e nunca é publicado sem
+aprovação. Na agenda, o cliente aprova o post com data e hora futuras; ele passa
+a **"Agendado"**. Aprovar um horário no passado é recusado com "Escolha um
+horário futuro para agendar o post."
+
+| Rótulo               | Estado no banco                     | Significado                                        |
+| -------------------- | ----------------------------------- | -------------------------------------------------- |
+| Não agendado         | `draft`                             | Aguardando aprovação; nunca será publicado         |
+| Agendado             | `scheduled`                         | Aprovado; será publicado no horário                |
+| Publicando           | `publishing`                        | O agendador está processando o post                |
+| Publicado (simulado) | `published` com `publish_mode=demo` | Publicação demonstrativa; nenhuma rede foi chamada |
+| Publicado            | `published` em outro modo           | Publicação real (conector futuro)                  |
+| Falhou               | `failed`                            | Não foi publicado; o motivo aparece na agenda      |
+
+Editar legenda, imagem, data ou hora de um post "Agendado" o devolve a "Não
+agendado" e exige nova aprovação. O navegador só alterna entre esses dois
+estados; `publishing`, `published` e `failed` são definidos apenas pelo servidor.
+
+O `pg_cron` do Supabase chama a cada 5 minutos `POST /api/internal/publish-due`
+com `Authorization: Bearer <CRON_SECRET>` (`503` se `CRON_SECRET` não estiver
+configurado; `401` se estiver errado). Cada chamada processa até 10 posts, com
+`FOR UPDATE SKIP LOCKED`, então execuções simultâneas não duplicam publicações.
+Um post em "Publicando" há mais de 15 minutos volta a "Agendado" (se ainda não
+tiver `external_post_id`), com no máximo 3 tentativas. Passadas 2 horas do
+horário, o post vira "Falhou" com "Horário perdido: o post não foi publicado até
+2 horas após o horário agendado." Os conectores seguem a interface
+`SocialPublisher`; a Meta entrará como um novo publisher sem mudar a agenda.
+Decisão em [ADR-0012](adr/ADR-0012-scheduled-publishing-and-social-connectors.md).
+
+Configuração em produção: definir `CRON_SECRET` na Vercel, guardar a URL da API
+e o mesmo segredo no Supabase Vault e executar `database/cron/publish-due-posts.sql`
+manualmente no SQL Editor (o script não contém segredos).
+
 ## Franquias aplicadas no backend
 
 Na agenda, “Gerar imagem com IA” cria uma arte para um post sem imagem salva.

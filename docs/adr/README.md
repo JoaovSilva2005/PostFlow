@@ -11,5 +11,6 @@
 | [ADR-0007](ADR-0007-shared-contracts-and-boundaries.md)               | Contratos puros em `shared/`          | Accepted |
 | [ADR-0008](ADR-0008-batched-content-planner.md)                       | Planejador de conteúdo em lote        | Accepted |
 | [ADR-0009](ADR-0009-multi-brand-workspaces.md)                        | Marcas múltiplas como workspaces      | Accepted |
-| [ADR-0010](ADR-0010-atomic-workflows-and-ai-quotas.md)                | RPCs atômicas e franquias de IA        | Accepted |
-| [ADR-0011](ADR-0011-derived-accounting-report.md)                     | DRE derivada do Financeiro e Fiscal    | Accepted |
+| [ADR-0010](ADR-0010-atomic-workflows-and-ai-quotas.md)                | RPCs atômicas e franquias de IA       | Accepted |
+| [ADR-0011](ADR-0011-derived-accounting-report.md)                     | DRE derivada do Financeiro e Fiscal   | Accepted |
+| [ADR-0012](ADR-0012-scheduled-publishing-and-social-connectors.md)    | Publicação agendada e conectores      | Accepted |

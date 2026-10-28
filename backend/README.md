@@ -38,6 +38,8 @@ O backend mantém dois clientes com responsabilidades diferentes:
 - `createSupabaseAuthClient` usa `SUPABASE_PUBLISHABLE_KEY` (ou `VITE_SUPABASE_PUBLISHABLE_KEY`) para login, renovação e validação de sessões;
 - `createSupabaseAdminDataClient` usa `SUPABASE_SERVICE_ROLE_KEY` (ou `SUPABASE_SECRET_KEY`) no backend para dados de tenancy, marcas, conteúdo, billing, financeiro e fiscal.
 
+`CRON_SECRET` protege `POST /api/internal/publish-due`, chamada a cada 5 minutos pelo `pg_cron` do Supabase para publicar os posts agendados (hoje com o conector de demonstração, que apenas simula a publicação). Sem a variável a rota responde `503`; com segredo errado, `401`. Defina o mesmo valor na Vercel e no Supabase Vault (`postflow_cron_secret`) e execute `database/cron/publish-due-posts.sql` manualmente; nunca versione o valor. Veja a [ADR-0012](../docs/adr/ADR-0012-scheduled-publishing-and-social-connectors.md).
+
 Em produção, configure um SMTP próprio em **Supabase > Authentication > Emails > SMTP Settings**. O SMTP padrão do Supabase é destinado a testes e possui uma cota pequena; quando ela é atingida, a API responde `429` e o PostFlow orienta o usuário a tentar novamente mais tarde.
 
 O CORS de produção aceita apenas a origem de `APP_URL` e origens HTTPS exatas

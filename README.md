@@ -36,11 +36,11 @@ código, publicação, testes de login e material de apresentação.
 
 ## Acesso e permissões
 
-| Área               | Rotas                                             | Regra de acesso                                 |
-| ------------------ | ------------------------------------------------- | ----------------------------------------------- |
-| Autenticação       | `/login`                                          | Pública                                         |
-| Assinatura         | `/billing`                                        | Usuário autenticado                             |
-| Marca, IA e agenda | `/brand`, `/chat`, `/calendar`                    | Membro do workspace com plano ativo ou em teste |
+| Área               | Rotas                                                                  | Regra de acesso                                 |
+| ------------------ | ---------------------------------------------------------------------- | ----------------------------------------------- |
+| Autenticação       | `/login`                                                               | Pública                                         |
+| Assinatura         | `/billing`                                                             | Usuário autenticado                             |
+| Marca, IA e agenda | `/brand`, `/chat`, `/calendar`                                         | Membro do workspace com plano ativo ou em teste |
 | Administração      | `/admin/finance`, `/admin/fiscal`, `/admin/accounting`, `/admin/plans` | Membro interno autorizado                       |
 
 Contas sem plano são direcionadas para a página de assinatura. Os papéis do workspace (`owner`, `admin`, `editor`, `viewer`) são independentes dos papéis internos da plataforma (`platform_owner`, `finance_admin`, `support`).
@@ -86,20 +86,21 @@ O comando inicia:
 
 ## Variáveis de ambiente
 
-| Variável                                             | Uso                                                 |
-| ---------------------------------------------------- | --------------------------------------------------- |
-| `VITE_SUPABASE_URL`                                  | URL pública do projeto Supabase                     |
-| `VITE_SUPABASE_PUBLISHABLE_KEY`                      | Chave publicável usada na autenticação              |
-| `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_SECRET_KEY` | Acesso administrativo usado somente pelo backend    |
-| `VITE_API_URL`                                       | URL local da API; use `http://localhost:3001/api`   |
-| `OPENAI_API_KEY`                                     | Credencial server-side para geração de conteúdo     |
-| `OPENAI_TEXT_MODEL`                                  | Modelo de texto; padrão `gpt-6-luna`                |
-| `OPENAI_IMAGE_MODEL`                                 | Modelo de imagem padrão; padrão `gpt-image-2.5-flare` |
-| `OPENAI_IMAGE_QUALITY_MODEL`                         | Modelo opcional de maior qualidade; padrão `gpt-image-2.5-sunburst` |
-| `OPENAI_IMAGE_QUALITY`                               | Qualidade da API de imagens: `low`, `medium`, `high`, `xhigh`, `max` ou `auto`; padrão `medium` |
+| Variável                                             | Uso                                                                                                               |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `VITE_SUPABASE_URL`                                  | URL pública do projeto Supabase                                                                                   |
+| `VITE_SUPABASE_PUBLISHABLE_KEY`                      | Chave publicável usada na autenticação                                                                            |
+| `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_SECRET_KEY` | Acesso administrativo usado somente pelo backend                                                                  |
+| `CRON_SECRET`                                        | Segredo Bearer da rota interna `/api/internal/publish-due`, chamada pelo pg_cron; só no servidor                  |
+| `VITE_API_URL`                                       | URL local da API; use `http://localhost:3001/api`                                                                 |
+| `OPENAI_API_KEY`                                     | Credencial server-side para geração de conteúdo                                                                   |
+| `OPENAI_TEXT_MODEL`                                  | Modelo de texto; padrão `gpt-6-luna`                                                                              |
+| `OPENAI_IMAGE_MODEL`                                 | Modelo de imagem padrão; padrão `gpt-image-2.5-flare`                                                             |
+| `OPENAI_IMAGE_QUALITY_MODEL`                         | Modelo opcional de maior qualidade; padrão `gpt-image-2.5-sunburst`                                               |
+| `OPENAI_IMAGE_QUALITY`                               | Qualidade da API de imagens: `low`, `medium`, `high`, `xhigh`, `max` ou `auto`; padrão `medium`                   |
 | `OPENAI_IMAGE_SIZE`                                  | Dimensões explícitas só são usadas quando a proporção coincide com a rede; caso contrário, vale o formato da rede |
-| `APP_URL`                                            | Origem autorizada e retorno da recuperação de senha |
-| `APP_ALLOWED_ORIGINS`                               | Origens HTTPS adicionais confiáveis, separadas por vírgula |
+| `APP_URL`                                            | Origem autorizada e retorno da recuperação de senha                                                               |
+| `APP_ALLOWED_ORIGINS`                                | Origens HTTPS adicionais confiáveis, separadas por vírgula                                                        |
 
 Nunca use uma chave administrativa do Supabase ou uma chave de IA em variável iniciada com `VITE_`. Em produção, configure também um SMTP próprio no Supabase para evitar o limite reduzido do serviço de e-mail de teste.
 
