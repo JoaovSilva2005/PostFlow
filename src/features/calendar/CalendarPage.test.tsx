@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event'
 import type { PostDraft } from '../../domain/models'
 import { createTestRepository } from '../../test/testRepository'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
-import { generationService } from '../content/generationService'
 import { toDateKey } from './calendarUtils'
 
 function dateInCurrentMonth(day: number) {
@@ -278,37 +277,21 @@ describe('CalendarPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('gera e salva a imagem diretamente na prévia do agendamento', async () => {
+  it('não oferece geração manual de imagem na prévia do agendamento', async () => {
     authenticateDemo()
     const user = userEvent.setup()
-    const repository = createTestRepository({ drafts })
-    const previousGenerateImage = generationService.generateImage
-    generationService.generateImage = async () =>
-      'data:image/webp;base64,aW1hZ2U='
+    renderApp('/calendar', createTestRepository({ drafts }))
 
-    try {
-      renderApp('/calendar', repository)
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
 
-      await user.click(
-        await screen.findByRole('button', { name: /Café especial/ }),
-      )
-      await user.click(
-        screen.getByRole('button', { name: 'Gerar imagem com IA' }),
-      )
-
-      await waitFor(() =>
-        expect(repository.snapshot().drafts[0]).toMatchObject({
-          imageUrl: 'data:image/webp;base64,aW1hZ2U=',
-          imageAvailable: true,
-        }),
-      )
-      expect(screen.getByAltText('Imagem gerada para o post')).toHaveAttribute(
-        'src',
-        'data:image/webp;base64,aW1hZ2U=',
-      )
-    } finally {
-      generationService.generateImage = previousGenerateImage
-    }
+    expect(
+      screen.queryByRole('button', { name: 'Gerar imagem com IA' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText('Este rascunho não tem uma imagem disponível.'),
+    ).toBeInTheDocument()
   })
 
   it('renova um link de imagem expirado ao abrir a prévia', async () => {

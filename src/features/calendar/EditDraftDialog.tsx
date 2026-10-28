@@ -38,7 +38,6 @@ interface EditDraftDialogProps {
   onSave: (draft: PostDraft) => Promise<void>
   onDateChange: (draft: PostDraft, date: string) => Promise<void>
   onRefreshImage?: (draftId: string) => Promise<string | null>
-  onGenerateImage?: (draft: PostDraft) => Promise<string | null>
   onDelete: (id: string) => Promise<void>
   onDuplicate: (draft: PostDraft) => Promise<PostDraft>
 }
@@ -68,7 +67,6 @@ export function EditDraftDialog({
   onSave,
   onDateChange,
   onRefreshImage,
-  onGenerateImage,
   onDelete,
   onDuplicate,
 }: EditDraftDialogProps) {
@@ -207,7 +205,6 @@ export function EditDraftDialog({
                 onSave={onSave}
                 onDateChange={onDateChange}
                 onRefreshImage={onRefreshImage ?? noImageRefresh}
-                onGenerateImage={onGenerateImage}
                 onDelete={onDelete}
                 onDuplicate={onDuplicate}
                 onStateChange={updateCardState}
@@ -229,7 +226,6 @@ interface EditDraftCardProps {
   onSave: (draft: PostDraft) => Promise<void>
   onDateChange: (draft: PostDraft, date: string) => Promise<void>
   onRefreshImage?: (draftId: string) => Promise<string | null>
-  onGenerateImage?: (draft: PostDraft) => Promise<string | null>
   onDelete: (id: string) => Promise<void>
   onDuplicate: (draft: PostDraft) => Promise<PostDraft>
   onStateChange: (id: string, state: CardState) => void
@@ -240,7 +236,6 @@ function EditDraftCard({
   onSave,
   onDateChange,
   onRefreshImage,
-  onGenerateImage,
   onDelete,
   onDuplicate,
   onStateChange,
@@ -420,27 +415,6 @@ function EditDraftCard({
     }
   }
 
-  async function handleGenerateImage(draftToGenerate: PostDraft) {
-    if (!onGenerateImage) return null
-    setError('')
-    setNotice('')
-    setIsSaving(true)
-    try {
-      const imageUrl = await onGenerateImage(draftToGenerate)
-      setNotice('Imagem gerada e salva na agenda.')
-      return imageUrl
-    } catch (generationError) {
-      setError(
-        generationError instanceof Error
-          ? generationError.message
-          : 'Não foi possível gerar a imagem. Tente novamente.',
-      )
-      throw generationError
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   function renderFormatStructure() {
     const data = form.formatData
     if (!data) return null
@@ -540,7 +514,6 @@ function EditDraftCard({
           <PostCreativePreview
             draft={form}
             onRefreshImage={onRefreshImage}
-            onGenerateImage={onGenerateImage ? handleGenerateImage : undefined}
           />
 
           <section

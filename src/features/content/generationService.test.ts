@@ -5,7 +5,10 @@ import {
   type BatchContentRequest,
   type ContentRequest,
 } from './generationService'
-import { ApiError } from '../../services/apiClient'
+import {
+  ApiError,
+  SESSION_REFRESH_UNAVAILABLE_CODE,
+} from '../../services/apiClient'
 import { vi } from 'vitest'
 
 const input: ContentRequest = {
@@ -24,6 +27,7 @@ const input: ContentRequest = {
 
 const batchInput: BatchContentRequest = {
   workspaceId: 'workspace-test',
+  billingWorkspaceId: 'billing-workspace-test',
   prompt: 'Apresente nosso serviço',
   dates: ['2099-12-30', '2099-12-31'],
   time: '09:45',
@@ -43,6 +47,20 @@ describe('Contrato de geração', () => {
       ),
     ).toBe(
       'Um plano ativo é necessário para gerar conteúdo. Acesse Assinatura e cobrança.',
+    )
+  })
+
+  it('distingue indisponibilidade de renovação de uma sessão expirada', () => {
+    expect(
+      generationError(
+        new ApiError(
+          'Refresh temporariamente indisponível.',
+          503,
+          SESSION_REFRESH_UNAVAILABLE_CODE,
+        ),
+      ),
+    ).toBe(
+      'Não foi possível validar sua sessão agora. Tente novamente em instantes.',
     )
   })
 
@@ -170,6 +188,7 @@ describe('Contrato de geração', () => {
         signal,
         headers: expect.objectContaining({
           'X-Workspace-Id': 'workspace-test',
+          'X-Billing-Workspace-Id': 'billing-workspace-test',
         }),
         body: JSON.stringify({
           prompt: batchInput.prompt,

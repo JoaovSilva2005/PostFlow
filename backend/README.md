@@ -56,8 +56,8 @@ As chaves privilegiadas não podem ter prefixo `VITE_`, não devem aparecer no f
   `quality`, que o backend mapeia para `gpt-image-2.5-sunburst`. Os modelos
   ficam configuráveis por `OPENAI_TEXT_MODEL`, `OPENAI_IMAGE_MODEL` e
   `OPENAI_IMAGE_QUALITY_MODEL`; a credencial permanece server-side. A qualidade
-  e o tamanho de saída continuam configurados por `OPENAI_IMAGE_QUALITY` e
-  `OPENAI_IMAGE_SIZE` para os dois níveis.
+  fica configurada por `OPENAI_IMAGE_QUALITY`. O tamanho segue a proporção de
+  cada rede; `OPENAI_IMAGE_SIZE` só substitui o preset quando mantém essa proporção.
 - `SupabaseContentQuotaService` usa as RPCs PostgreSQL para reservar e finalizar
   unidades. A RPC bloqueia a linha de `usage_counters` do workspace/período e
   compara limites do plano com consumo e reservas; o processo não depende de
@@ -73,6 +73,31 @@ As chaves privilegiadas não podem ter prefixo `VITE_`, não devem aparecer no f
 - `modules/brand` cria a marca e seu membership `owner` em uma única RPC.
 - `modules/tenancy` provisiona o workspace inicial com lock transacional por
   usuário, evitando marcas duplicadas mesmo sem unicidade em `brands.user_id`.
+
+## Contabilidade de uso de IA
+
+- `modules/ai-usage` registra cada chamada concluída a texto ou imagem com o
+  usuário, workspace, identificador da requisição, modelo e tokens informados
+  pelo provedor. A geração individual registra texto e imagem; lotes registram
+  uma chamada de texto e atribuem a quantidade de rascunhos retornados a essa
+  chamada.
+- O custo em USD usa uma fotografia versionada das tarifas por modelo. A
+  conversão para BRL usa a última cotação de venda PTAX disponível do Banco
+  Central; configure `AI_COST_USD_BRL_FALLBACK_RATE` para uma taxa reserva
+  quando a PTAX não estiver acessível. Sem cotação, o valor USD continua salvo
+  e o relatório sinaliza a conversão ausente.
+- Quando a API de imagem não retorna uso detalhado, tokens e custo da imagem
+  ficam marcados como estimados com base em modelo, qualidade e tamanho. O
+  relatório administrativo mostra esse estado para não confundir estimativa
+  com medição informada pelo provedor.
+- `GET /api/admin/ai-usage/monthly?month=AAAA-MM` está disponível para
+  `platform_owner`, `finance_admin` e `support`. A tabela de eventos tem RLS e
+  não concede leitura aos usuários; somente a chave privilegiada do backend
+  registra e consulta os dados.
+- A migration `20260928205117_ai_usage_cost_accounting.sql` deve ser aplicada
+  antes de habilitar a versão da API. O relatório acompanha custo variável por
+  conta e não cria lançamentos em `financial_transactions`: registre a fatura
+  mensal do provedor uma vez no Financeiro para evitar duplicidade.
 
 O parser JSON aceita até 8 MiB para comportar o maior lote de 42 itens e a
 imagem-base64 opcional da revisão. Payload acima desse teto retorna `413`.

@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { LoaderCircle, Sparkles } from 'lucide-react'
 import type { PostDraft } from '../../domain/models'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
+import { getSocialImagePreset } from '../../../shared/domain/socialImagePresets'
 import styles from './CalendarPage.module.css'
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -13,20 +13,16 @@ const FORMAT_LABELS: Record<string, string> = {
 interface PostCreativePreviewProps {
   draft: PostDraft
   onRefreshImage?: (draftId: string) => Promise<string | null>
-  onGenerateImage?: (draft: PostDraft) => Promise<string | null>
 }
 
 export function PostCreativePreview({
   draft,
   onRefreshImage,
-  onGenerateImage,
 }: PostCreativePreviewProps) {
   const [imageUrl, setImageUrl] = useState(draft.imageUrl)
   const [imageFailed, setImageFailed] = useState(false)
   const [refreshAttempted, setRefreshAttempted] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [generationError, setGenerationError] = useState('')
   useEffect(() => {
     setImageUrl(draft.imageUrl)
     setImageFailed(false)
@@ -73,27 +69,14 @@ export function PostCreativePreview({
       .finally(() => setIsRefreshing(false))
   }
 
-  async function generateImage() {
-    if (!onGenerateImage || isGenerating) return
-    setGenerationError('')
-    setIsGenerating(true)
-    try {
-      const generatedUrl = await onGenerateImage(draft)
-      if (!generatedUrl) throw new Error('A imagem não foi salva.')
-      setImageUrl(generatedUrl)
-      setImageFailed(false)
-      setRefreshAttempted(false)
-    } catch {
-      setGenerationError('Não foi possível gerar a imagem. Tente novamente.')
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
   const hasImage = Boolean(imageUrl) && !imageFailed
 
   const accentStyle = {
     '--draft-accent': draft.color,
+    '--draft-aspect-ratio': getSocialImagePreset(
+      draft.platform,
+      draft.format,
+    ).previewAspectRatio,
   } as CSSProperties
 
   return (
@@ -145,22 +128,6 @@ export function PostCreativePreview({
         )}
       </div>
 
-      {!hasImage && onGenerateImage ? (
-        <button
-          className={styles.generateImageButton}
-          type="button"
-          onClick={() => void generateImage()}
-          disabled={isGenerating || isRefreshing}
-        >
-          {isGenerating ? (
-            <LoaderCircle size={15} className={styles.spinningIcon} />
-          ) : (
-            <Sparkles size={15} />
-          )}
-          {isGenerating ? 'Gerando imagem…' : 'Gerar imagem com IA'}
-        </button>
-      ) : null}
-
       <p className={styles.previewNote}>
         {hasImage
           ? 'Imagem gerada e salva na agenda.'
@@ -168,13 +135,8 @@ export function PostCreativePreview({
             ? 'Restaurando o acesso à imagem salva…'
             : draft.imageAvailable
               ? 'A imagem existe na agenda, mas não foi possível carregá-la.'
-              : 'Este post ainda não tem uma imagem. Gerar uma consome 1 imagem da franquia.'}
+              : 'Este rascunho não tem uma imagem disponível.'}
       </p>
-      {generationError ? (
-        <p className={styles.previewError} role="alert">
-          {generationError}
-        </p>
-      ) : null}
     </section>
   )
 }

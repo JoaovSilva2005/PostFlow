@@ -38,7 +38,7 @@ O padrão recomendado para desenvolvimento com o provedor é `VITE_AI_MODE=api`,
 
 Entrada JSON: `{ prompt, platform, date, brand, history, previousDraft }`. `history` contém até 12 mensagens com `{ role, content }`; `previousDraft` inclui os ajustes atuais do usuário. Resposta: `{ data: { id, title, caption, hashtags, platform, date, status: 'draft', visualText, color, imageUrl? } }`. Campos e limites são validados com Zod antes de exibir. Erros HTTP usam `{ error: string }`; 401, 429, 499, 502, 503 e 504 recebem mensagens sanitizadas. Enviar JSON com credenciais de sessão, não chaves do provedor.
 
-A composição visual usa `visualText` e `color` no modo demonstrativo. No modo API, o `ContentProvider` gera texto com `gpt-6-luna` pela Responses API e, em seguida, uma imagem quadrada pela Image Generation API. O padrão é `gpt-image-2.5-flare`; no estúdio individual, o usuário pode escolher “Mais qualidade”, que o backend mapeia para `gpt-image-2.5-sunburst`. A API de imagem usa qualidade `medium`, tamanho `1024x1024` e uma imagem por solicitação, por padrão. Modelos, qualidade e tamanho podem ser ajustados no ambiente do backend, sem alterar o frontend. O servidor valida o nível recebido e não aceita um identificador de modelo enviado pelo navegador. A documentação oficial recomenda Flare para geração rápida do dia a dia e Sunburst para tarefas que pedem mais qualidade; os resultados devem ser avaliados com os prompts reais do produto. A geração retorna uma data URL para a revisão. Ao adicionar o post à agenda, o backend envia a imagem ao bucket privado `post-draft-images` e guarda apenas o caminho em `post_drafts.image_path`; a agenda recebe URLs assinadas de uma hora para mostrar a prévia. Posts antigos sem imagem persistida mantêm a prévia textual. O adapter não usa fallback silencioso se uma das chamadas falhar. O timeout do frontend é de 90 segundos para comportar as duas etapas.
+A composição visual usa `visualText` e `color` no modo demonstrativo. No modo API, o `ContentProvider` gera texto com `gpt-6-luna` pela Responses API e, em seguida, uma imagem pela Image Generation API. O padrão é `gpt-image-2.5-flare`; no estúdio individual, o usuário pode escolher “Mais qualidade”, que o backend mapeia para `gpt-image-2.5-sunburst`. Por padrão, o gerador escolhe proporções adequadas por rede: Instagram e LinkedIn em 4:5, Facebook em 1:1, X e Blog em 16:9 e TikTok/Reels em 9:16. As prévias usam as mesmas proporções, e imagens antigas com outra proporção são exibidas por inteiro, com margens, em vez de serem cortadas. `OPENAI_IMAGE_SIZE=auto` escolhe as dimensões por rede; uma dimensão explícita no ambiente substitui essa seleção. Os modelos GPT Image 2.5 aceitam dimensões personalizadas, respeitando os limites da API. Modelos e qualidade também podem ser ajustados no backend, sem alterar o frontend. O servidor valida o nível recebido e não aceita um identificador de modelo enviado pelo navegador. A documentação oficial recomenda Flare para geração rápida do dia a dia e Sunburst para tarefas que pedem mais qualidade; os resultados devem ser avaliados com os prompts reais do produto. A geração retorna uma data URL para a revisão. Ao adicionar o post à agenda, o backend envia a imagem ao bucket privado `post-draft-images` e guarda apenas o caminho em `post_drafts.image_path`; a agenda recebe URLs assinadas de uma hora para mostrar a prévia. Posts antigos sem imagem persistida mantêm a prévia textual. O adapter não usa fallback silencioso se uma das chamadas falhar. O timeout do frontend é de 90 segundos para comportar as duas etapas.
 
 ## Franquias aplicadas no backend
 
@@ -47,18 +47,19 @@ Na agenda, “Gerar imagem com IA” cria uma arte para um post sem imagem salva
 de imagem, sem alterar a legenda nem consumir texto.
 `PUT /api/workspaces/:workspaceId/drafts/:draftId/image` envia a arte ao bucket
 privado, atualiza o caminho do objeto e devolve uma URL assinada. A prévia
-renova o link quando ele expira. Quando uma geração multirrede inclui imagens,
-cada rascunho é salvo pelo endpoint individual; o lote do planejador continua
-textual.
+renova o link quando ele expira. No planejador, após salvar os rascunhos, uma
+imagem é gerada por data e associada a todos os destinos daquele dia. Cada
+rascunho guarda sua referência persistida à arte; em caso de falha, os posts sem
+imagem podem ser recuperados pela ação manual sem recriar o lote.
 
 Os limites efetivos vêm de `plans.text_limit` e `plans.image_limit`; o BFF não
 usa limites enviados pelo navegador. Antes de chamar a OpenAI, o backend reserva
 as unidades no PostgreSQL por uma RPC que bloqueia a linha de uso do workspace
 e período. Uma geração individual reserva **1 texto + 1 imagem**. Gerar uma
 imagem para um rascunho existente reserva **1 imagem**. Um lote reserva **1 texto
-por item retornado** (até 42) e **0 imagens**, porque o provedor atual não gera
-imagens no lote. A cobrança mostra consumo concluído e
-reservas em andamento, sempre para o período da assinatura atual.
+por item retornado** (até 42). Depois, a etapa de imagens reserva **1 imagem por
+data**, compartilhada entre os destinos dessa data. A cobrança mostra consumo
+concluído e reservas em andamento, sempre para o período da assinatura atual.
 
 Quando o provedor falha, a reserva é liberada; quando responde com sucesso, as
 unidades são consumidas. Reservas deixadas por encerramento abrupto expiram em
