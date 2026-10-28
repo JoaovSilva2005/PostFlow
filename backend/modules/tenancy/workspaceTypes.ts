@@ -38,4 +38,5 @@ export interface WorkspaceAccessRepository {
   ensureDefaultWorkspace(user: WorkspaceIdentity): Promise<WorkspaceMembership>
   getPlatformRole(userId: string): Promise<PlatformRole | null>
   getBillingStatus(workspaceId: string): Promise<BillingAccessStatus>
+  getActiveBillingWorkspaceId(userId: string): Promise<string | null>
 }

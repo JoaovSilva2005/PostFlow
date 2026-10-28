@@ -9,22 +9,53 @@ interface ProjectData {
 export interface PostFlowDataRepository {
   listWorkspaces?(): Promise<BrandWorkspace[]>
   createWorkspace?(brand: BrandProfile): Promise<BrandWorkspace>
-  load(workspaceId: string): Promise<ProjectData>
-  saveBrand(workspaceId: string, brand: BrandProfile): Promise<BrandProfile>
-  createDraft(workspaceId: string, draft: PostDraft): Promise<PostDraft>
-  createDrafts?(workspaceId: string, drafts: PostDraft[]): Promise<PostDraft[]>
-  updateDraft(workspaceId: string, draft: PostDraft): Promise<PostDraft>
+  load(workspaceId: string, billingWorkspaceId?: string): Promise<ProjectData>
+  saveBrand(
+    workspaceId: string,
+    brand: BrandProfile,
+    billingWorkspaceId?: string,
+  ): Promise<BrandProfile>
+  createDraft(
+    workspaceId: string,
+    draft: PostDraft,
+    billingWorkspaceId?: string,
+  ): Promise<PostDraft>
+  createDrafts?(
+    workspaceId: string,
+    drafts: PostDraft[],
+    billingWorkspaceId?: string,
+  ): Promise<PostDraft[]>
+  updateDraft(
+    workspaceId: string,
+    draft: PostDraft,
+    billingWorkspaceId?: string,
+  ): Promise<PostDraft>
   saveDraftImage?(
     workspaceId: string,
     id: string,
     imageUrl: string,
+    billingWorkspaceId?: string,
   ): Promise<PostDraft>
-  refreshDraftImageUrl?(workspaceId: string, id: string): Promise<string | null>
-  deleteDraft(workspaceId: string, id: string): Promise<void>
+  refreshDraftImageUrl?(
+    workspaceId: string,
+    id: string,
+    billingWorkspaceId?: string,
+  ): Promise<string | null>
+  deleteDraft(
+    workspaceId: string,
+    id: string,
+    billingWorkspaceId?: string,
+  ): Promise<void>
 }
 
 function workspacePath(workspaceId: string, suffix: string) {
   return `/workspaces/${encodeURIComponent(workspaceId)}/${suffix}`
+}
+
+function billingHeaders(billingWorkspaceId?: string): HeadersInit | undefined {
+  return billingWorkspaceId
+    ? { 'X-Billing-Workspace-Id': billingWorkspaceId }
+    : undefined
 }
 
 export const ApiPostFlowRepository: PostFlowDataRepository = {
@@ -36,36 +67,45 @@ export const ApiPostFlowRepository: PostFlowDataRepository = {
       body: JSON.stringify(brand),
     }),
 
-  async load(workspaceId) {
+  async load(workspaceId, billingWorkspaceId) {
+    const headers = billingHeaders(billingWorkspaceId)
     const [brand, drafts] = await Promise.all([
-      apiRequest<BrandProfile | null>(workspacePath(workspaceId, 'brand')),
-      apiRequest<PostDraft[]>(workspacePath(workspaceId, 'drafts')),
+      apiRequest<BrandProfile | null>(workspacePath(workspaceId, 'brand'), {
+        headers,
+      }),
+      apiRequest<PostDraft[]>(workspacePath(workspaceId, 'drafts'), {
+        headers,
+      }),
     ])
     return { brand, drafts }
   },
 
-  saveBrand: (workspaceId, brand) =>
+  saveBrand: (workspaceId, brand, billingWorkspaceId) =>
     apiRequest<BrandProfile>(workspacePath(workspaceId, 'brand'), {
       method: 'PUT',
       body: JSON.stringify(brand),
+      headers: billingHeaders(billingWorkspaceId),
     }),
 
-  createDraft: (workspaceId, draft) => {
+  createDraft: (workspaceId, draft, billingWorkspaceId) => {
     const { imageAvailable: _imageAvailable, ...payload } = draft
     return apiRequest<PostDraft>(workspacePath(workspaceId, 'drafts'), {
       method: 'POST',
       body: JSON.stringify(payload),
+      headers: billingHeaders(billingWorkspaceId),
     })
   },
 
-  createDrafts: async (workspaceId, drafts) => {
+  createDrafts: async (workspaceId, drafts, billingWorkspaceId) => {
     // The single-generation API returns the legacy draft shape, where
     // format/timezone metadata is optional. Persist one draft through the
     // single-item endpoint instead of the stricter batch endpoint.
     if (drafts.length === 1) {
-      return ApiPostFlowRepository.createDraft(workspaceId, drafts[0]).then(
-        (draft) => [draft],
-      )
+      return ApiPostFlowRepository.createDraft(
+        workspaceId,
+        drafts[0],
+        billingWorkspaceId,
+      ).then((draft) => [draft])
     }
 
     // The planner batch endpoint is intentionally text-only. The AI chat can
@@ -74,7 +114,11 @@ export const ApiPostFlowRepository: PostFlowDataRepository = {
     if (drafts.some(({ imageUrl }) => Boolean(imageUrl))) {
       const outcomes = await Promise.allSettled(
         drafts.map((draft) =>
-          ApiPostFlowRepository.createDraft(workspaceId, draft),
+          ApiPostFlowRepository.createDraft(
+            workspaceId,
+            draft,
+            billingWorkspaceId,
+          ),
         ),
       )
       const failure = outcomes.find(
@@ -87,7 +131,11 @@ export const ApiPostFlowRepository: PostFlowDataRepository = {
         )
         await Promise.allSettled(
           createdIds.map((id) =>
-            ApiPostFlowRepository.deleteDraft(workspaceId, id),
+            ApiPostFlowRepository.deleteDraft(
+              workspaceId,
+              id,
+              billingWorkspaceId,
+            ),
           ),
         )
         throw failure.reason
@@ -106,10 +154,11 @@ export const ApiPostFlowRepository: PostFlowDataRepository = {
     return apiRequest<PostDraft[]>(workspacePath(workspaceId, 'drafts/batch'), {
       method: 'POST',
       body: JSON.stringify(textualDrafts),
+      headers: billingHeaders(billingWorkspaceId),
     })
   },
 
-  updateDraft: (workspaceId, draft) =>
+  updateDraft: (workspaceId, draft, billingWorkspaceId) =>
     (() => {
       const {
         imageUrl: _imageUrl,
@@ -118,26 +167,35 @@ export const ApiPostFlowRepository: PostFlowDataRepository = {
       } = draft
       return apiRequest<PostDraft>(
         workspacePath(workspaceId, `drafts/${encodeURIComponent(draft.id)}`),
-        { method: 'PATCH', body: JSON.stringify(persistedDraft) },
+        {
+          method: 'PATCH',
+          body: JSON.stringify(persistedDraft),
+          headers: billingHeaders(billingWorkspaceId),
+        },
       )
     })(),
 
-  saveDraftImage: (workspaceId, id, imageUrl) =>
+  saveDraftImage: (workspaceId, id, imageUrl, billingWorkspaceId) =>
     apiRequest<PostDraft>(
       workspacePath(workspaceId, `drafts/${encodeURIComponent(id)}/image`),
-      { method: 'PUT', body: JSON.stringify({ imageUrl }) },
+      {
+        method: 'PUT',
+        body: JSON.stringify({ imageUrl }),
+        headers: billingHeaders(billingWorkspaceId),
+      },
     ),
 
-  refreshDraftImageUrl: async (workspaceId, id) => {
+  refreshDraftImageUrl: async (workspaceId, id, billingWorkspaceId) => {
     const result = await apiRequest<{ imageUrl: string | null }>(
       workspacePath(workspaceId, `drafts/${encodeURIComponent(id)}/image-url`),
+      { headers: billingHeaders(billingWorkspaceId) },
     )
     return result.imageUrl
   },
 
-  deleteDraft: (workspaceId, id) =>
+  deleteDraft: (workspaceId, id, billingWorkspaceId) =>
     apiRequest<void>(
       workspacePath(workspaceId, `drafts/${encodeURIComponent(id)}`),
-      { method: 'DELETE' },
+      { method: 'DELETE', headers: billingHeaders(billingWorkspaceId) },
     ),
 }

@@ -4,12 +4,10 @@ import { useApp } from '../../app/AppContext'
 
 export function AccessDenied() {
   const navigate = useNavigate()
-  const { billingStatus, currentWorkspace, platformRole, refreshSession } =
+  const { hasActivePlan, currentWorkspace, platformRole, refreshSession } =
     useApp()
   const [isRetrying, setIsRetrying] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const hasActivePlan =
-    billingStatus === 'active' || billingStatus === 'trialing'
   const workspaceDestination =
     hasActivePlan || platformRole === 'platform_owner' ? '/brand' : '/billing'
   const fallbackDestination = platformRole ? '/admin/plans' : '/login'

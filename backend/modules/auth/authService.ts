@@ -7,6 +7,12 @@ interface AuthProviderError {
   status?: unknown
 }
 
+function refreshFailureStatus(error: unknown) {
+  const providerError = readProviderError(error)
+  if ([400, 401, 403].includes(providerError.status ?? 0)) return 401
+  return 503
+}
+
 function readProviderError(error: unknown): {
   code: string
   message: string
@@ -119,8 +125,14 @@ export class AuthService {
   async refresh(refreshToken: string) {
     try {
       return await this.provider.refresh(refreshToken)
-    } catch {
-      throw new HttpError(401, 'Não foi possível renovar a sessão.')
+    } catch (error) {
+      const status = refreshFailureStatus(error)
+      throw new HttpError(
+        status,
+        status === 401
+          ? 'Sessão inválida ou expirada.'
+          : 'Não foi possível validar a sessão agora. Tente novamente em instantes.',
+      )
     }
   }
 
