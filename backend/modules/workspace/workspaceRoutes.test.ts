@@ -95,9 +95,15 @@ function createSupabaseMock(
                   }
           return { data: platform, error: null }
         }
-        if (table === 'post_drafts' && selectedColumns === 'image_path') {
+        if (
+          table === 'post_drafts' &&
+          selectedColumns.startsWith('image_path')
+        ) {
           return {
-            data: { image_path: currentDraft.image_path ?? null },
+            data: {
+              image_path: currentDraft.image_path ?? null,
+              status: currentDraft.status,
+            },
             error: null,
           }
         }
@@ -109,6 +115,7 @@ function createSupabaseMock(
         }
         return {
           data: {
+            status: currentDraft.status,
             scheduled_at: currentDraft.scheduled_at,
             schedule_timezone: currentDraft.schedule_timezone,
             caption: currentDraft.caption,
@@ -462,5 +469,153 @@ describe('persistência atômica de rascunhos individuais', () => {
 
     expect(response.status).toBe(400)
     expect(rpc).not.toHaveBeenCalled()
+  })
+})
+
+describe('aprovação para agendamento', () => {
+  const patchUrl = `/api/workspaces/${workspaceId}/drafts/${draft.id}`
+
+  it.each(['published', 'publishing', 'failed'])(
+    'PATCH com status %s devolve 400 e não chama a RPC',
+    async (status) => {
+      const { client, rpc } = createSupabaseMock({ data: null, error: null })
+      const response = await request(createTestApp(client))
+        .patch(patchUrl)
+        .send({ status })
+      expect(response.status).toBe(400)
+      expect(rpc).not.toHaveBeenCalled()
+    },
+  )
+
+  it('PATCH com status scheduled e horário passado devolve 400', async () => {
+    const { client, rpc } = createSupabaseMock({ data: null, error: null })
+    const response = await request(createTestApp(client))
+      .patch(patchUrl)
+      .send({ status: 'scheduled', date: '2020-01-01', time: '10:00' })
+    expect(response.status).toBe(400)
+    expect(response.body.error).toBe(
+      'Escolha um horário futuro para agendar o post.',
+    )
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('PATCH de legenda em post scheduled envia status draft à RPC', async () => {
+    const { client, rpc } = createSupabaseMock(
+      { data: savedDraft({ ...draft, status: 'draft' }), error: null },
+      savedDraft({ ...draft, status: 'scheduled' }),
+    )
+    const response = await request(createTestApp(client))
+      .patch(patchUrl)
+      .send({ caption: 'Nova legenda.' })
+    expect(response.status).toBe(200)
+    expect(rpc).toHaveBeenCalledWith(
+      'update_post_draft_with_hashtags',
+      expect.objectContaining({
+        p_patch: { caption: 'Nova legenda.', status: 'draft' },
+      }),
+    )
+  })
+
+  it('PATCH com status scheduled e horário futuro envia approved_at e zera publish_error', async () => {
+    const { client, rpc } = createSupabaseMock({
+      data: savedDraft({ ...draft, status: 'scheduled' }),
+      error: null,
+    })
+    const response = await request(createTestApp(client))
+      .patch(patchUrl)
+      .send({ status: 'scheduled' })
+    expect(response.status).toBe(200)
+    const patch = rpc.mock.calls[0][1].p_patch
+    expect(patch.status).toBe('scheduled')
+    expect(patch.publish_error).toBeNull()
+    expect(patch.publish_attempts).toBe(0)
+    expect(new Date(patch.approved_at).toString()).not.toBe('Invalid Date')
+  })
+
+  it('PATCH em post published devolve 409', async () => {
+    const { client, rpc } = createSupabaseMock(
+      { data: null, error: null },
+      savedDraft({ ...draft, status: 'published' }),
+    )
+    const response = await request(createTestApp(client))
+      .patch(patchUrl)
+      .send({ caption: 'Nova legenda.' })
+    expect(response.status).toBe(409)
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('PUT de imagem em post scheduled volta o post para draft', async () => {
+    const { client } = createSupabaseMock(
+      { data: null, error: null },
+      savedDraft({ ...draft, status: 'scheduled' }),
+    )
+    const response = await request(createTestApp(client))
+      .put(`/api/workspaces/${workspaceId}/drafts/${draft.id}/image`)
+      .send({ imageUrl: 'data:image/webp;base64,aW1hZ2U=' })
+    expect(response.status).toBe(200)
+    expect(response.body.data.status).toBe('draft')
+  })
+
+  it('PUT de imagem em post published devolve 409 sem enviar arquivo', async () => {
+    const { client, storageBucket } = createSupabaseMock(
+      { data: null, error: null },
+      savedDraft({ ...draft, status: 'published' }),
+    )
+    const response = await request(createTestApp(client))
+      .put(`/api/workspaces/${workspaceId}/drafts/${draft.id}/image`)
+      .send({ imageUrl: 'data:image/webp;base64,aW1hZ2U=' })
+    expect(response.status).toBe(409)
+    expect(storageBucket.upload).not.toHaveBeenCalled()
+  })
+
+  it('POST com status scheduled no passado devolve 400', async () => {
+    const { client, rpc } = createSupabaseMock({ data: null, error: null })
+    const response = await request(createTestApp(client))
+      .post(`/api/workspaces/${workspaceId}/drafts`)
+      .send({ ...draft, status: 'scheduled', date: '2020-01-01' })
+    expect(response.status).toBe(400)
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('POST com status scheduled cria rascunho e aprova pela RPC de atualização', async () => {
+    const { client, rpc } = createSupabaseMock({
+      data: savedDraft({ ...draft, status: 'scheduled' }),
+      error: null,
+    })
+    const response = await request(createTestApp(client))
+      .post(`/api/workspaces/${workspaceId}/drafts`)
+      .send({ ...draft, status: 'scheduled' })
+    expect(response.status).toBe(201)
+    expect(rpc.mock.calls[0][0]).toBe('create_post_draft_with_hashtags')
+    expect(rpc.mock.calls[0][1].p_draft.status).toBe('draft')
+    expect(rpc.mock.calls[1][0]).toBe('update_post_draft_with_hashtags')
+    expect(rpc.mock.calls[1][1].p_patch).toMatchObject({
+      status: 'scheduled',
+      publish_error: null,
+      publish_attempts: 0,
+    })
+  })
+
+  it('GET /drafts mapeia publish_mode, published_at, publish_error e link', async () => {
+    const row = {
+      ...savedDraft({ ...draft, status: 'published' }),
+      publish_mode: 'demo',
+      published_at: '2099-12-30T12:00:00.000Z',
+      publish_error: 'falha antiga',
+      external_post_url: 'https://demo.postflow.local/p/1',
+    }
+    const { client } = createSupabaseMock(
+      { data: null, error: null },
+      row as unknown as SavedDraftRow,
+    )
+    const response = await request(createTestApp(client)).get(
+      `/api/workspaces/${workspaceId}/drafts`,
+    )
+    expect(response.body.data[0]).toMatchObject({
+      publishMode: 'demo',
+      publishedAt: '2099-12-30T12:00:00.000Z',
+      publishError: 'falha antiga',
+      externalPostUrl: 'https://demo.postflow.local/p/1',
+    })
   })
 })
