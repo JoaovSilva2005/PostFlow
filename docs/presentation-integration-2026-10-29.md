@@ -44,12 +44,33 @@ Pagamentos e fiscal continuam acadêmicos. Não foi incorporada a branch antiga
 
 389 testes aprovados em 59 arquivos na suíte final, incluindo recuperação,
 pagador, franquia e demonstração social. Tipos e build aprovados. Lint terminou
-com código zero, com avisos preexistentes em scripts de terceiros em `.agents/`;
-o build avisa sobre um bundle acima de 500 kB. Schema e inventário (22 SQLs),
+com código zero; scripts de ferramentas de terceiros em `.agents/` ficam fora do
+escopo do lint da aplicação. O build avisa sobre um bundle acima de 500 kB. Schema e inventário (22 SQLs),
 mais integridade do snapshot remoto (19 mapeamentos), aprovados.
 
 Testes: Node 24.22.1 do runtime do Codex; tipos/lint/build: Node 22.14.0 local.
 HTTP local dos testes foi liberado para Supertest; os testes usam provedores e
 credenciais fictícios. Esses resultados pertencem a esta branch e não comprovam
-deploy ou execução do GitHub Actions. A verificação social publicada, quando
-concluída, fica registrada separadamente com IDs e horários de teste.
+deploy das novas rotas. O CI limita a concorrência a dois workers, após uma
+rodada remota atingir o timeout de 5 s de um teste da agenda com concorrência
+automática. O teste continua com seu timeout original.
+
+## Demonstração publicada
+
+Em 29/10, o usuário autorizou uma conta isolada, marca, assinatura de teste de
+um dia e dois rascunhos no ambiente publicado. Não foram criados novos planos
+de catálogo nem faturas: a assinatura de teste usa um plano existente.
+Conexão `e6e987e0-4664-4c9f-8af8-40abee6eef62`, `accountType: demo`.
+
+- Enfileirado às 15:53:46 UTC para 15:55:01 UTC, com imagem persistida e
+  aprovação: `6a8e8144-8d86-48b7-83ea-d26a20aac2f9`.
+- Às 15:56:13 UTC, nova consulta: `published`, `simulated: true`, uma tentativa,
+  `remotePostId: demo-83596781-2ea5-4312-9176-9c5f02513418`, `remoteUrl: null`.
+- Segundo envio `8e02c156-792e-477c-95da-832b8b60645d` cancelado antes do prazo;
+  a nova consulta preservou o cancelamento. Cron processou sem navegador aberto.
+
+A chamada de rede final foi simulada pelo adaptador demo. Zero chamadas pagas de
+IA e nenhum post real. Essa execução usa a versão publicada anterior ao PR e
+comprova o ciclo social demonstrativo; recuperação/pagador continuam mudanças
+da branch de revisão. Cenários de falha são controlados localmente. A assinatura
+isolada tem período 29–30/10: não assuma seu uso na apresentação de 03/11.
