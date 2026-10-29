@@ -51,6 +51,7 @@ export function createCalendarGenerationTask(
             const imageUrl = await generateImage(
               {
                 workspaceId: request.workspaceId,
+                billingWorkspaceId: request.billingWorkspaceId,
                 prompt: request.prompt,
                 platform: draft.platform as Platform,
                 date: draft.date,

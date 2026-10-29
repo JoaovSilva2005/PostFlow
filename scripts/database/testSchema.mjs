@@ -7,6 +7,14 @@ const contentPlannerMigration = readFileSync(
   'supabase/migrations/20260923210143_postflow_batched_content_planner.sql',
   'utf8',
 )
+const securityPrivilegesMigration = readFileSync(
+  'supabase/migrations/20260925212250_security_minimum_api_table_privileges.sql',
+  'utf8',
+)
+const aiUsageMigration = readFileSync(
+  'supabase/migrations/20260928205117_ai_usage_cost_accounting.sql',
+  'utf8',
+)
 
 const expectedTables = [
   'users',
@@ -88,7 +96,30 @@ assert.match(
   contentPlannerMigration,
   /grant execute on function public\.create_post_drafts_batch\(uuid, jsonb\)\s+to service_role/,
 )
+assert.match(
+  securityPrivilegesMigration,
+  /revoke references, trigger, truncate\s+on table public\.profiles, public\.brand_members\s+from anon, authenticated/,
+)
+assert.match(aiUsageMigration, /create table if not exists public\.ai_usage_events/)
+assert.match(aiUsageMigration, /alter table public\.ai_usage_events enable row level security/)
+assert.match(
+  aiUsageMigration,
+  /revoke all on table public\.ai_usage_events from public, anon, authenticated/,
+)
+assert.match(
+  aiUsageMigration,
+  /grant insert, select on table public\.ai_usage_events to service_role/,
+)
+assert.match(
+  aiUsageMigration,
+  /create or replace function public\.get_ai_usage_monthly_report\(\s*p_month date\s*\)/,
+)
+assert.match(aiUsageMigration, /security invoker/)
+assert.match(
+  aiUsageMigration,
+  /grant execute on function public\.get_ai_usage_monthly_report\(date\)\s+to service_role/,
+)
 
 console.log(
-  'Contrato PostgreSQL: estrutura, PK, FK, RLS, seed e lote de conteúdo validados.',
+  'Contrato PostgreSQL: estrutura, PK, FK, RLS, seed, lote e contabilidade de IA validados.',
 )

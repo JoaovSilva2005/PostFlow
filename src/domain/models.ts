@@ -31,6 +31,7 @@ export interface BrandProfile {
 export interface BrandWorkspace extends WorkspaceAccess {
   brand: BrandProfile
   billingStatus: BillingAccessStatus
+  isOwnedByUser?: boolean
 }
 
 export interface PostDraft {
@@ -61,6 +62,9 @@ export interface AppState {
   authUser: AuthUser | null
   currentWorkspace: WorkspaceAccess | null
   availableWorkspaces: BrandWorkspace[]
+  workspacesLoaded: boolean
+  workspaceLoadVersion: number
+  billingWorkspaceId: string | null
   platformRole: PlatformRole
   billingStatus: BillingAccessStatus
   isAuthenticated: boolean

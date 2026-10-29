@@ -104,6 +104,34 @@ export class SupabaseWorkspaceAccessRepository implements WorkspaceAccessReposit
       throw new Error(`Falha ao consultar assinatura: ${error.message}`)
     return (data?.status as BillingAccessStatus | undefined) ?? 'none'
   }
+
+  async getActiveBillingWorkspaceId(userId: string) {
+    const { data: brands, error: brandsError } = await this.supabase
+      .from('brands')
+      .select('id')
+      .eq('user_id', userId)
+    if (brandsError)
+      throw new Error(
+        `Falha ao consultar marcas da conta: ${brandsError.message}`,
+      )
+
+    const brandIds = (brands ?? []).map((brand) => brand.id)
+    if (!brandIds.length) return null
+
+    const { data, error } = await this.supabase
+      .from('subscriptions')
+      .select('brand_id')
+      .in('brand_id', brandIds)
+      .in('status', ['trialing', 'active'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error)
+      throw new Error(
+        `Falha ao consultar assinatura da conta: ${error.message}`,
+      )
+    return data?.brand_id ?? null
+  }
 }
 
 /** Apenas para dependências injetadas em testes; não é usado em produção. */
@@ -149,7 +177,13 @@ export class InMemoryWorkspaceAccessRepository implements WorkspaceAccessReposit
     return this.platformRole
   }
 
-  async getBillingStatus() {
+  async getBillingStatus(_workspaceId: string) {
     return this.billingStatus
+  }
+
+  async getActiveBillingWorkspaceId(_userId: string) {
+    return this.billingStatus === 'active' || this.billingStatus === 'trialing'
+      ? this.workspaceId
+      : null
   }
 }

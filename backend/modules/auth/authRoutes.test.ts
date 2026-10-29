@@ -96,6 +96,94 @@ describe('autenticação', () => {
     expect(response.body.error).toBe('E-mail ou senha inválidos.')
   })
 
+  it('provedor lança AuthRetryableFetchError → 503 com a mensagem exata', async () => {
+    const provider = new InMemoryAuthProvider()
+    provider.login = async () => {
+      throw Object.assign(new Error('fetch failed'), {
+        name: 'AuthRetryableFetchError',
+        status: 0,
+      })
+    }
+    const { app } = testApp(provider)
+    const response = await request(app).post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    expect(response.status).toBe(503)
+    expect(response.body.error).toBe(
+      'Serviço de autenticação indisponível. Tente novamente em instantes.',
+    )
+  })
+
+  it('TypeError não relacionado à rede → 401', async () => {
+    const provider = new InMemoryAuthProvider()
+    provider.login = async () => {
+      throw new TypeError("Cannot read properties of undefined (reading 'x')")
+    }
+    const { app } = testApp(provider)
+    const response = await request(app).post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    expect(response.status).toBe(401)
+  })
+
+  it('registra apenas o nome do erro ao responder 503', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const provider = new InMemoryAuthProvider()
+    provider.login = async () => {
+      throw Object.assign(new Error('secret@mail.com token'), {
+        name: 'AuthRetryableFetchError',
+        status: 0,
+      })
+    }
+    const { app } = testApp(provider)
+    await request(app).post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    expect(warn).toHaveBeenCalledWith('Falha no login.', {
+      name: 'AuthRetryableFetchError',
+    })
+    warn.mockRestore()
+  })
+
+  it('provedor lança erro com status 503 → 503', async () => {
+    const provider = new InMemoryAuthProvider()
+    provider.login = async () => {
+      throw Object.assign(new Error('upstream'), { status: 503 })
+    }
+    const { app } = testApp(provider)
+    const response = await request(app).post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    expect(response.status).toBe(503)
+  })
+
+  it('provedor lança invalid_credentials (status 400) → 401', async () => {
+    const provider = new InMemoryAuthProvider()
+    provider.login = async () => {
+      throw Object.assign(new Error('Invalid login credentials'), {
+        name: 'AuthApiError',
+        code: 'invalid_credentials',
+        status: 400,
+      })
+    }
+    const { app } = testApp(provider)
+    const response = await request(app).post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.body.error).toBe('E-mail ou senha inválidos.')
+  })
+
   it('autentica e mantém os tokens somente em cookies HttpOnly', async () => {
     const { app } = testApp()
     const agent = request.agent(app)
@@ -120,6 +208,40 @@ describe('autenticação', () => {
     expect(currentUser.status).toBe(200)
     expect(currentUser.body.data.user.displayName).toBe('Aluno PostFlow')
     expect(currentUser.body.data.billingStatus).toBe('active')
+  })
+
+  it('remove os cookies quando o refresh token expirou', async () => {
+    const provider = new InMemoryAuthProvider()
+    vi.spyOn(provider, 'refresh').mockRejectedValue(
+      Object.assign(new Error('Refresh inválido.'), { status: 400 }),
+    )
+    const { app } = testApp(provider)
+    const response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', 'postflow_refresh_token=expired-token')
+
+    const cookies = response.headers['set-cookie']
+    const serializedCookies = Array.isArray(cookies)
+      ? cookies.join(';')
+      : cookies
+
+    expect(response.status).toBe(401)
+    expect(serializedCookies).toContain('postflow_access_token=;')
+    expect(serializedCookies).toContain('postflow_refresh_token=;')
+  })
+
+  it('preserva os cookies quando o provedor de sessão está indisponível', async () => {
+    const provider = new InMemoryAuthProvider()
+    vi.spyOn(provider, 'refresh').mockRejectedValue(
+      Object.assign(new Error('Serviço indisponível.'), { status: 503 }),
+    )
+    const { app } = testApp(provider)
+    const response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', 'postflow_refresh_token=valid-token')
+
+    expect(response.status).toBe(503)
+    expect(response.headers['set-cookie']).toBeUndefined()
   })
 
   it('revoga a sessão no provedor e limpa os cookies no logout', async () => {

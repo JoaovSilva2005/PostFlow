@@ -7,6 +7,11 @@ import type {
   ContentProvider,
   GeneratedBatchCopy,
 } from './contentTypes.js'
+import type {
+  ContentUsageReporter,
+  ProviderUsageDetails,
+} from '../ai-usage/aiUsageTypes.js'
+import { estimateImageUsage } from '../ai-usage/aiPricing.js'
 
 const TEXT_TIMEOUT_MS = 25_000
 const IMAGE_TIMEOUT_MS = 45_000
@@ -26,6 +31,32 @@ const providerOutputSchema = z.object({
 })
 
 const openAiResponseSchema = z.object({
+  id: z.string().optional(),
+  model: z.string().optional(),
+  usage: z
+    .object({
+      input_tokens: z.number().int().nonnegative().optional(),
+      input_tokens_details: z
+        .object({
+          cached_tokens: z.number().int().nonnegative().optional(),
+          cache_write_tokens: z.number().int().nonnegative().optional(),
+          text_tokens: z.number().int().nonnegative().optional(),
+          image_tokens: z.number().int().nonnegative().optional(),
+        })
+        .passthrough()
+        .optional(),
+      output_tokens: z.number().int().nonnegative().optional(),
+      output_tokens_details: z
+        .object({
+          reasoning_tokens: z.number().int().nonnegative().optional(),
+          text_tokens: z.number().int().nonnegative().optional(),
+          image_tokens: z.number().int().nonnegative().optional(),
+        })
+        .passthrough()
+        .optional(),
+    })
+    .passthrough()
+    .optional(),
   output_text: z.string().optional(),
   output: z
     .array(
@@ -44,6 +75,31 @@ const openAiResponseSchema = z.object({
 })
 
 const openAiImageResponseSchema = z.object({
+  id: z.string().optional(),
+  model: z.string().optional(),
+  usage: z
+    .object({
+      input_tokens: z.number().int().nonnegative().optional(),
+      input_tokens_details: z
+        .object({
+          cached_tokens: z.number().int().nonnegative().optional(),
+          text_tokens: z.number().int().nonnegative().optional(),
+          image_tokens: z.number().int().nonnegative().optional(),
+        })
+        .passthrough()
+        .optional(),
+      output_tokens: z.number().int().nonnegative().optional(),
+      output_tokens_details: z
+        .object({
+          reasoning_tokens: z.number().int().nonnegative().optional(),
+          text_tokens: z.number().int().nonnegative().optional(),
+          image_tokens: z.number().int().nonnegative().optional(),
+        })
+        .passthrough()
+        .optional(),
+    })
+    .passthrough()
+    .optional(),
   data: z.array(
     z.object({
       b64_json: z.string().optional(),
@@ -53,6 +109,101 @@ const openAiImageResponseSchema = z.object({
 })
 
 type OpenAiResponse = z.infer<typeof openAiResponseSchema>
+type OpenAiImageResponse = z.infer<typeof openAiImageResponseSchema>
+
+function responseRequestId(
+  bodyId: string | undefined,
+  response: Response,
+) {
+  return bodyId ?? response.headers.get('x-request-id')
+}
+
+function textUsage(
+  body: OpenAiResponse,
+  response: Response,
+  configuredModel: string,
+): ProviderUsageDetails {
+  const usage = body.usage
+  const inputTokens = usage?.input_tokens ?? 0
+  const outputTokens = usage?.output_tokens ?? 0
+  const cachedInputTokens = usage?.input_tokens_details?.cached_tokens ?? 0
+  const cacheWriteInputTokens =
+    usage?.input_tokens_details?.cache_write_tokens ?? 0
+  const imageInputTokens = usage?.input_tokens_details?.image_tokens ?? 0
+  const imageOutputTokens = usage?.output_tokens_details?.image_tokens ?? 0
+
+  return {
+    providerRequestId: responseRequestId(body.id, response),
+    operation: 'text_generation',
+    model: body.model ?? configuredModel,
+    inputTokens,
+    cachedInputTokens,
+    cacheWriteInputTokens,
+    textInputTokens:
+      usage?.input_tokens_details?.text_tokens ??
+      Math.max(0, inputTokens - imageInputTokens),
+    imageInputTokens,
+    outputTokens,
+    textOutputTokens:
+      usage?.output_tokens_details?.text_tokens ??
+      Math.max(0, outputTokens - imageOutputTokens),
+    imageOutputTokens,
+    reasoningTokens: usage?.output_tokens_details?.reasoning_tokens ?? 0,
+    usageAccuracy: usage?.input_tokens !== undefined &&
+      usage.output_tokens !== undefined
+      ? 'reported'
+      : 'missing',
+  }
+}
+
+function imageUsage(
+  body: OpenAiImageResponse,
+  response: Response,
+  model: string,
+  prompt: string,
+  size: string,
+  quality: string,
+): ProviderUsageDetails {
+  const usage = body.usage
+  if (usage?.input_tokens !== undefined && usage.output_tokens !== undefined) {
+    const imageInputTokens = usage.input_tokens_details?.image_tokens ?? 0
+    const imageOutputTokens =
+      usage.output_tokens_details?.image_tokens ?? usage.output_tokens
+    const textInputTokens =
+      usage.input_tokens_details?.text_tokens ??
+      Math.max(0, usage.input_tokens - imageInputTokens)
+    const cachedInputTokens =
+      usage.input_tokens_details?.cached_tokens ?? 0
+
+    return {
+      providerRequestId: responseRequestId(body.id, response),
+      operation: 'image_generation',
+      model: body.model ?? model,
+      inputTokens: usage.input_tokens,
+      cachedInputTokens,
+      cacheWriteInputTokens: 0,
+      textInputTokens,
+      imageInputTokens,
+      outputTokens: usage.output_tokens,
+      textOutputTokens:
+        usage.output_tokens_details?.text_tokens ??
+        Math.max(0, usage.output_tokens - imageOutputTokens),
+      imageOutputTokens,
+      reasoningTokens: usage.output_tokens_details?.reasoning_tokens ?? 0,
+      usageAccuracy: 'reported',
+      imageQuality: quality,
+      imageSize: size,
+    }
+  }
+
+  return estimateImageUsage({
+    model,
+    requestId: responseRequestId(body.id, response),
+    prompt,
+    size,
+    quality,
+  })
+}
 
 type RequestSignal = {
   signal: AbortSignal
@@ -251,7 +402,11 @@ export class OpenAiContentProvider implements ContentProvider {
     this.imageSize = imageSize
   }
 
-  async generate(input: ContentGenerationInput, signal?: AbortSignal) {
+  async generate(
+    input: ContentGenerationInput,
+    signal?: AbortSignal,
+    reportUsage?: ContentUsageReporter,
+  ) {
     const requestSignal = createRequestSignal(signal, TEXT_TIMEOUT_MS)
 
     try {
@@ -322,13 +477,22 @@ export class OpenAiContentProvider implements ContentProvider {
         )
       }
 
+      await reportUsage?.(
+        textUsage(responseBody.data, response, this.textModel),
+      )
+
       const text = extractText(responseBody.data)
       if (!text) {
         throw new HttpError(502, 'O provedor retornou uma resposta vazia.')
       }
 
       const draft = providerOutputSchema.parse(JSON.parse(text))
-      const imageUrl = await this.generateImage(input, draft.visualText, signal)
+      const imageUrl = await this.generateImage(
+        input,
+        draft.visualText,
+        signal,
+        reportUsage,
+      )
       return { ...draft, imageUrl }
     } catch (error) {
       if (error instanceof HttpError) throw error
@@ -353,6 +517,7 @@ export class OpenAiContentProvider implements ContentProvider {
   async generateBatch(
     input: BatchContentGenerationInput,
     signal?: AbortSignal,
+    reportUsage?: ContentUsageReporter,
   ): Promise<GeneratedBatchCopy[]> {
     const requestSignal = createRequestSignal(signal, BATCH_TIMEOUT_MS)
     const outputSchema = batchResponseSchema(input.format)
@@ -456,6 +621,9 @@ export class OpenAiContentProvider implements ContentProvider {
           'O provedor retornou conteúdo fora do contrato.',
         )
       }
+      await reportUsage?.(
+        textUsage(responseBody.data, response, this.textModel),
+      )
       const text = extractText(responseBody.data)
       if (!text)
         throw new HttpError(502, 'O provedor retornou uma resposta vazia.')
@@ -521,6 +689,7 @@ export class OpenAiContentProvider implements ContentProvider {
     input: ContentGenerationInput,
     visualText: string,
     parentSignal?: AbortSignal,
+    reportUsage?: ContentUsageReporter,
   ): Promise<string> {
     const requestSignal = createRequestSignal(parentSignal, IMAGE_TIMEOUT_MS)
     const formatData = input.previousDraft?.formatData
@@ -532,6 +701,35 @@ export class OpenAiContentProvider implements ContentProvider {
           : formatData?.kind === 'reels'
             ? formatData.scenes[0]?.shot
             : undefined
+    const imageSize = this.imageSize
+    const model =
+      input.imageTier === 'quality'
+        ? this.qualityImageModel
+        : this.imageModel
+    const prompt = [
+      'Crie uma imagem quadrada para um post de rede social.',
+      'Não inclua texto, logotipos ou marcas d’água legíveis na imagem.',
+      'Use uma direção visual editorial, limpa e coerente com a marca.',
+      'Mantenha a mesma ideia central e identidade visual entre as redes; adapte apenas a composição da peça quadrada.',
+      'Não invente fatos, produtos, promoções, resultados, notícias ou tendências atuais ausentes do briefing.',
+      `Marca: ${input.brand?.name ?? 'marca independente'}.`,
+      `Segmento: ${input.brand?.segment ?? 'não informado'}.`,
+      `Tom: ${input.brand?.toneOfVoice ?? 'profissional e próximo'}.`,
+      `Paleta de cores: ${(input.brand?.colorPalette ?? []).join(', ') || 'não informada'}.`,
+      `Contexto da marca: ${input.brand?.description ?? 'não informado'}.`,
+      `Público: ${input.brand?.targetAudience ?? 'não informado'}.`,
+      `Produtos ou serviços: ${input.brand?.productsOrServices ?? 'não informado'}.`,
+      `Diferenciais: ${input.brand?.differentials ?? 'não informado'}.`,
+      `Objetivos de conteúdo: ${input.brand?.contentGoals ?? 'não informado'}.`,
+      `Palavras-chave: ${input.brand?.keywords ?? 'não informadas'}.`,
+      `Temas a evitar: ${input.brand?.avoidTopics ?? 'não informados'}.`,
+      `Chamada padrão: ${input.brand?.defaultCta ?? 'não informada'}.`,
+      `Pedido do usuário: ${input.prompt}.`,
+      `Ideia central da arte: ${visualText}.`,
+      ...(formatVisualDirection
+        ? [`Direção do formato: ${formatVisualDirection}.`]
+        : []),
+    ].join('\n')
 
     try {
       throwIfCancelled(parentSignal)
@@ -545,35 +743,9 @@ export class OpenAiContentProvider implements ContentProvider {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model:
-              input.imageTier === 'quality'
-                ? this.qualityImageModel
-                : this.imageModel,
-            prompt: [
-              'Crie uma imagem quadrada para um post de rede social.',
-              'Não inclua texto, logotipos ou marcas d’água legíveis na imagem.',
-              'Use uma direção visual editorial, limpa e coerente com a marca.',
-              'Mantenha a mesma ideia central e identidade visual entre as redes; adapte apenas a composição da peça quadrada.',
-              'Não invente fatos, produtos, promoções, resultados, notícias ou tendências atuais ausentes do briefing.',
-              `Marca: ${input.brand?.name ?? 'marca independente'}.`,
-              `Segmento: ${input.brand?.segment ?? 'não informado'}.`,
-              `Tom: ${input.brand?.toneOfVoice ?? 'profissional e próximo'}.`,
-              `Paleta de cores: ${(input.brand?.colorPalette ?? []).join(', ') || 'não informada'}.`,
-              `Contexto da marca: ${input.brand?.description ?? 'não informado'}.`,
-              `Público: ${input.brand?.targetAudience ?? 'não informado'}.`,
-              `Produtos ou serviços: ${input.brand?.productsOrServices ?? 'não informado'}.`,
-              `Diferenciais: ${input.brand?.differentials ?? 'não informado'}.`,
-              `Objetivos de conteúdo: ${input.brand?.contentGoals ?? 'não informado'}.`,
-              `Palavras-chave: ${input.brand?.keywords ?? 'não informadas'}.`,
-              `Temas a evitar: ${input.brand?.avoidTopics ?? 'não informados'}.`,
-              `Chamada padrão: ${input.brand?.defaultCta ?? 'não informada'}.`,
-              `Pedido do usuário: ${input.prompt}.`,
-              `Ideia central da arte: ${visualText}.`,
-              ...(formatVisualDirection
-                ? [`Direção do formato: ${formatVisualDirection}.`]
-                : []),
-            ].join('\n'),
-            size: this.imageSize,
+            model,
+            prompt,
+            size: imageSize,
             quality: this.imageQuality,
             output_format: IMAGE_OUTPUT_FORMAT,
             n: 1,
@@ -590,6 +762,17 @@ export class OpenAiContentProvider implements ContentProvider {
       if (!responseBody.success || responseBody.data.data.length !== 1) {
         throw new HttpError(502, 'O provedor retornou uma imagem inválida.')
       }
+
+      await reportUsage?.(
+        imageUsage(
+          responseBody.data,
+          response,
+          model,
+          prompt,
+          imageSize,
+          this.imageQuality,
+        ),
+      )
 
       const image = responseBody.data.data[0]
       if (image.b64_json !== undefined) {

@@ -12,6 +12,7 @@ interface UserResponse {
   workspace?: AuthSession['workspace']
   platformRole?: AuthSession['platformRole']
   billingStatus?: AuthSession['billingStatus']
+  billingWorkspaceId?: AuthSession['billingWorkspaceId']
 }
 
 interface RecoveryResponse {
@@ -32,6 +33,7 @@ function toSession(response: UserResponse): AuthSession {
     workspace: response.workspace ?? null,
     platformRole: response.platformRole ?? null,
     billingStatus: response.billingStatus ?? 'none',
+    billingWorkspaceId: response.billingWorkspaceId ?? null,
   }
 }
 
