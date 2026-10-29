@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { CalendarClock } from 'lucide-react'
 import { SelectField, TextField } from '../../components/ui/FormField'
 import type { PostDraft } from '../../domain/models'
@@ -26,12 +27,13 @@ export function DraftSchedulePanel({
   onDateChange,
   onChange,
 }: DraftSchedulePanelProps) {
+  const titleId = useId()
   return (
-    <section className={styles.schedulePanel} aria-labelledby="schedule-title">
+    <section className={styles.schedulePanel} aria-labelledby={titleId}>
       <header>
         <CalendarClock size={17} aria-hidden="true" />
         <div>
-          <h3 id="schedule-title">Agenda</h3>
+          <h3 id={titleId}>Agenda</h3>
           <p>Escolha o dia e o horário deste post.</p>
         </div>
       </header>
