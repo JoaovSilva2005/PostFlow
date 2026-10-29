@@ -1,7 +1,8 @@
-@import '@fontsource/inter/latin-400.css';
-@import '@fontsource/inter/latin-500.css';
-@import '@fontsource/inter/latin-600.css';
-@import '@fontsource/inter/latin-700.css';
+@import '@fontsource/geist-sans/latin-400.css';
+@import '@fontsource/geist-sans/latin-500.css';
+@import '@fontsource/geist-sans/latin-600.css';
+@import '@fontsource/geist-mono/latin-400.css';
+@import '@fontsource/geist-mono/latin-500.css';
 
 * {
   box-sizing: border-box;
@@ -15,10 +16,13 @@ body {
   min-width: 320px;
   color: var(--color-text);
   background: var(--color-background);
-  font:
-    14px/1.6 'Inter',
-    sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   accent-color: var(--color-primary);
 }
 button,
@@ -36,10 +40,11 @@ button {
 }
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 a {
   color: inherit;
+  text-underline-offset: 3px;
 }
 h1,
 h2,
@@ -47,10 +52,27 @@ h3,
 p {
   margin-top: 0;
 }
+h1 {
+  font-size: var(--text-title);
+  line-height: var(--leading-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+h2 {
+  font-size: var(--text-section);
+  line-height: var(--leading-section);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+h3 {
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  font-weight: 600;
+}
 h1,
 h2,
 h3 {
-  line-height: 1.25;
+  text-wrap: balance;
 }
 p,
 h1,
@@ -58,25 +80,58 @@ h2,
 h3 {
   overflow-wrap: anywhere;
 }
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+table,
+time,
+data {
+  font-variant-numeric: tabular-nums;
+}
 input,
 select,
 textarea {
   min-width: 0;
 }
 ::selection {
-  background: var(--color-focus-ring);
+  background: var(--color-primary-muted);
+  color: var(--color-text);
 }
 :focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
 }
 input,
 select,
 textarea {
   caret-color: var(--color-primary);
 }
+::placeholder {
+  color: var(--color-subtle);
+  opacity: 1;
+}
 input[type='date']::-webkit-calendar-picker-indicator {
   opacity: 0.75;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--color-border-strong) padding-box;
 }
 .sr-only {
   position: absolute;

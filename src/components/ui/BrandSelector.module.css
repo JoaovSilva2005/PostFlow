@@ -11,10 +11,10 @@
   align-items: center;
   gap: 0.55rem;
   min-width: 0;
-  min-height: 44px;
+  min-height: var(--control-height);
   padding: 0 10px;
   border: 1px solid var(--color-control-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--color-control);
   color: var(--color-text);
 }
@@ -46,7 +46,7 @@
 }
 .field small {
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 1.35;
 }
