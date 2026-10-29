@@ -2,12 +2,21 @@ import { useId, type InputHTMLAttributes } from 'react'
 import { formatDatePtBr, formatDatePtBrNumeric } from '../../domain/dates'
 import styles from './DateField.module.css'
 
-interface DateFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+interface DateFieldProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'type'
+> {
   label: string
   value: string
 }
 
-export function DateField({ label, value, id, className = '', ...props }: DateFieldProps) {
+export function DateField({
+  label,
+  value,
+  id,
+  className = '',
+  ...props
+}: DateFieldProps) {
   const generatedId = useId()
   const inputId = id ?? generatedId
 

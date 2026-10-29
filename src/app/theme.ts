@@ -25,7 +25,7 @@ function applyTheme() {
   document.documentElement.dataset.theme = resolved
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', resolved === 'light' ? '#f3f4f5' : '#101112')
+    ?.setAttribute('content', resolved === 'light' ? '#fafafa' : '#0a0a0a')
 }
 function notify() {
   applyTheme()
