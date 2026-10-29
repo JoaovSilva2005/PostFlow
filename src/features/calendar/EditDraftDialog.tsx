@@ -8,25 +8,39 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type MouseEvent,
+  type ReactNode,
+  type Ref,
 } from 'react'
 import {
   CalendarClock,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
   CopyCheck,
+  CopyPlus,
   Hash,
+  Info,
+  LoaderCircle,
+  Pencil,
   Plus,
+  Send,
+  Sparkles,
   Trash2,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import type { PostDraft } from '../../domain/models'
-import { DraftSchedulePanel } from './DraftSchedulePanel'
-import { PostCreativePreview } from './PostCreativePreview'
-import { DraftPublishingPanel } from '../social/DraftPublishingPanel'
+import { DraftPublishDialog } from './DraftPublishDialog'
+import { DraftSchedulePopover } from './DraftSchedulePopover'
+import {
+  PostCreativePreview,
+  type ImageGenerationState,
+  type PostCreativePreviewHandle,
+} from './PostCreativePreview'
 import styles from './CalendarPage.module.css'
 
 interface EditDraftDialogProps {
@@ -47,6 +61,25 @@ interface EditDraftDialogProps {
 interface CardState {
   hasUnsavedChanges: boolean
   isSaving: boolean
+}
+
+const STATUS_LABELS: Record<PostDraft['status'], string> = {
+  draft: 'Rascunho',
+  scheduled: 'Agendado',
+  published: 'Publicado',
+}
+
+function formatShortDate(date: string) {
+  const [year, month, day] = date.split('-')
+  return year && month && day ? `${day}/${month}/${year}` : date
+}
+
+function captionWithHashtags(caption: string, hashtags: string[]) {
+  return hashtags.length
+    ? `${caption}
+
+${hashtags.join(' ')}`
+    : caption
 }
 
 function formatDateLabel(date: string) {
@@ -252,7 +285,23 @@ function EditDraftCard({
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
   const [hashtagInput, setHashtagInput] = useState('')
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [imageGeneration, setImageGeneration] = useState<ImageGenerationState>({
+    available: false,
+    busy: false,
+  })
   const captionId = useId()
+  const scheduleEditorId = useId()
+  const resourcesTitleId = useId()
+  const previewRef = useRef<PostCreativePreviewHandle>(null)
+  const datePillRef = useRef<HTMLButtonElement>(null)
+  const statusPillRef = useRef<HTMLButtonElement>(null)
+  const lastScheduleTrigger = useRef<HTMLButtonElement | null>(null)
+  const publishTriggerRef = useRef<HTMLButtonElement>(null)
+  const scheduleTriggerRefs = useRef([datePillRef, statusPillRef]).current
+  // Publicado (situação salva) fica somente leitura no texto, como na referência.
+  const isPublished = draft.status === 'published'
   const normalizedPendingHashtag = hashtagInput.trim().replace(/[#\s,]+/g, '')
   const pendingHashtag = normalizedPendingHashtag
     ? `#${normalizedPendingHashtag}`
@@ -410,9 +459,23 @@ function EditDraftCard({
     }
   }
 
+  function openScheduleEditor(trigger: HTMLButtonElement | null) {
+    lastScheduleTrigger.current = trigger
+    setScheduleOpen((open) => !open)
+  }
+
+  const closeScheduleEditor = useCallback((restoreFocus: boolean) => {
+    setScheduleOpen(false)
+    if (restoreFocus) lastScheduleTrigger.current?.focus()
+  }, [])
+
+  const closePublishDialog = useCallback(() => setPublishOpen(false), [])
+
   async function handleCopyCaption() {
     try {
-      await navigator.clipboard.writeText(form.caption)
+      await navigator.clipboard.writeText(
+        captionWithHashtags(form.caption, form.hashtags),
+      )
       setCopied(true)
       setNotice('Legenda copiada.')
       window.setTimeout(() => setCopied(false), 1800)
@@ -509,39 +572,98 @@ function EditDraftCard({
     )
   }
 
+  const statusLabel = STATUS_LABELS[form.status] ?? form.status
+  const timeLabel = form.time ?? '12:00'
+
   return (
     <article
       className={styles.detailPostCard}
       aria-label={`Post para ${form.platform}`}
       data-draft-id={draft.id}
     >
-      <header className={styles.detailMeta}>
+      <header
+        className={styles.detailMeta}
+        onKeyDown={(event) => {
+          // Escape com o foco nas pílulas fecha só o editor de agenda.
+          if (event.key === 'Escape' && scheduleOpen) {
+            event.stopPropagation()
+            closeScheduleEditor(true)
+          }
+        }}
+      >
         <div className={styles.detailPlatform}>
           <SocialPlatformIcon platform={form.platform} size={24} />
           <h2>{form.platform}</h2>
         </div>
-        <span className={styles.statusBadge} data-status={form.status}>
-          <span />
-          {form.status === 'draft'
-            ? 'Rascunho'
-            : form.status === 'scheduled'
-              ? 'Agendado'
-              : 'Publicado'}
-        </span>
-        <div className={styles.metaDate}>
-          <CalendarClock size={15} />
-          <span>
-            {form.date} · {form.time ?? '12:00'}
-          </span>
+        <div className={styles.detailMetaActions}>
+          <button
+            ref={statusPillRef}
+            type="button"
+            className={styles.statusBadge}
+            data-status={form.status}
+            aria-label={`Situação: ${statusLabel}. Editar situação`}
+            aria-haspopup="dialog"
+            aria-expanded={scheduleOpen}
+            aria-controls={scheduleOpen ? scheduleEditorId : undefined}
+            onClick={() => openScheduleEditor(statusPillRef.current)}
+          >
+            <span />
+            {statusLabel}
+            <ChevronDown size={13} aria-hidden="true" />
+          </button>
+          <button
+            ref={datePillRef}
+            type="button"
+            className={styles.metaDate}
+            aria-label={`Editar data e horário: ${formatShortDate(form.date)} às ${timeLabel}`}
+            aria-haspopup="dialog"
+            aria-expanded={scheduleOpen}
+            aria-controls={scheduleOpen ? scheduleEditorId : undefined}
+            onClick={() => openScheduleEditor(datePillRef.current)}
+          >
+            <CalendarClock size={15} aria-hidden="true" />
+            <span>
+              {formatShortDate(form.date)} · {timeLabel}
+            </span>
+            <Pencil size={12} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={styles.metaAction}
+            onClick={handleDuplicate}
+            disabled={isSaving}
+          >
+            <Copy size={14} aria-hidden="true" />
+            Duplicar
+          </button>
         </div>
+        {scheduleOpen ? (
+          <DraftSchedulePopover
+            id={scheduleEditorId}
+            draft={form}
+            disabled={isSaving}
+            onDateChange={handleDateChange}
+            onChange={updateFormField}
+            onClose={closeScheduleEditor}
+            triggerRefs={scheduleTriggerRefs}
+          />
+        ) : null}
       </header>
 
       <form onSubmit={handleSubmit} className={styles.detailForm}>
         <div className={styles.detailBody}>
           <PostCreativePreview
+            ref={previewRef}
             draft={form}
             onRefreshImage={onRefreshImage}
-            onGenerateImage={onGenerateImage ? handleGenerateImage : undefined}
+            onGenerateImage={
+              onGenerateImage && !isPublished ? handleGenerateImage : undefined
+            }
+            hideGenerateButton
+            onGenerationStateChange={setImageGeneration}
+            readOnlyNote={
+              isPublished ? 'Post publicado não pode ser editado.' : undefined
+            }
           />
 
           <section
@@ -549,12 +671,24 @@ function EditDraftCard({
             aria-label={`Legenda para ${form.platform}`}
           >
             <div className={styles.sectionHeading}>
-              <div>
-                <h3>Legenda</h3>
-              </div>
+              <h3>Legenda</h3>
+              <button
+                type="button"
+                className={styles.inlineAction}
+                onClick={handleCopyCaption}
+              >
+                {copied ? (
+                  <CopyCheck size={14} aria-hidden="true" />
+                ) : (
+                  <Copy size={14} aria-hidden="true" />
+                )}
+                Copiar legenda
+              </button>
             </div>
             <label className={styles.textareaField} htmlFor={captionId}>
-              <span id={`${captionId}-label`}>Legenda</span>
+              <span id={`${captionId}-label`} className="sr-only">
+                Legenda
+              </span>
               <textarea
                 id={captionId}
                 aria-labelledby={`${captionId}-label`}
@@ -562,6 +696,7 @@ function EditDraftCard({
                 maxLength={5000}
                 value={form.caption}
                 disabled={isSaving}
+                readOnly={isPublished}
                 onChange={(event) =>
                   updateFormField('caption', event.target.value)
                 }
@@ -574,46 +709,54 @@ function EditDraftCard({
                 {form.hashtags.map((hashtag) => (
                   <span className={styles.hashtagChip} key={hashtag}>
                     {hashtag}
-                    <button
-                      type="button"
-                      aria-label={`Remover hashtag ${hashtag}`}
-                      disabled={isSaving}
-                      onClick={() => removeHashtag(hashtag)}
-                    >
-                      <X size={12} />
-                    </button>
+                    {isPublished ? null : (
+                      <button
+                        type="button"
+                        aria-label={`Remover hashtag ${hashtag}`}
+                        disabled={isSaving}
+                        onClick={() => removeHashtag(hashtag)}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
                   </span>
                 ))}
               </div>
-              <div className={styles.hashtagInputRow}>
-                <Hash size={15} aria-hidden="true" />
-                <input
-                  type="text"
-                  aria-label="Adicionar hashtag"
-                  value={hashtagInput}
-                  maxLength={80}
-                  disabled={isSaving || form.hashtags.length >= 30}
-                  placeholder="Digite uma hashtag"
-                  onChange={(event) => {
-                    setHashtagInput(event.target.value)
-                    setError('')
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ',') {
-                      event.preventDefault()
-                      addHashtag()
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled={isSaving || !pendingHashtag}
-                  onClick={addHashtag}
-                >
-                  <Plus size={14} /> Adicionar
-                </button>
-              </div>
-              <small>Pressione Enter para adicionar. Até 30 por post.</small>
+              {isPublished ? null : (
+                <>
+                  <div className={styles.hashtagInputRow}>
+                    <Hash size={15} aria-hidden="true" />
+                    <input
+                      type="text"
+                      aria-label="Adicionar hashtag"
+                      value={hashtagInput}
+                      maxLength={80}
+                      disabled={isSaving || form.hashtags.length >= 30}
+                      placeholder="Digite uma hashtag"
+                      onChange={(event) => {
+                        setHashtagInput(event.target.value)
+                        setError('')
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ',') {
+                          event.preventDefault()
+                          addHashtag()
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={isSaving || !pendingHashtag}
+                      onClick={addHashtag}
+                    >
+                      <Plus size={14} /> Adicionar
+                    </button>
+                  </div>
+                  <small>
+                    Pressione Enter para adicionar. Até 30 por post.
+                  </small>
+                </>
+              )}
             </div>
             {form.formatData ? (
               <details className={styles.formatDetails}>
@@ -624,53 +767,73 @@ function EditDraftCard({
           </section>
 
           <aside className={styles.detailSidebar}>
-            <DraftSchedulePanel
-              draft={form}
-              disabled={isSaving}
-              onDateChange={handleDateChange}
-              onChange={updateFormField}
-            />
-            <DraftPublishingPanel
-              draft={form}
-              hasUnsavedChanges={hasUnsavedChanges}
-            />
             <section
-              className={styles.detailActions}
-              aria-label={`Ações do post para ${form.platform}`}
+              className={styles.resources}
+              aria-labelledby={resourcesTitleId}
             >
-              <h3>Mais opções</h3>
-              <button
-                type="button"
-                onClick={handleCopyCaption}
-                disabled={isSaving}
-              >
-                {copied ? <CopyCheck size={16} /> : <Copy size={16} />}
-                <span>{copied ? 'Legenda copiada' : 'Copiar legenda'}</span>
-                {copied ? <Check size={14} /> : null}
-              </button>
-              <button
-                type="button"
-                onClick={handleDuplicate}
-                disabled={isSaving}
-              >
-                <Copy size={16} />
-                <span>Duplicar como rascunho</span>
-                <ChevronRight size={15} />
-              </button>
+              <h3 id={resourcesTitleId}>Mais recursos</h3>
+              <ul className={styles.resourceList}>
+                <ResourceItem
+                  ref={publishTriggerRef}
+                  icon={Send}
+                  title="Publicar nas redes"
+                  description="Escolha as contas e agende o envio"
+                  onClick={() => setPublishOpen(true)}
+                  hasPopup
+                />
+                {imageGeneration.available ? (
+                  <ResourceItem
+                    icon={imageGeneration.busy ? LoaderCircle : Sparkles}
+                    iconClassName={
+                      imageGeneration.busy ? styles.spinningIcon : undefined
+                    }
+                    title={
+                      imageGeneration.busy
+                        ? 'Gerando imagem…'
+                        : 'Gerar imagem com IA'
+                    }
+                    description="Crie a arte do post (usa 1 imagem da franquia)"
+                    disabled={imageGeneration.busy || isSaving}
+                    onClick={() => previewRef.current?.generateImage()}
+                  />
+                ) : null}
+                <ResourceItem
+                  icon={copied ? CopyCheck : Copy}
+                  title="Copiar legenda"
+                  description={
+                    copied ? 'Legenda copiada' : 'Copie o texto com as hashtags'
+                  }
+                  trailing={copied ? <Check size={14} /> : null}
+                  onClick={handleCopyCaption}
+                />
+                <ResourceItem
+                  icon={CopyPlus}
+                  title="Duplicar como rascunho"
+                  description="Crie uma cópia editável deste post"
+                  disabled={isSaving}
+                  onClick={handleDuplicate}
+                />
+              </ul>
+              <p className={styles.resourceNote}>
+                <Info size={14} aria-hidden="true" />
+                Este post é publicado automaticamente na data agendada depois de
+                aprovado.
+              </p>
+              <ul className={styles.resourceList}>
+                <ResourceItem
+                  icon={Trash2}
+                  title="Excluir post"
+                  description="Remove este post da agenda"
+                  tone="danger"
+                  disabled={isSaving}
+                  onClick={handleDelete}
+                />
+              </ul>
             </section>
           </aside>
         </div>
 
         <footer className={styles.detailFooter}>
-          <Button
-            type="button"
-            variant="danger"
-            onClick={handleDelete}
-            disabled={isSaving}
-            aria-label="Excluir post"
-          >
-            <Trash2 size={16} /> Excluir
-          </Button>
           <div className={styles.detailFeedback}>
             {error ? (
               <p className={styles.dialogError} role="alert">
@@ -700,7 +863,65 @@ function EditDraftCard({
           </div>
         </footer>
       </form>
+
+      <DraftPublishDialog
+        open={publishOpen}
+        draft={form}
+        hasUnsavedChanges={hasUnsavedChanges}
+        onClose={closePublishDialog}
+        returnFocusRef={publishTriggerRef}
+      />
     </article>
+  )
+}
+
+interface ResourceItemProps {
+  icon: LucideIcon
+  iconClassName?: string
+  title: string
+  description: string
+  onClick: () => void
+  disabled?: boolean
+  tone?: 'default' | 'danger'
+  trailing?: ReactNode
+  hasPopup?: boolean
+  ref?: Ref<HTMLButtonElement>
+}
+
+function ResourceItem({
+  icon: Icon,
+  iconClassName,
+  title,
+  description,
+  onClick,
+  disabled = false,
+  tone = 'default',
+  trailing,
+  hasPopup = false,
+  ref,
+}: ResourceItemProps) {
+  const descriptionId = useId()
+  return (
+    <li>
+      <button
+        ref={ref}
+        type="button"
+        className={styles.resourceItem}
+        data-tone={tone}
+        aria-label={title}
+        aria-describedby={descriptionId}
+        aria-haspopup={hasPopup ? 'dialog' : undefined}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        <Icon size={17} aria-hidden="true" className={iconClassName} />
+        <span className={styles.resourceText}>
+          <strong>{title}</strong>
+          <small id={descriptionId}>{description}</small>
+        </span>
+        {trailing}
+      </button>
+    </li>
   )
 }
 

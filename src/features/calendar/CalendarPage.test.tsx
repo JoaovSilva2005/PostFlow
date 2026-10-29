@@ -4,6 +4,7 @@ import type { PostDraft } from '../../domain/models'
 import { createTestRepository } from '../../test/testRepository'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
 import { generationService } from '../content/generationService'
+import { onTestFinished } from 'vitest'
 import { toDateKey } from './calendarUtils'
 
 function dateInCurrentMonth(day: number) {
@@ -214,6 +215,9 @@ describe('CalendarPage', () => {
     const nextDate = dateInCurrentMonth(16)
     await user.clear(screen.getByLabelText('Legenda'))
     await user.type(screen.getByLabelText('Legenda'), 'Rascunho não salvo')
+    await user.click(
+      screen.getByRole('button', { name: /Editar data e horário/ }),
+    )
     fireEvent.change(screen.getByLabelText('Data'), {
       target: { value: nextDate },
     })
@@ -237,6 +241,9 @@ describe('CalendarPage', () => {
     expect(within(movedCard).getByText('16')).toBeInTheDocument()
 
     await user.click(movedCard)
+    await user.click(
+      screen.getByRole('button', { name: /Editar data e horário/ }),
+    )
     fireEvent.change(screen.getByLabelText('Horário'), {
       target: { value: '16:30' },
     })
@@ -440,5 +447,181 @@ describe('CalendarPage', () => {
     expect(
       screen.getByRole('button', { name: /Segundo post/ }),
     ).toBeInTheDocument()
+  })
+  it('abre o editor compacto de agenda pela pílula de data e fecha com Escape', async () => {
+    const user = userEvent.setup()
+    renderApp('/calendar', createTestRepository({ drafts }))
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    expect(screen.queryByLabelText('Data')).not.toBeInTheDocument()
+    const datePill = screen.getByRole('button', {
+      name: /Editar data e horário/,
+    })
+    expect(datePill).toHaveAttribute('aria-expanded', 'false')
+    await user.click(datePill)
+
+    const editor = screen.getByRole('dialog', { name: 'Agenda do post' })
+    expect(datePill).toHaveAttribute('aria-expanded', 'true')
+    expect(within(editor).getByLabelText('Data')).toHaveValue(drafts[0].date)
+    expect(within(editor).getByLabelText('Horário')).toHaveValue('12:00')
+    expect(within(editor).getByLabelText('Situação')).toHaveValue('draft')
+    expect(within(editor).getByText(/Fuso horário de Brasília/)).toBeVisible()
+    expect(within(editor).getByLabelText('Data')).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+    expect(
+      screen.queryByRole('dialog', { name: 'Agenda do post' }),
+    ).not.toBeInTheDocument()
+    expect(datePill).toHaveFocus()
+    expect(
+      screen.getByRole('dialog', { name: /posts|post nesta data|de/ }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Editar situação/ }))
+    expect(
+      screen.getByRole('dialog', { name: 'Agenda do post' }),
+    ).toBeInTheDocument()
+  })
+
+  it('abre Publicar nas redes em uma janela própria sem repetir a prévia', async () => {
+    const user = userEvent.setup()
+    renderApp(
+      '/calendar',
+      createTestRepository({
+        drafts: [
+          {
+            ...drafts[0],
+            format: 'static',
+            imageUrl: 'data:image/webp;base64,aW1hZ2U=',
+          },
+        ],
+      }),
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    expect(
+      screen.queryByRole('dialog', { name: 'Publicar nas redes' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Publicar agora' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Publicar nas redes' }))
+    const publishDialog = screen.getByRole('dialog', {
+      name: 'Publicar nas redes',
+    })
+    expect(publishDialog).toHaveAttribute('aria-modal', 'true')
+    expect(
+      within(publishDialog).getByRole('button', { name: 'Publicar agora' }),
+    ).toBeInTheDocument()
+    expect(
+      within(publishDialog).getByLabelText(/Confirmo a publicação/),
+    ).toBeInTheDocument()
+    expect(
+      within(publishDialog).getByLabelText(/Agendar \(opcional\)/),
+    ).toBeInTheDocument()
+    expect(
+      within(publishDialog).queryByAltText(
+        'Prévia da imagem que será publicada',
+      ),
+    ).not.toBeInTheDocument()
+    expect(
+      within(publishDialog).queryByText('Legenda original'),
+    ).not.toBeInTheDocument()
+    expect(
+      within(publishDialog).getByRole('button', {
+        name: 'Fechar publicação nas redes',
+      }),
+    ).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+    expect(
+      screen.queryByRole('dialog', { name: 'Publicar nas redes' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Publicar nas redes' }),
+    ).toHaveFocus()
+    expect(
+      screen.getByRole('heading', { name: 'Instagram' }),
+    ).toBeInTheDocument()
+  })
+
+  it('copia a legenda com as hashtags', async () => {
+    const user = userEvent.setup()
+    renderApp('/calendar', createTestRepository({ drafts }))
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    const captionArea = screen.getByRole('region', {
+      name: 'Legenda para Instagram',
+    })
+    await user.click(
+      within(captionArea).getByRole('button', { name: 'Copiar legenda' }),
+    )
+
+    await waitFor(async () =>
+      expect(await navigator.clipboard.readText()).toBe(
+        'Legenda original\n\n#cafe',
+      ),
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('Legenda copiada.')
+  })
+
+  it('lista os itens de Mais recursos com a nota de publicação', async () => {
+    const user = userEvent.setup()
+    const previousGenerateImage = generationService.generateImage
+    generationService.generateImage = async () =>
+      'data:image/webp;base64,aW1hZ2U='
+    onTestFinished(() => {
+      generationService.generateImage = previousGenerateImage
+    })
+    renderApp('/calendar', createTestRepository({ drafts }))
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    const resources = screen.getByRole('region', { name: 'Mais recursos' })
+    for (const name of [
+      'Publicar nas redes',
+      'Gerar imagem com IA',
+      'Copiar legenda',
+      'Duplicar como rascunho',
+      'Excluir post',
+    ]) {
+      expect(within(resources).getByRole('button', { name })).toBeVisible()
+    }
+    expect(
+      within(resources).getByText(
+        'Este post é publicado automaticamente na data agendada depois de aprovado.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Duplicar' })).toBeInTheDocument()
+  })
+
+  it('mantém o post publicado somente leitura com aviso na prévia', async () => {
+    const user = userEvent.setup()
+    renderApp(
+      '/calendar',
+      createTestRepository({
+        drafts: [{ ...drafts[0], status: 'published' }],
+      }),
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    expect(
+      screen.getByText('Post publicado não pode ser editado.'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Legenda')).toHaveAttribute('readonly')
+    expect(screen.queryByLabelText('Adicionar hashtag')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Remover hashtag #cafe' }),
+    ).not.toBeInTheDocument()
   })
 })

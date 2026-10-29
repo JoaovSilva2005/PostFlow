@@ -21,6 +21,11 @@ import styles from './social.module.css'
 interface Props {
   draft: PostDraft
   hasUnsavedChanges: boolean
+  /**
+   * `dialog`: usado dentro da janela "Publicar nas redes" da agenda. O título
+   * fica no cabeçalho da janela e a prévia não é repetida (o cartão já mostra).
+   */
+  variant?: 'panel' | 'dialog'
 }
 interface Outcome {
   provider: string
@@ -31,7 +36,12 @@ interface Outcome {
   message?: string
 }
 
-export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
+export function DraftPublishingPanel({
+  draft,
+  hasUnsavedChanges,
+  variant = 'panel',
+}: Props) {
+  const inDialog = variant === 'dialog'
   const { currentWorkspace } = useApp()
   const canPublish = ['owner', 'admin', 'editor'].includes(
     currentWorkspace?.role ?? '',
@@ -267,19 +277,27 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
 
   return (
     <section
-      className={styles.publishPanel}
-      aria-labelledby={`publish-${draft.id}`}
+      className={
+        inDialog
+          ? `${styles.publishPanel} ${styles.publishPanelEmbedded}`
+          : styles.publishPanel
+      }
+      {...(inDialog
+        ? { 'aria-label': 'Opções de publicação' }
+        : { 'aria-labelledby': `publish-${draft.id}` })}
     >
-      <div className={styles.publishTitle}>
-        <div>
-          <h3 id={`publish-${draft.id}`}>Publicar nas redes</h3>
-          <p>
-            Prévia da versão salva do rascunho; cada destino recebe uma
-            solicitação independente.
-          </p>
+      {inDialog ? null : (
+        <div className={styles.publishTitle}>
+          <div>
+            <h3 id={`publish-${draft.id}`}>Publicar nas redes</h3>
+            <p>
+              Prévia da versão salva do rascunho; cada destino recebe uma
+              solicitação independente.
+            </p>
+          </div>
+          <Send size={18} />
         </div>
-        <Send size={18} />
-      </div>
+      )}
       {!isStatic && (
         <p className={styles.warning}>
           Este post é{' '}
@@ -298,21 +316,25 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
           corresponder à versão persistida.
         </p>
       )}
-      <div className={styles.preview}>
-        <strong>{draft.title}</strong>
-        <div>
-          {draft.imageUrl ? (
-            <img
-              src={draft.imageUrl}
-              alt="Prévia da imagem que será publicada"
-            />
-          ) : (
-            <span>Imagem não disponível</span>
+      {inDialog ? null : (
+        <div className={styles.preview}>
+          <strong>{draft.title}</strong>
+          <div>
+            {draft.imageUrl ? (
+              <img
+                src={draft.imageUrl}
+                alt="Prévia da imagem que será publicada"
+              />
+            ) : (
+              <span>Imagem não disponível</span>
+            )}
+          </div>
+          <p>{draft.caption}</p>
+          {draft.hashtags.length > 0 && (
+            <small>{draft.hashtags.join(' ')}</small>
           )}
         </div>
-        <p>{draft.caption}</p>
-        {draft.hashtags.length > 0 && <small>{draft.hashtags.join(' ')}</small>}
-      </div>
+      )}
       {!canPublish && (
         <p className={styles.warning}>
           Seu papel permite consultar esta prévia, mas não solicitar

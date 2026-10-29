@@ -203,6 +203,38 @@ describe('DraftPublishingPanel', () => {
     ).toBeDisabled()
   })
 
+  it('na variante de janela não repete a prévia e mantém os controles', async () => {
+    authenticateDemo()
+    render(
+      <MemoryRouter>
+        <AppProvider
+          authGateway={createTestAuthGateway()}
+          repository={createTestRepository()}
+        >
+          <DraftPublishingPanel
+            draft={draft}
+            hasUnsavedChanges={false}
+            variant="dialog"
+          />
+        </AppProvider>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByLabelText('Aurora TikTok')).toBeInTheDocument()
+    expect(
+      screen.queryByAltText('Prévia da imagem que será publicada'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Legenda revisada')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Publicar nas redes' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByLabelText(/Confirmo a publicação desta prévia/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Publicar agora' }),
+    ).toBeInTheDocument()
+  })
+
   it('limita destinos à plataforma do rascunho e permite duas contas da mesma rede', async () => {
     const user = userEvent.setup()
     renderPanel()
