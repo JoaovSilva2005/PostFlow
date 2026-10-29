@@ -2,44 +2,50 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 6px 10px;
+  min-height: 32px;
+  padding: 0 4px 0 8px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--color-muted);
   background: var(--color-surface);
-  font-size: 12px;
+  font-size: var(--text-meta);
+  transition: border-color var(--duration-feedback) var(--ease-feedback);
 }
 .control > svg {
   flex: none;
-  color: var(--color-primary);
+  color: var(--color-muted);
 }
 .control select {
   flex: 1;
   min-width: 0;
-  min-height: 32px;
-  padding: 4px 6px;
+  min-height: 28px;
+  padding: 0 4px;
   border: 0;
   border-radius: 4px;
+  outline: none;
   color: var(--color-text);
   background: var(--color-surface);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-meta);
+}
+.control:hover {
+  border-color: var(--color-border-strong);
 }
 .control:focus-within {
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 .loginPlacement {
   position: absolute;
   top: 16px;
   right: 16px;
   z-index: 5;
-  width: 190px;
+  width: 180px;
 }
 @media (max-width: 600px) {
   .loginPlacement {
     top: 10px;
     right: 12px;
-    width: 165px;
+    width: 160px;
   }
 }

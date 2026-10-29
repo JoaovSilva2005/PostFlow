@@ -1,21 +1,20 @@
-import { useEffect, useId, useState, type FormEvent } from 'react'
 import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Info,
-  Palette,
-  Plus,
-  Sparkles,
-  X,
-} from 'lucide-react'
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react'
+import { ArrowLeft, ArrowRight, Check, Plus, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
-import { PageHeader } from '../../components/ui/PageHeader'
+import { useCanCreateBrand } from '../../app/useBrandCreation'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
-import { BrandSelector } from '../../components/ui/BrandSelector'
 import { SelectField, TextField } from '../../components/ui/FormField'
+import { PageHeader } from '../../components/ui/PageHeader'
+import { readableTextOn } from '../../components/ui/color'
 import { BRAND_SEGMENT_OPTIONS } from '../../domain/brandCatalog'
 import type { BrandProfile } from '../../domain/models'
 import styles from './BrandPage.module.css'
@@ -30,6 +29,7 @@ const COLOR_PRESETS = [
 ]
 
 const DEFAULT_PALETTE = ['#4F46E5', '#F97316', '#16A34A']
+const MAX_PALETTE_COLORS = 5
 
 const TONE_OPTIONS = [
   { label: 'Próximo e acolhedor', value: 'Próximo e acolhedor' },
@@ -38,32 +38,31 @@ const TONE_OPTIONS = [
   { label: 'Inspirador', value: 'Inspirador' },
 ]
 
-const SECTIONS = [
-  {
-    id: 'identity',
-    eyebrow: '01',
-    label: 'Essencial',
-    description: 'Identidade e paleta',
-  },
-  {
-    id: 'context',
-    eyebrow: '02',
-    label: 'Contexto da IA',
-    description: 'Público e oferta',
-  },
-  {
-    id: 'editorial',
-    eyebrow: '03',
-    label: 'Direção editorial',
-    description: 'Objetivos e regras',
-  },
+/** Opening line of the sample caption, so the preview reacts to the tone. */
+const TONE_OPENINGS: Record<string, string> = {
+  'Próximo e acolhedor': 'Que bom ter você por aqui.',
+  'Profissional e objetivo': 'Veja como podemos ajudar.',
+  'Divertido e informal': 'Bora conhecer a gente?',
+  Inspirador: 'Cada dia é uma chance de começar algo bom.',
+}
+
+const SETUP_STEPS = [
+  { id: 'identity', label: 'Identidade' },
+  { id: 'audience', label: 'Público e oferta' },
+  { id: 'voice', label: 'Como a marca fala' },
 ] as const
 
-type SectionId = (typeof SECTIONS)[number]['id']
+const SETTINGS_SECTIONS = [
+  { id: 'identity', label: 'Identidade' },
+  { id: 'audience', label: 'Público e oferta' },
+  { id: 'voice', label: 'Voz e regras' },
+] as const
+
+type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]['id']
 
 const EMPTY_BRAND_PROFILE: BrandProfile = {
   name: '',
-  segment: 'Alimentação e bebidas',
+  segment: '',
   toneOfVoice: 'Próximo e acolhedor',
   primaryColor: '#4F46E5',
   colorPalette: DEFAULT_PALETTE,
@@ -77,6 +76,114 @@ const EMPTY_BRAND_PROFILE: BrandProfile = {
   defaultCta: '',
 }
 
+const NAME_REQUIRED = 'Informe o nome da marca.'
+const SEGMENT_REQUIRED = 'Selecione o segmento.'
+/** Segment stored by account signup before the owner picks one. */
+const PLACEHOLDER_SEGMENT = 'A definir'
+const NAME_FIELD_ID = 'brand-name'
+const SEGMENT_FIELD_ID = 'segment'
+
+type FieldErrors = { name?: string; segment?: string }
+const BRAND_LIMIT = 'Sua conta pode cadastrar até duas marcas.'
+
+function getPalette(brand: BrandProfile | null | undefined) {
+  if (!brand) return [...DEFAULT_PALETTE]
+  const savedPalette = brand.colorPalette?.filter(Boolean)
+  return savedPalette?.length
+    ? savedPalette
+    : [brand.primaryColor ?? EMPTY_BRAND_PROFILE.primaryColor]
+}
+
+const KNOWN_SEGMENTS = new Set<string>(
+  BRAND_SEGMENT_OPTIONS.map(({ value }) => value),
+)
+
+function formFromBrand(brand: BrandProfile | null | undefined): BrandProfile {
+  const form = {
+    ...EMPTY_BRAND_PROFILE,
+    ...brand,
+    colorPalette: getPalette(brand),
+  }
+  // Accounts start with a placeholder segment: ask for a real one instead.
+  const segment = form.segment?.trim() ?? ''
+  form.segment = segment === PLACEHOLDER_SEGMENT ? '' : segment
+  return form
+}
+
+/** Known segments plus a custom stored one, so saving never drops it. */
+function segmentOptions(storedSegment: string | undefined) {
+  const custom = storedSegment?.trim()
+  return custom && custom !== PLACEHOLDER_SEGMENT && !KNOWN_SEGMENTS.has(custom)
+    ? [...BRAND_SEGMENT_OPTIONS, { label: custom, value: custom }]
+    : BRAND_SEGMENT_OPTIONS
+}
+
+function validateIdentity(form: BrandProfile): FieldErrors {
+  const errors: FieldErrors = {}
+  if (!form.name.trim()) errors.name = NAME_REQUIRED
+  if (!form.segment.trim()) errors.segment = SEGMENT_REQUIRED
+  return errors
+}
+
+function firstInvalidField(errors: FieldErrors) {
+  if (errors.name) return NAME_FIELD_ID
+  if (errors.segment) return SEGMENT_FIELD_ID
+  return null
+}
+
+function clearFieldError(
+  errors: FieldErrors,
+  field: keyof BrandProfile,
+): FieldErrors {
+  if (field === 'name' && errors.name) return { ...errors, name: undefined }
+  if (field === 'segment' && errors.segment)
+    return { ...errors, segment: undefined }
+  return errors
+}
+
+/** Moves focus to a field after the render that shows it. */
+function useFocusRequest() {
+  const [request, setRequest] = useState<{ id: string } | null>(null)
+  useEffect(() => {
+    if (request) document.getElementById(request.id)?.focus()
+  }, [request])
+  return (id: string | null) => {
+    if (id) setRequest({ id })
+  }
+}
+
+/** A brand counts as set up once any of its AI context has been filled in. */
+function hasBrandContext(brand: BrandProfile) {
+  return [
+    brand.description,
+    brand.targetAudience,
+    brand.productsOrServices,
+    brand.differentials,
+    brand.contentGoals,
+  ].some((value) => Boolean(value?.trim()))
+}
+
+function toPayload(form: BrandProfile): BrandProfile {
+  const palette = getPalette(form)
+  return {
+    ...EMPTY_BRAND_PROFILE,
+    ...form,
+    name: form.name.trim(),
+    primaryColor: palette[0],
+    colorPalette: palette,
+  }
+}
+
+function errorMessage(cause: unknown) {
+  return cause instanceof Error
+    ? cause.message
+    : 'Não foi possível salvar a marca no Supabase.'
+}
+
+/* -------------------------------------------------------------------------- */
+/* Shared fields                                                              */
+/* -------------------------------------------------------------------------- */
+
 type TextareaFieldProps = {
   label: string
   name: string
@@ -84,6 +191,7 @@ type TextareaFieldProps = {
   placeholder: string
   hint: string
   maxLength: number
+  optional?: boolean
   onChange: (value: string) => void
 }
 
@@ -94,6 +202,7 @@ function TextareaField({
   placeholder,
   hint,
   maxLength,
+  optional,
   onChange,
 }: TextareaFieldProps) {
   const generatedId = useId()
@@ -102,10 +211,13 @@ function TextareaField({
   const countId = `${inputId}-count`
 
   return (
-    <div className={styles.textareaField}>
-      <label className={styles.fieldLabel} htmlFor={inputId}>
-        {label}
-      </label>
+    <div className={styles.field}>
+      <div className={styles.labelRow}>
+        <label className={styles.fieldLabel} htmlFor={inputId}>
+          {label}
+        </label>
+        {optional ? <span className={styles.optional}>Opcional</span> : null}
+      </div>
       <textarea
         id={inputId}
         name={name}
@@ -119,7 +231,7 @@ function TextareaField({
       />
       <div className={styles.fieldMeta}>
         <span id={hintId}>{hint}</span>
-        <span id={countId} aria-live="polite">
+        <span id={countId} aria-live="polite" className={styles.count}>
           {value.length}/{maxLength}
         </span>
       </div>
@@ -127,159 +239,764 @@ function TextareaField({
   )
 }
 
-function contextValue(value: string | undefined) {
-  return value?.trim() ?? ''
+type FormUpdater = <Key extends keyof BrandProfile>(
+  field: Key,
+  value: BrandProfile[Key],
+) => void
+
+function PaletteEditor({
+  palette,
+  onChangeColor,
+  onAddColor,
+  onRemoveColor,
+}: {
+  palette: string[]
+  onChangeColor: (index: number, color: string) => void
+  onAddColor: () => void
+  onRemoveColor: (index: number) => void
+}) {
+  return (
+    <fieldset className={styles.palette}>
+      <div className={styles.labelRow}>
+        <legend className={styles.fieldLabel}>Paleta de cores</legend>
+        <span className={styles.count}>
+          {palette.length}/{MAX_PALETTE_COLORS}
+        </span>
+      </div>
+      <ul className={styles.paletteList}>
+        {palette.map((color, index) => {
+          const name = index === 0 ? 'principal' : `de apoio ${index}`
+          return (
+            <li className={styles.paletteChip} key={`${index}-${color}`}>
+              <label
+                className={styles.paletteSwatch}
+                style={{ backgroundColor: color }}
+                title="Escolher cor"
+              >
+                <input
+                  type="color"
+                  aria-label={`Cor ${name}`}
+                  value={color}
+                  onChange={(event) => onChangeColor(index, event.target.value)}
+                />
+              </label>
+              <span className={styles.paletteHex}>{color.toUpperCase()}</span>
+              {index === 0 ? (
+                <span className={styles.primaryTag}>Principal</span>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.removeColor}
+                  aria-label={`Remover cor de apoio ${index}`}
+                  onClick={() => onRemoveColor(index)}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </li>
+          )
+        })}
+        {palette.length < MAX_PALETTE_COLORS ? (
+          <li>
+            <button
+              type="button"
+              className={styles.addColor}
+              onClick={onAddColor}
+            >
+              <Plus size={14} /> Adicionar cor
+            </button>
+          </li>
+        ) : null}
+      </ul>
+      <div className={styles.presets}>
+        <span className={styles.helper}>Sugestões para a cor principal</span>
+        <div className={styles.presetList}>
+          {COLOR_PRESETS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              aria-label={`Selecionar cor ${color}`}
+              aria-pressed={palette[0] === color}
+              style={{ background: color, color: readableTextOn(color) }}
+              className={styles.preset}
+              onClick={() => onChangeColor(0, color)}
+            >
+              {palette[0] === color ? <Check size={12} /> : null}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className={styles.helper}>
+        A cor principal aparece nas artes e na prévia. As outras entram como
+        apoio.
+      </p>
+    </fieldset>
+  )
 }
 
-function getPalette(brand: BrandProfile | null | undefined) {
-  if (!brand) return [...DEFAULT_PALETTE]
-  const savedPalette = brand?.colorPalette?.filter(Boolean)
-  return savedPalette?.length
-    ? savedPalette
-    : [brand?.primaryColor ?? EMPTY_BRAND_PROFILE.primaryColor]
+function IdentityFields({
+  form,
+  errors,
+  segments,
+  update,
+  palette,
+  onChangeColor,
+  onAddColor,
+  onRemoveColor,
+}: {
+  form: BrandProfile
+  errors: FieldErrors
+  segments: Array<{ label: string; value: string }>
+  update: FormUpdater
+  palette: string[]
+  onChangeColor: (index: number, color: string) => void
+  onAddColor: () => void
+  onRemoveColor: (index: number) => void
+}) {
+  return (
+    <div className={styles.fields}>
+      <div className={styles.fieldPair}>
+        <TextField
+          label="Nome da marca"
+          name={NAME_FIELD_ID}
+          placeholder="Ex.: Café Aurora"
+          value={form.name}
+          autoComplete="organization"
+          onChange={(event) => update('name', event.target.value)}
+          error={errors.name}
+        />
+        <SelectField
+          label="Segmento"
+          name={SEGMENT_FIELD_ID}
+          value={form.segment}
+          placeholder="Selecione o segmento"
+          onChange={(event) => update('segment', event.target.value)}
+          options={segments}
+          error={errors.segment}
+        />
+      </div>
+      <PaletteEditor
+        palette={palette}
+        onChangeColor={onChangeColor}
+        onAddColor={onAddColor}
+        onRemoveColor={onRemoveColor}
+      />
+    </div>
+  )
 }
 
-export function BrandPage() {
+function AudienceFields({
+  form,
+  update,
+}: {
+  form: BrandProfile
+  update: FormUpdater
+}) {
+  return (
+    <div className={styles.fields}>
+      <TextareaField
+        label="O que a marca faz?"
+        name="brand-description"
+        value={form.description ?? ''}
+        placeholder="Ex.: Torrefação artesanal que entrega cafés especiais para quem gosta de descobrir novos sabores."
+        hint="A proposta da marca em uma ou duas frases."
+        maxLength={600}
+        onChange={(value) => update('description', value)}
+      />
+      <TextareaField
+        label="Para quem você fala?"
+        name="target-audience"
+        value={form.targetAudience ?? ''}
+        placeholder="Ex.: Adultos de 25 a 45 anos que valorizam qualidade e comércio local."
+        hint="Perfil, necessidades e momento de compra."
+        maxLength={400}
+        onChange={(value) => update('targetAudience', value)}
+      />
+      <TextareaField
+        label="Produtos ou serviços"
+        name="products-or-services"
+        value={form.productsOrServices ?? ''}
+        placeholder="Ex.: Café em grãos, kits de degustação e assinatura mensal."
+        hint="O que pode virar pauta ou oferta."
+        maxLength={600}
+        optional
+        onChange={(value) => update('productsOrServices', value)}
+      />
+      <TextareaField
+        label="Diferenciais e provas"
+        name="differentials"
+        value={form.differentials ?? ''}
+        placeholder="Ex.: Grãos de pequenos produtores, torra semanal e envio em até 24h."
+        hint="O que torna a marca confiável e diferente."
+        maxLength={400}
+        optional
+        onChange={(value) => update('differentials', value)}
+      />
+    </div>
+  )
+}
+
+function VoiceFields({
+  form,
+  update,
+}: {
+  form: BrandProfile
+  update: FormUpdater
+}) {
+  return (
+    <div className={styles.fields}>
+      <SelectField
+        label="Tom de voz"
+        name="tone"
+        value={form.toneOfVoice}
+        onChange={(event) => update('toneOfVoice', event.target.value)}
+        options={TONE_OPTIONS}
+        hint="Define o jeito de escrever das legendas."
+      />
+      <TextareaField
+        label="Objetivos de conteúdo"
+        name="content-goals"
+        value={form.contentGoals ?? ''}
+        placeholder="Ex.: Ensinar sobre café especial e gerar pedidos no site."
+        hint="O resultado que você espera dos posts."
+        maxLength={400}
+        optional
+        onChange={(value) => update('contentGoals', value)}
+      />
+      <TextField
+        label="Palavras e expressões para usar"
+        name="keywords"
+        placeholder="Ex.: torra fresca, origem, café especial"
+        value={form.keywords ?? ''}
+        hint="Separe por vírgulas. Viram hashtags na prévia."
+        optional
+        onChange={(event) => update('keywords', event.target.value)}
+      />
+      <TextField
+        label="Temas ou termos para evitar"
+        name="avoid-topics"
+        placeholder="Ex.: promessas de cura, descontos agressivos"
+        value={form.avoidTopics ?? ''}
+        hint="A IA não usa estes temas nos posts."
+        optional
+        onChange={(event) => update('avoidTopics', event.target.value)}
+      />
+      <TextField
+        label="Chamada para ação padrão"
+        name="default-cta"
+        placeholder="Ex.: Conheça o cardápio no site"
+        value={form.defaultCta ?? ''}
+        hint="Pode ser trocada em cada pedido."
+        optional
+        onChange={(event) => update('defaultCta', event.target.value)}
+      />
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Live post preview                                                          */
+/* -------------------------------------------------------------------------- */
+
+function toHashtag(keyword: string) {
+  const compact = keyword
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+  return compact ? `#${compact.toLowerCase()}` : ''
+}
+
+function BrandPostPreview({
+  form,
+  palette,
+}: {
+  form: BrandProfile
+  palette: string[]
+}) {
+  const name = form.name.trim() || 'Sua marca'
+  const primary = palette[0]
+  const onPrimary = readableTextOn(primary)
+  const description = form.description?.trim()
+  const cta = form.defaultCta?.trim()
+  const hashtags = (form.keywords ?? '')
+    .split(',')
+    .map((keyword) => toHashtag(keyword.trim()))
+    .filter(Boolean)
+    .slice(0, 3)
+  const opening =
+    TONE_OPENINGS[form.toneOfVoice] ?? TONE_OPENINGS['Próximo e acolhedor']
+
+  return (
+    <aside className={styles.preview} aria-label="Prévia do post">
+      <div className={styles.previewHeading}>
+        <h2>Prévia</h2>
+        <span className={styles.helper}>Atualiza enquanto você digita</span>
+      </div>
+      <article className={styles.post}>
+        <header className={styles.postHeader}>
+          <span
+            className={styles.postAvatar}
+            style={{ backgroundColor: primary, color: onPrimary }}
+            aria-hidden="true"
+          >
+            {name.slice(0, 1).toUpperCase()}
+          </span>
+          <span className={styles.postIdentity}>
+            <strong data-testid="preview-brand-name">{name}</strong>
+            <small>{form.segment}</small>
+          </span>
+        </header>
+        <div
+          className={styles.postArt}
+          data-testid="preview-art"
+          style={{ backgroundColor: primary, color: onPrimary }}
+        >
+          <span className={styles.postArtName}>{name}</span>
+          <span className={styles.postArtLine}>{opening}</span>
+          <span className={styles.postArtPalette} aria-hidden="true">
+            {palette.slice(1).map((color, index) => (
+              <i key={`${color}-${index}`} style={{ backgroundColor: color }} />
+            ))}
+          </span>
+        </div>
+        <div className={styles.postCaption}>
+          <p>
+            <strong>{name}</strong> {opening}{' '}
+            {description ||
+              'Conte o que a marca faz e esta legenda passa a falar do seu negócio.'}
+          </p>
+          {cta ? <p>{cta}</p> : null}
+          {hashtags.length ? (
+            <p className={styles.postTags}>{hashtags.join(' ')}</p>
+          ) : null}
+        </div>
+      </article>
+      <p className={styles.helper}>
+        Exemplo ilustrativo. Os posts reais são gerados pela IA a partir destas
+        informações, no tom {form.toneOfVoice.toLowerCase()}.
+      </p>
+    </aside>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Form state                                                                 */
+/* -------------------------------------------------------------------------- */
+
+function useBrandForm(initial: BrandProfile) {
+  const [form, setForm] = useState<BrandProfile>(initial)
+  const [hasChanges, setHasChanges] = useState(false)
+
+  const update: FormUpdater = (field, value) => {
+    setHasChanges(true)
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  const palette = getPalette(form)
+
+  function changeColor(index: number, color: string) {
+    const next = [...palette]
+    next[index] = color.toUpperCase()
+    setHasChanges(true)
+    setForm((current) => ({
+      ...current,
+      colorPalette: next,
+      ...(index === 0 ? { primaryColor: color.toUpperCase() } : {}),
+    }))
+  }
+
+  function addColor() {
+    if (palette.length >= MAX_PALETTE_COLORS) return
+    update('colorPalette', [...palette, '#CBD5E1'])
+  }
+
+  function removeColor(index: number) {
+    if (index === 0) return
+    update(
+      'colorPalette',
+      palette.filter((_, colorIndex) => colorIndex !== index),
+    )
+  }
+
+  function reset(next: BrandProfile) {
+    setForm(next)
+    setHasChanges(false)
+  }
+
+  return {
+    form,
+    palette,
+    hasChanges,
+    update,
+    changeColor,
+    addColor,
+    removeColor,
+    reset,
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* First registration: three-step setup                                       */
+/* -------------------------------------------------------------------------- */
+
+function BrandSetup({
+  initialBrand,
+  isCreating,
+  canCreateBrand,
+  onSkip,
+  onDirtyChange,
+}: {
+  initialBrand: BrandProfile | null
+  isCreating: boolean
+  canCreateBrand: boolean
+  onSkip?: () => void
+  onDirtyChange: (dirty: boolean) => void
+}) {
   const navigate = useNavigate()
-  const location = useLocation()
-  const {
-    brand,
-    currentWorkspace,
-    saveBrand,
-    createWorkspace,
-    availableWorkspaces,
-    selectWorkspace,
-    platformRole,
-  } = useApp()
-  const isCreating = location.pathname.endsWith('/new')
-  const [form, setForm] = useState<BrandProfile>(() => ({
-    ...EMPTY_BRAND_PROFILE,
-    ...(isCreating ? {} : (brand ?? {})),
-    colorPalette: getPalette(brand),
-  }))
-  const [activeSection, setActiveSection] = useState<SectionId>('identity')
-  const [error, setError] = useState('')
+  const { saveBrand, createWorkspace } = useApp()
+  const brandForm = useBrandForm(formFromBrand(initialBrand))
+  const { form, palette, update, hasChanges } = brandForm
+  const [segments] = useState(() => segmentOptions(initialBrand?.segment))
+  const [step, setStep] = useState(0)
+  const [errors, setErrors] = useState<FieldErrors>({})
+  const requestFocus = useFocusRequest()
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const [hasChanges, setHasChanges] = useState(false)
-  const ownedBrandCount = availableWorkspaces.filter(
-    (workspace) => workspace.isOwnedByUser ?? workspace.role === 'owner',
-  ).length
-  const canCreateBrand =
-    platformRole === 'platform_owner' || ownedBrandCount < 2
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const previousStep = useRef(step)
+  const isLastStep = step === SETUP_STEPS.length - 1
+  const blockedByLimit = isCreating && !canCreateBrand
 
   useEffect(() => {
-    if (!isCreating && brand && !hasChanges) {
-      setForm({
-        ...EMPTY_BRAND_PROFILE,
-        ...brand,
-        colorPalette: getPalette(brand),
-      })
-    }
-  }, [brand, hasChanges, isCreating])
+    if (previousStep.current !== step) headingRef.current?.focus()
+    previousStep.current = step
+  }, [step])
 
-  function updateFormField<Key extends keyof BrandProfile>(
-    field: Key,
-    value: BrandProfile[Key],
-  ) {
-    setHasChanges(true)
-    setForm((currentForm) => ({ ...currentForm, [field]: value }))
+  useEffect(() => {
+    onDirtyChange(hasChanges)
+  }, [hasChanges, onDirtyChange])
+
+  const updateField: FormUpdater = (field, value) => {
+    setErrors((current) => clearFieldError(current, field))
+    update(field, value)
   }
 
-  function updatePaletteColor(index: number, color: string) {
-    const palette = [...getPalette(form)]
-    palette[index] = color.toUpperCase()
-    updateFormField('colorPalette', palette)
-    if (index === 0) updateFormField('primaryColor', color.toUpperCase())
+  /** Validates step 1; on failure returns to it and focuses the field. */
+  function identityIsValid() {
+    const nextErrors = validateIdentity(form)
+    setErrors(nextErrors)
+    const invalid = firstInvalidField(nextErrors)
+    if (!invalid) return true
+    setStep(0)
+    requestFocus(invalid)
+    return false
   }
 
-  function addPaletteColor() {
-    if (getPalette(form).length >= 5) return
-    updateFormField('colorPalette', [...getPalette(form), '#CBD5E1'])
-  }
-
-  function removePaletteColor(index: number) {
-    if (index === 0) return
-    updateFormField(
-      'colorPalette',
-      getPalette(form).filter((_, colorIndex) => colorIndex !== index),
-    )
-  }
-
-  function moveSection(direction: -1 | 1) {
-    const currentIndex = SECTIONS.findIndex(
-      (section) => section.id === activeSection,
-    )
-    const nextSection = SECTIONS[currentIndex + direction]
-    if (nextSection) setActiveSection(nextSection.id)
+  function goTo(nextStep: number) {
+    if (nextStep > 0 && !identityIsValid()) return
+    setStep(Math.max(0, Math.min(nextStep, SETUP_STEPS.length - 1)))
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-
-    if (isCreating && !canCreateBrand) {
-      setSaveError('Sua conta pode cadastrar até duas marcas.')
+    if (!isLastStep) {
+      goTo(step + 1)
       return
     }
-
-    if (!form.name.trim()) {
-      setError('Informe o nome da marca.')
-      setActiveSection('identity')
+    if (blockedByLimit) {
+      setSaveError(BRAND_LIMIT)
       return
     }
-
-    setError('')
+    if (!identityIsValid()) return
     setSaveError('')
     setIsSaving(true)
-
     try {
-      const payload = {
-        ...EMPTY_BRAND_PROFILE,
-        ...form,
-        name: form.name.trim(),
-        primaryColor: getPalette(form)[0],
-        colorPalette: getPalette(form),
-      }
+      const payload = toPayload(form)
       if (isCreating) await createWorkspace(payload)
       else await saveBrand(payload)
+      onDirtyChange(false)
       navigate('/chat')
     } catch (cause) {
-      setSaveError(
-        cause instanceof Error
-          ? cause.message
-          : 'Não foi possível salvar a marca no Supabase.',
-      )
+      setSaveError(errorMessage(cause))
     } finally {
       setIsSaving(false)
     }
   }
 
-  const palette = getPalette(form)
-  const brandDescription = contextValue(form.description)
-  const targetAudience = contextValue(form.targetAudience)
-  const products = contextValue(form.productsOrServices)
-  const hasAiContext = Boolean(brandDescription || targetAudience || products)
-  const currentSectionIndex = SECTIONS.findIndex(
-    (section) => section.id === activeSection,
-  )
-  const currentSection = SECTIONS[currentSectionIndex]
+  const stepCopy = [
+    {
+      title: 'Identidade da marca',
+      description: 'O nome e as cores que aparecem em todos os posts.',
+    },
+    {
+      title: 'Público e oferta',
+      description:
+        'Para quem a marca fala e o que vende. Quanto mais específico, menos genérico fica o texto.',
+    },
+    {
+      title: 'Como a marca fala',
+      description:
+        'O tom das legendas e as regras que a IA deve seguir. Dá para completar depois.',
+    },
+  ][step]
 
   return (
-    <AppShell>
-      <PageHeader
-        title={isCreating ? 'Criar uma marca' : 'Configuração da marca'}
-        description="Organize o briefing da sua marca em poucos passos para a IA criar conteúdos mais precisos."
-      >
-        {!isCreating && availableWorkspaces.length ? (
-          <BrandSelector
-            value={currentWorkspace?.id ?? availableWorkspaces[0].id}
-            onChange={(id) => {
-              void selectWorkspace(id)
-              setHasChanges(false)
-            }}
-          />
+    <div className={styles.setup}>
+      <div className={styles.setupMain}>
+        <header className={styles.setupHeader}>
+          <h1>{isCreating ? 'Nova marca' : 'Cadastre sua marca'}</h1>
+          <p>
+            Três passos curtos. A IA usa estas informações em todo post que
+            criar para você.
+          </p>
+          {onSkip ? (
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={onSkip}
+            >
+              Ver todos os campos de uma vez
+            </button>
+          ) : null}
+        </header>
+
+        <ol className={styles.steps} aria-label="Etapas do cadastro">
+          {SETUP_STEPS.map((item, index) => {
+            const state =
+              index === step ? 'current' : index < step ? 'done' : 'todo'
+            return (
+              <li
+                key={item.id}
+                className={styles.step}
+                data-state={state}
+                aria-current={index === step ? 'step' : undefined}
+              >
+                <button
+                  type="button"
+                  onClick={() => goTo(index)}
+                  disabled={
+                    index > step && (!form.name.trim() || !form.segment)
+                  }
+                >
+                  <span className={styles.stepNumber} aria-hidden="true">
+                    {state === 'done' ? <Check size={12} /> : index + 1}
+                  </span>
+                  <span>{item.label}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ol>
+
+        {blockedByLimit ? (
+          <p className={styles.notice} role="status">
+            {BRAND_LIMIT} Edite uma marca existente ou fale com o suporte.
+          </p>
         ) : null}
-        {!isCreating && canCreateBrand ? (
+
+        <form className={styles.setupForm} onSubmit={handleSubmit} noValidate>
+          <div className={styles.stepHeading}>
+            <h2 ref={headingRef} tabIndex={-1}>
+              {stepCopy.title}
+            </h2>
+            <p>{stepCopy.description}</p>
+          </div>
+
+          {step === 0 ? (
+            <IdentityFields
+              form={form}
+              errors={errors}
+              segments={segments}
+              update={updateField}
+              palette={palette}
+              onChangeColor={brandForm.changeColor}
+              onAddColor={brandForm.addColor}
+              onRemoveColor={brandForm.removeColor}
+            />
+          ) : null}
+          {step === 1 ? <AudienceFields form={form} update={update} /> : null}
+          {step === 2 ? <VoiceFields form={form} update={update} /> : null}
+
+          {saveError ? (
+            <p className={styles.saveError} role="alert">
+              {saveError}
+            </p>
+          ) : null}
+
+          <div className={styles.setupActions}>
+            {step > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setStep(step - 1)}
+              >
+                <ArrowLeft size={16} /> Voltar
+              </Button>
+            ) : (
+              <span />
+            )}
+            {isLastStep ? (
+              <Button type="submit" disabled={isSaving || blockedByLimit}>
+                {isSaving ? 'Salvando...' : 'Salvar e criar o primeiro post'}
+              </Button>
+            ) : (
+              <Button type="submit">
+                Continuar <ArrowRight size={16} />
+              </Button>
+            )}
+          </div>
+        </form>
+      </div>
+      <BrandPostPreview form={form} palette={palette} />
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Existing brand: settings layout                                            */
+/* -------------------------------------------------------------------------- */
+
+function SettingsSection({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: SettingsSectionId
+  title: string
+  description: string
+  children: ReactNode
+}) {
+  return (
+    <section
+      id={`brand-section-${id}`}
+      className={styles.section}
+      aria-labelledby={`brand-section-${id}-title`}
+    >
+      <div className={styles.sectionHeading}>
+        <h2 id={`brand-section-${id}-title`}>{title}</h2>
+        <p>{description}</p>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function BrandSettings({
+  brand,
+  canCreateBrand,
+  onDirtyChange,
+}: {
+  brand: BrandProfile
+  canCreateBrand: boolean
+  onDirtyChange: (dirty: boolean) => void
+}) {
+  const navigate = useNavigate()
+  const { saveBrand } = useApp()
+  const brandForm = useBrandForm(formFromBrand(brand))
+  const { form, palette, hasChanges, update, reset } = brandForm
+  const [activeSection, setActiveSection] =
+    useState<SettingsSectionId>('identity')
+  const [segments] = useState(() => segmentOptions(brand.segment))
+  const [errors, setErrors] = useState<FieldErrors>({})
+  const [saveError, setSaveError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const requestFocus = useFocusRequest()
+  const scrollingTo = useRef<SettingsSectionId | null>(null)
+
+  useEffect(() => {
+    onDirtyChange(hasChanges)
+  }, [hasChanges, onDirtyChange])
+
+  // Section nav follows the section in view. Without IntersectionObserver
+  // (tests, old browsers) it simply follows clicks.
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    const sections = SETTINGS_SECTIONS.map(({ id }) =>
+      document.getElementById(`brand-section-${id}`),
+    ).filter((section): section is HTMLElement => Boolean(section))
+    const visible = new Map<string, boolean>()
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) =>
+          visible.set(entry.target.id, entry.isIntersecting),
+        )
+        const first = SETTINGS_SECTIONS.find(({ id }) =>
+          visible.get(`brand-section-${id}`),
+        )
+        if (!first) return
+        if (scrollingTo.current && scrollingTo.current !== first.id) return
+        scrollingTo.current = null
+        setActiveSection(first.id)
+      },
+      { rootMargin: '-80px 0px -55% 0px' },
+    )
+    sections.forEach((section) => observer.observe(section))
+    return () => observer.disconnect()
+  }, [])
+
+  // Follow external brand updates while the form is untouched. The mount
+  // value is already in the form, so a late first effect cannot wipe edits.
+  const lastBrand = useRef(brand)
+  useEffect(() => {
+    if (lastBrand.current === brand) return
+    lastBrand.current = brand
+    if (!hasChanges) reset(formFromBrand(brand))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand])
+
+  const updateField: FormUpdater = (field, value) => {
+    setErrors((current) => clearFieldError(current, field))
+    setSaved(false)
+    update(field, value)
+  }
+
+  function discard() {
+    reset(formFromBrand(brand))
+    setErrors({})
+    setSaveError('')
+  }
+
+  function goToSection(id: SettingsSectionId) {
+    setActiveSection(id)
+    scrollingTo.current = id
+    document
+      .getElementById(`brand-section-${id}`)
+      ?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    const nextErrors = validateIdentity(form)
+    setErrors(nextErrors)
+    const invalid = firstInvalidField(nextErrors)
+    if (invalid) {
+      setActiveSection('identity')
+      requestFocus(invalid)
+      return
+    }
+    setSaveError('')
+    setIsSaving(true)
+    try {
+      const payload = toPayload(form)
+      await saveBrand(payload)
+      reset(formFromBrand(payload))
+      setSaved(true)
+    } catch (cause) {
+      setSaveError(errorMessage(cause))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <>
+      <PageHeader
+        title="Minha marca"
+        description="O que a IA sabe sobre a sua marca. Toda alteração vale para os próximos posts."
+      >
+        {canCreateBrand ? (
           <Button
             type="button"
             variant="secondary"
@@ -287,411 +1004,169 @@ export function BrandPage() {
           >
             <Plus size={16} /> Nova marca
           </Button>
-        ) : null}
-        {!isCreating && !canCreateBrand ? (
-          <small>Limite de duas marcas atingido.</small>
-        ) : null}
+        ) : (
+          <small className={styles.helper}>
+            Limite de duas marcas atingido.
+          </small>
+        )}
       </PageHeader>
 
-      <div className={styles.columns}>
-        <form className={styles.formCard} onSubmit={handleSubmit}>
-          <div className={styles.cardTitle}>
-            <span>
-              <Palette size={18} />
-            </span>
-            <div>
-              <p className={styles.eyebrow}>BRIEFING DA MARCA</p>
-              <h2>Uma configuração rápida e completa</h2>
-              <p>
-                Navegue pelas etapas. Suas informações ficam salvas enquanto
-                você monta a identidade.
-              </p>
-            </div>
-          </div>
+      <div className={styles.settings}>
+        <nav className={styles.sectionNav} aria-label="Seções da marca">
+          {SETTINGS_SECTIONS.map((section) => (
+            <a
+              key={section.id}
+              href={`#brand-section-${section.id}`}
+              aria-current={activeSection === section.id ? 'true' : undefined}
+              onClick={(event) => {
+                event.preventDefault()
+                goToSection(section.id)
+              }}
+            >
+              {section.label}
+            </a>
+          ))}
+        </nav>
 
-          <nav className={styles.sectionNav} aria-label="Etapas da marca">
-            {SECTIONS.map((section, index) => {
-              const isActive = activeSection === section.id
-              return (
-                <button
-                  key={section.id}
-                  id={`brand-tab-${section.id}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={`brand-section-${section.id}`}
-                  className={`${styles.sectionTab} ${isActive ? styles.activeTab : ''}`}
-                  onClick={() => setActiveSection(section.id)}
-                >
-                  <span className={styles.sectionNumber}>0{index + 1}</span>
-                  <span>
-                    <strong>{section.label}</strong>
-                    <small>{section.description}</small>
-                  </span>
-                  {index < currentSectionIndex ? (
-                    <Check size={14} aria-label="Concluída" />
-                  ) : null}
-                </button>
-              )
-            })}
-          </nav>
-
-          <div
-            id={`brand-section-${activeSection}`}
-            role="tabpanel"
-            aria-labelledby={`brand-tab-${activeSection}`}
-            className={styles.sectionPanel}
+        <form
+          className={styles.settingsForm}
+          onSubmit={handleSubmit}
+          noValidate
+        >
+          <SettingsSection
+            id="identity"
+            title="Identidade da marca"
+            description="Nome, segmento e cores usados nas artes."
           >
-            <div className={styles.panelHeading}>
-              <div>
-                <p className={styles.eyebrow}>
-                  ETAPA {currentSection.eyebrow} ·{' '}
-                  {currentSection.label.toUpperCase()}
-                </p>
-                <h3>
-                  {activeSection === 'identity'
-                    ? 'Identidade da marca'
-                    : activeSection === 'context'
-                      ? 'Dê repertório para a IA'
-                      : 'Defina a direção das ideias'}
-                </h3>
-                <p>
-                  {activeSection === 'identity'
-                    ? 'Defina os elementos que devem aparecer de forma consistente.'
-                    : activeSection === 'context'
-                      ? 'Quanto mais específico o briefing, menos genérico será o conteúdo.'
-                      : 'Essas regras ajudam a manter cada publicação coerente com seus objetivos.'}
-                </p>
-              </div>
-              <span className={styles.progressLabel}>
-                {currentSectionIndex + 1}/{SECTIONS.length}
-              </span>
-            </div>
+            <IdentityFields
+              form={form}
+              errors={errors}
+              segments={segments}
+              update={updateField}
+              palette={palette}
+              onChangeColor={(index, color) => {
+                setSaved(false)
+                brandForm.changeColor(index, color)
+              }}
+              onAddColor={brandForm.addColor}
+              onRemoveColor={brandForm.removeColor}
+            />
+          </SettingsSection>
+          <SettingsSection
+            id="audience"
+            title="Público e oferta"
+            description="Para quem a marca fala, o que vende e por que é diferente."
+          >
+            <AudienceFields form={form} update={updateField} />
+          </SettingsSection>
+          <SettingsSection
+            id="voice"
+            title="Voz e regras"
+            description="Tom das legendas, objetivos e o que a IA deve usar ou evitar."
+          >
+            <VoiceFields form={form} update={updateField} />
+          </SettingsSection>
 
-            {activeSection === 'identity' ? (
-              <div className={styles.identityContent}>
-                <div className={styles.formGrid}>
-                  <TextField
-                    label="Nome da marca"
-                    name="brand-name"
-                    placeholder="Ex.: Café Aurora"
-                    value={form.name}
-                    onChange={(event) =>
-                      updateFormField('name', event.target.value)
-                    }
-                    error={error}
-                  />
-                  <SelectField
-                    label="Segmento"
-                    name="segment"
-                    value={form.segment}
-                    onChange={(event) =>
-                      updateFormField('segment', event.target.value)
-                    }
-                    options={BRAND_SEGMENT_OPTIONS}
-                  />
-                  <SelectField
-                    label="Tom de voz"
-                    name="tone"
-                    value={form.toneOfVoice}
-                    onChange={(event) =>
-                      updateFormField('toneOfVoice', event.target.value)
-                    }
-                    options={TONE_OPTIONS}
-                  />
-                </div>
-
-                <fieldset className={styles.paletteField}>
-                  <div className={styles.fieldHeading}>
-                    <div>
-                      <legend>Paleta de cores</legend>
-                      <p>
-                        Escolha qualquer cor para manter as artes alinhadas à
-                        sua marca.
-                      </p>
-                    </div>
-                    <span>{palette.length}/5 cores</span>
-                  </div>
-                  <div className={styles.paletteList}>
-                    {palette.map((color, index) => (
-                      <div
-                        className={styles.paletteColor}
-                        key={`${index}-${color}`}
-                      >
-                        <label htmlFor={`palette-color-${index}`}>
-                          <span
-                            className={styles.paletteSwatch}
-                            style={{ backgroundColor: color }}
-                          />
-                          <span>
-                            <strong>
-                              {index === 0 ? 'Principal' : `Apoio ${index}`}
-                            </strong>
-                            <small>{color}</small>
-                          </span>
-                        </label>
-                        <input
-                          id={`palette-color-${index}`}
-                          type="color"
-                          aria-label={`Cor ${index === 0 ? 'principal' : `de apoio ${index}`}`}
-                          value={color}
-                          onChange={(event) =>
-                            updatePaletteColor(index, event.target.value)
-                          }
-                        />
-                        {index > 0 ? (
-                          <button
-                            type="button"
-                            className={styles.removeColor}
-                            aria-label={`Remover cor de apoio ${index}`}
-                            onClick={() => removePaletteColor(index)}
-                          >
-                            <X size={14} />
-                          </button>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                  <div className={styles.paletteTools}>
-                    <div className={styles.presetColors}>
-                      {COLOR_PRESETS.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          aria-label={`Selecionar cor ${color}`}
-                          aria-pressed={palette.includes(color)}
-                          style={{ background: color }}
-                          className={
-                            palette.includes(color) ? styles.selectedColor : ''
-                          }
-                          onClick={() => updatePaletteColor(0, color)}
-                        >
-                          {palette[0] === color ? <Check size={13} /> : null}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.addColor}
-                      disabled={palette.length >= 5}
-                      onClick={addPaletteColor}
-                    >
-                      <Plus size={14} /> Adicionar cor
-                    </button>
-                  </div>
-                  <p className={styles.colorValue}>
-                    A primeira cor é aplicada à prévia. Use o seletor nativo
-                    para escolher qualquer tom.
-                  </p>
-                </fieldset>
-              </div>
-            ) : null}
-
-            {activeSection === 'context' ? (
-              <div className={styles.contextGrid}>
-                <TextareaField
-                  label="O que a marca faz?"
-                  name="brand-description"
-                  value={form.description ?? ''}
-                  placeholder="Ex.: Torrefação artesanal que entrega cafés especiais para pessoas que gostam de descobrir novos sabores."
-                  hint="Explique a história, a proposta e o momento atual."
-                  maxLength={600}
-                  onChange={(value) => updateFormField('description', value)}
-                />
-                <TextareaField
-                  label="Para quem você fala?"
-                  name="target-audience"
-                  value={form.targetAudience ?? ''}
-                  placeholder="Ex.: Adultos de 25 a 45 anos, urbanos, que valorizam qualidade e experiências locais."
-                  hint="Descreva perfil, necessidades e contexto de compra."
-                  maxLength={400}
-                  onChange={(value) => updateFormField('targetAudience', value)}
-                />
-                <TextareaField
-                  label="Produtos ou serviços"
-                  name="products-or-services"
-                  value={form.productsOrServices ?? ''}
-                  placeholder="Ex.: Café em grãos, kits de degustação e assinatura mensal."
-                  hint="Liste o que pode virar pauta, prova ou oferta."
-                  maxLength={600}
-                  onChange={(value) =>
-                    updateFormField('productsOrServices', value)
-                  }
-                />
-              </div>
-            ) : null}
-
-            {activeSection === 'editorial' ? (
-              <div className={styles.editorialFields}>
-                <TextareaField
-                  label="Diferenciais e provas"
-                  name="differentials"
-                  value={form.differentials ?? ''}
-                  placeholder="Ex.: Ingredientes de pequenos produtores, torra semanal e envio em até 24h."
-                  hint="O que torna a marca confiável e diferente?"
-                  maxLength={400}
-                  onChange={(value) => updateFormField('differentials', value)}
-                />
-                <TextareaField
-                  label="Objetivos de conteúdo"
-                  name="content-goals"
-                  value={form.contentGoals ?? ''}
-                  placeholder="Ex.: Educar sobre café especial, gerar pedidos no site e fortalecer a comunidade."
-                  hint="Resultado que você quer alcançar com os posts."
-                  maxLength={400}
-                  onChange={(value) => updateFormField('contentGoals', value)}
-                />
-                <TextField
-                  label="Palavras e expressões para usar"
-                  name="keywords"
-                  placeholder="Ex.: torra fresca, origem, ritual, café especial"
-                  value={form.keywords ?? ''}
-                  hint="Separe por vírgulas."
-                  onChange={(event) =>
-                    updateFormField('keywords', event.target.value)
-                  }
-                />
-                <TextField
-                  label="Temas ou termos para evitar"
-                  name="avoid-topics"
-                  placeholder="Ex.: promessas de cura, descontos agressivos"
-                  value={form.avoidTopics ?? ''}
-                  hint="A IA vai respeitar estas restrições."
-                  onChange={(event) =>
-                    updateFormField('avoidTopics', event.target.value)
-                  }
-                />
-                <TextField
-                  label="Chamada para ação padrão"
-                  name="default-cta"
-                  placeholder="Ex.: Conheça o cardápio no site"
-                  value={form.defaultCta ?? ''}
-                  hint="Pode ser ajustada em cada pedido."
-                  onChange={(event) =>
-                    updateFormField('defaultCta', event.target.value)
-                  }
-                />
-              </div>
-            ) : null}
-
-            <div className={styles.sectionActions}>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={currentSectionIndex === 0}
-                onClick={() => moveSection(-1)}
-              >
-                <ArrowLeft size={14} /> Anterior
-              </Button>
-              {currentSectionIndex < SECTIONS.length - 1 ? (
-                <Button type="button" onClick={() => moveSection(1)}>
-                  Próxima etapa <ArrowRight size={14} />
-                </Button>
-              ) : null}
-            </div>
-          </div>
-
-          <div className={styles.formFooter}>
-            <p>
-              <Sparkles size={14} /> Você pode voltar e atualizar o briefing
-              quando quiser.
+          {saved && !hasChanges ? (
+            <p className={styles.savedNote} role="status">
+              <Check size={16} /> Marca salva. Os próximos posts já usam estas
+              informações.
             </p>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? 'Salvando...' : 'Salvar e continuar'}
-            </Button>
-          </div>
-          {saveError ? (
+          ) : null}
+          {saveError && !hasChanges ? (
             <p className={styles.saveError} role="alert">
               {saveError}
             </p>
           ) : null}
+
+          {hasChanges ? (
+            <div
+              className={styles.saveBar}
+              role="region"
+              aria-label="Alterações"
+            >
+              <div className={styles.saveBarText}>
+                <span>Alterações não salvas</span>
+                {saveError ? (
+                  <span className={styles.saveBarError} role="alert">
+                    {saveError}
+                  </span>
+                ) : null}
+              </div>
+              <div className={styles.saveBarActions}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={discard}
+                  disabled={isSaving}
+                >
+                  Descartar
+                </Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </form>
 
-        <aside
-          className={styles.previewCard}
-          aria-label="Prévia da identidade da marca"
-        >
-          <p className={styles.previewLabel}>Prévia da identidade</p>
-          <div className={styles.previewIdentity}>
-            <div
-              className={styles.brandMark}
-              style={{ background: palette[0] }}
-            >
-              {form.name.trim().slice(0, 1).toUpperCase() || 'S'}
-            </div>
-            <div>
-              <h2>{form.name || 'Sua marca'}</h2>
-              <p>{form.segment}</p>
-            </div>
-          </div>
-          <div
-            className={styles.palettePreview}
-            aria-label="Paleta selecionada"
-          >
-            {palette.map((color, index) => (
-              <span
-                key={`${color}-${index}`}
-                title={`${index === 0 ? 'Principal' : 'Apoio'} ${color}`}
-                style={{ backgroundColor: color }}
-              />
-            ))}
-          </div>
-          <div className={styles.previewLine} />
-          <div className={styles.contextSummary}>
-            <div className={styles.summaryHeader}>
-              <span>CONTEXTO CAPTURADO</span>
-              <span
-                className={
-                  hasAiContext ? styles.readyBadge : styles.pendingBadge
-                }
-              >
-                {hasAiContext ? 'Em uso' : 'Adicione contexto'}
-              </span>
-            </div>
-            <dl>
-              <div>
-                <dt>Público</dt>
-                <dd>{targetAudience || 'Ainda não informado'}</dd>
-              </div>
-              <div>
-                <dt>Oferta</dt>
-                <dd>{products || 'Ainda não informado'}</dd>
-              </div>
-              <div>
-                <dt>Resumo</dt>
-                <dd>
-                  {brandDescription ||
-                    'Conte o que sua marca faz para orientar a IA.'}
-                </dd>
-              </div>
-            </dl>
-          </div>
-          <div className={styles.previewLine} />
-          <div className={styles.examplePost}>
-            <div className={styles.exampleHeader}>
-              <span style={{ background: palette[0] }} />
-              <div>
-                <strong>{form.name || 'Sua marca'}</strong>
-                <small>exemplo de direção</small>
-              </div>
-            </div>
-            <p>
-              Conteúdo feito para conversar com seu público de um jeito{' '}
-              {form.toneOfVoice.toLowerCase()}.
-            </p>
-            <span className={styles.postTag}>
-              {form.keywords?.split(',')[0]?.trim() || '#SuaMarca'}
-            </span>
-          </div>
-          <div className={styles.previewHintRow}>
-            <Info size={14} />
-            <p>
-              A prévia acompanha suas escolhas e mostra os sinais que a IA usará
-              nos próximos conteúdos.
-            </p>
-          </div>
-        </aside>
+        <BrandPostPreview form={form} palette={palette} />
       </div>
+    </>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Page                                                                       */
+/* -------------------------------------------------------------------------- */
+
+export function BrandPage() {
+  const location = useLocation()
+  const { brand, currentWorkspace, databaseStatus } = useApp()
+  const isCreating = location.pathname.endsWith('/new')
+  const canCreateBrand = useCanCreateBrand()
+  const workspaceKey = currentWorkspace?.id ?? 'none'
+  const [isDirty, setIsDirty] = useState(false)
+  // Once the settings view is shown for a workspace it stays, even if a save
+  // clears every context field.
+  const [settingsFor, setSettingsFor] = useState<string | null>(null)
+  const showSettings =
+    !isCreating &&
+    brand !== null &&
+    (hasBrandContext(brand) || settingsFor === workspaceKey)
+
+  useEffect(() => {
+    if (showSettings && settingsFor !== workspaceKey)
+      setSettingsFor(workspaceKey)
+  }, [showSettings, settingsFor, workspaceKey])
+
+  return (
+    <AppShell hasUnsavedChanges={isDirty}>
+      {!isCreating && !brand && databaseStatus === 'connecting' ? (
+        <p className={styles.loading} role="status">
+          Carregando a marca...
+        </p>
+      ) : showSettings && brand ? (
+        <BrandSettings
+          key={`settings-${workspaceKey}`}
+          brand={brand}
+          canCreateBrand={canCreateBrand}
+          onDirtyChange={setIsDirty}
+        />
+      ) : (
+        <BrandSetup
+          key={`setup-${workspaceKey}-${isCreating}`}
+          initialBrand={isCreating ? null : brand}
+          isCreating={isCreating}
+          canCreateBrand={canCreateBrand}
+          onSkip={
+            !isCreating && brand
+              ? () => setSettingsFor(workspaceKey)
+              : undefined
+          }
+          onDirtyChange={setIsDirty}
+        />
+      )}
     </AppShell>
   )
 }
