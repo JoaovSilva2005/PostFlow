@@ -16,7 +16,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar no PostFlow' }))
 
     expect(
-      await screen.findByRole('heading', { name: 'Configuração da marca' }),
+      await screen.findByRole('heading', { name: 'Cadastre sua marca' }),
     ).toBeInTheDocument()
     expect(authGateway.lastLogin).toEqual({
       email: 'aluno@postflow.com',
@@ -41,7 +41,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Criar minha conta' }))
 
     expect(
-      await screen.findByRole('heading', { name: 'Configuração da marca' }),
+      await screen.findByRole('heading', { name: 'Cadastre sua marca' }),
     ).toBeInTheDocument()
     expect(authGateway.lastRegistration).toMatchObject({
       displayName: 'Maria Silva',
