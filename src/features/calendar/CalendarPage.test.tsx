@@ -7,6 +7,9 @@ import { generationService } from '../content/generationService'
 import { onTestFinished } from 'vitest'
 import { toDateKey } from './calendarUtils'
 
+// Nome do diálogo do dia: o título com a data por extenso (ex.: 14 de outubro de 2026).
+const DAY_DIALOG_NAME = /^\d{1,2} de \p{L}+ de \d{4}$/u
+
 function dateInCurrentMonth(day: number) {
   const date = new Date()
   date.setDate(1)
@@ -216,7 +219,7 @@ describe('CalendarPage', () => {
     await user.clear(screen.getByLabelText('Legenda'))
     await user.type(screen.getByLabelText('Legenda'), 'Rascunho não salvo')
     await user.click(
-      screen.getByRole('button', { name: /Editar data e horário/ }),
+      screen.getByRole('button', { name: /editar data e horário/ }),
     )
     fireEvent.change(screen.getByLabelText('Data'), {
       target: { value: nextDate },
@@ -242,7 +245,7 @@ describe('CalendarPage', () => {
 
     await user.click(movedCard)
     await user.click(
-      screen.getByRole('button', { name: /Editar data e horário/ }),
+      screen.getByRole('button', { name: /editar data e horário/ }),
     )
     fireEvent.change(screen.getByLabelText('Horário'), {
       target: { value: '16:30' },
@@ -457,8 +460,11 @@ describe('CalendarPage', () => {
     )
     expect(screen.queryByLabelText('Data')).not.toBeInTheDocument()
     const datePill = screen.getByRole('button', {
-      name: /Editar data e horário/,
+      name: /editar data e horário/,
     })
+    expect(datePill).toHaveAccessibleName(
+      `${drafts[0].date.split('-').reverse().join('/')} · 12:00, editar data e horário`,
+    )
     expect(datePill).toHaveAttribute('aria-expanded', 'false')
     await user.click(datePill)
 
@@ -476,13 +482,107 @@ describe('CalendarPage', () => {
     ).not.toBeInTheDocument()
     expect(datePill).toHaveFocus()
     expect(
-      screen.getByRole('dialog', { name: /posts|post nesta data|de/ }),
+      screen.getByRole('dialog', { name: DAY_DIALOG_NAME }),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /Editar situação/ }))
+    const statusPill = screen.getByRole('button', {
+      name: 'Rascunho, editar situação',
+    })
+    await user.click(statusPill)
     expect(
       screen.getByRole('dialog', { name: 'Agenda do post' }),
     ).toBeInTheDocument()
+    expect(statusPill).toHaveAttribute('aria-expanded', 'true')
+    expect(datePill).toHaveAttribute('aria-expanded', 'false')
+    expect(datePill).not.toHaveAttribute('aria-controls')
+
+    // Clicar na outra pílula com o editor aberto mantém o editor aberto.
+    await user.click(datePill)
+    expect(
+      screen.getByRole('dialog', { name: 'Agenda do post' }),
+    ).toBeInTheDocument()
+    expect(datePill).toHaveAttribute('aria-expanded', 'true')
+    expect(statusPill).toHaveAttribute('aria-expanded', 'false')
+    expect(datePill).toHaveFocus()
+
+    // Clicar de novo na mesma pílula fecha.
+    await user.click(datePill)
+    expect(
+      screen.queryByRole('dialog', { name: 'Agenda do post' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('fecha o editor de agenda quando o foco sai dele e das pílulas', async () => {
+    const user = userEvent.setup()
+    renderApp('/calendar', createTestRepository({ drafts }))
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: /editar data e horário/ }),
+    )
+    const editor = screen.getByRole('dialog', { name: 'Agenda do post' })
+    within(editor)
+      .getByRole('button', { name: 'Fechar agenda do post' })
+      .focus()
+    await user.tab()
+    expect(
+      screen.queryByRole('dialog', { name: 'Agenda do post' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: DAY_DIALOG_NAME })).toBeVisible()
+  })
+
+  it('move a data e salva horário e situação pelo editor da pílula', async () => {
+    const user = userEvent.setup()
+    const repository = createTestRepository({ drafts })
+    renderApp('/calendar', repository)
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: /editar data e horário/ }),
+    )
+    const editor = screen.getByRole('dialog', { name: 'Agenda do post' })
+    const nextDate = dateInCurrentMonth(15)
+    fireEvent.change(within(editor).getByLabelText('Data'), {
+      target: { value: nextDate },
+    })
+    await waitFor(() =>
+      expect(repository.snapshot().drafts[0]).toMatchObject({
+        date: nextDate,
+        status: 'draft',
+      }),
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Post movido para a nova data na agenda.',
+    )
+
+    fireEvent.change(within(editor).getByLabelText('Horário'), {
+      target: { value: '08:15' },
+    })
+    await user.selectOptions(
+      within(editor).getByLabelText('Situação'),
+      'scheduled',
+    )
+    await user.keyboard('{Escape}')
+    expect(
+      screen.getByRole('button', { name: /^\d{2}\/\d{2}\/\d{4} · 08:15,/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Agendado, editar situação' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Alterações salvas.',
+    )
+    expect(repository.snapshot().drafts[0]).toMatchObject({
+      date: nextDate,
+      time: '08:15',
+      status: 'scheduled',
+    })
   })
 
   it('abre Publicar nas redes em uma janela própria sem repetir a prévia', async () => {
@@ -545,8 +645,17 @@ describe('CalendarPage', () => {
     expect(
       screen.getByRole('button', { name: 'Publicar nas redes' }),
     ).toHaveFocus()
+    // Escape na janela de publicação não fecha o diálogo do dia.
+    const dayDialog = screen.getByRole('dialog', { name: DAY_DIALOG_NAME })
+    expect(dayDialog).toBeVisible()
     expect(
-      screen.getByRole('heading', { name: 'Instagram' }),
+      within(dayDialog).getByRole('heading', {
+        level: 2,
+        name: DAY_DIALOG_NAME,
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(dayDialog).getByRole('heading', { name: 'Instagram' }),
     ).toBeInTheDocument()
   })
 
@@ -589,12 +698,18 @@ describe('CalendarPage', () => {
     for (const name of [
       'Publicar nas redes',
       'Gerar imagem com IA',
-      'Copiar legenda',
       'Duplicar como rascunho',
       'Excluir post',
     ]) {
       expect(within(resources).getByRole('button', { name })).toBeVisible()
     }
+    // "Copiar legenda" fica só no cabeçalho da legenda, como na referência.
+    expect(
+      within(resources).queryByRole('button', { name: 'Copiar legenda' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', { name: 'Copiar legenda' }),
+    ).toHaveLength(1)
     expect(
       within(resources).getByText(
         'Este post é publicado automaticamente na data agendada depois de aprovado.',
@@ -622,6 +737,108 @@ describe('CalendarPage', () => {
     expect(screen.queryByLabelText('Adicionar hashtag')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Remover hashtag #cafe' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('só oferece salvar o post publicado quando horário ou situação mudam', async () => {
+    const user = userEvent.setup()
+    const repository = createTestRepository({
+      drafts: [{ ...drafts[0], status: 'published' }],
+    })
+    renderApp('/calendar', repository)
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Salvar alterações' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: /editar data e horário/ }),
+    )
+    fireEvent.change(screen.getByLabelText('Horário'), {
+      target: { value: '19:45' },
+    })
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Alterações salvas.',
+    )
+    expect(repository.snapshot().drafts[0]).toMatchObject({
+      time: '19:45',
+      status: 'published',
+      caption: 'Legenda original',
+    })
+    expect(
+      screen.queryByRole('button', { name: 'Salvar alterações' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('duplica e exclui pelos itens de Mais recursos', async () => {
+    const user = userEvent.setup()
+    const repository = createTestRepository({ drafts })
+    renderApp('/calendar', repository)
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    let resources = screen.getByRole('region', { name: 'Mais recursos' })
+    await user.click(
+      within(resources).getByRole('button', { name: 'Duplicar como rascunho' }),
+    )
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Cópia criada como rascunho.',
+    )
+    expect(repository.snapshot().drafts).toHaveLength(3)
+
+    const original = document.querySelector<HTMLElement>(
+      '[data-draft-id="draft-1"]',
+    )!
+    resources = within(original).getByRole('region', { name: 'Mais recursos' })
+    await user.click(
+      within(resources).getByRole('button', { name: 'Excluir post' }),
+    )
+    await waitFor(() =>
+      expect(
+        repository.snapshot().drafts.map((draft: PostDraft) => draft.id),
+      ).not.toContain('draft-1'),
+    )
+    expect(repository.snapshot().drafts).toHaveLength(2)
+  })
+
+  it('gera a imagem pelo item de Mais recursos usando a prévia', async () => {
+    const user = userEvent.setup()
+    const repository = createTestRepository({ drafts })
+    const previousGenerateImage = generationService.generateImage
+    generationService.generateImage = async () =>
+      'data:image/webp;base64,aW1hZ2U='
+    onTestFinished(() => {
+      generationService.generateImage = previousGenerateImage
+    })
+    renderApp('/calendar', repository)
+
+    await user.click(
+      await screen.findByRole('button', { name: /Café especial/ }),
+    )
+    const resources = screen.getByRole('region', { name: 'Mais recursos' })
+    await user.click(
+      within(resources).getByRole('button', { name: 'Gerar imagem com IA' }),
+    )
+
+    await waitFor(() =>
+      expect(repository.snapshot().drafts[0]).toMatchObject({
+        imageUrl: 'data:image/webp;base64,aW1hZ2U=',
+        imageAvailable: true,
+      }),
+    )
+    expect(screen.getByAltText('Imagem gerada para o post')).toHaveAttribute(
+      'src',
+      'data:image/webp;base64,aW1hZ2U=',
+    )
+    expect(
+      within(resources).queryByRole('button', { name: 'Gerar imagem com IA' }),
     ).not.toBeInTheDocument()
   })
 })

@@ -1,4 +1,10 @@
-import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react'
+import {
+  useEffect,
+  useRef,
+  type FocusEvent,
+  type KeyboardEvent,
+  type RefObject,
+} from 'react'
 import { X } from 'lucide-react'
 import type { PostDraft } from '../../domain/models'
 import { DraftSchedulePanel } from './DraftSchedulePanel'
@@ -53,6 +59,15 @@ export function DraftSchedulePopover({
     return () => document.removeEventListener('mousedown', handlePointerDown)
   }, [onClose, triggerRefs])
 
+  function handleBlur(event: FocusEvent<HTMLDivElement>) {
+    // Fecha quando o foco (teclado) sai do editor e das pílulas. Sem
+    // relatedTarget (clique em área não focável) o mousedown acima decide.
+    const next = event.relatedTarget as Node | null
+    if (!next || popoverRef.current?.contains(next)) return
+    if (triggerRefs.some((ref) => ref.current?.contains(next))) return
+    onClose(false)
+  }
+
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'Escape') return
     // Fecha só o editor; o diálogo do dia continua aberto.
@@ -69,6 +84,7 @@ export function DraftSchedulePopover({
       aria-modal="false"
       aria-label="Agenda do post"
       onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
     >
       <DraftSchedulePanel
         draft={draft}
