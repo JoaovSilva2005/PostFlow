@@ -1,31 +1,32 @@
 .header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 28px;
+  margin-bottom: 32px;
 }
 .copy {
   min-width: 0;
 }
 .copy h1 {
-  margin: 0 0 8px;
-  font-size: 30px;
+  margin: 0 0 4px;
+  font-size: var(--text-title);
+  line-height: var(--leading-title);
   font-weight: 600;
-  letter-spacing: -0.8px;
+  letter-spacing: -0.02em;
 }
 .copy p {
-  max-width: 72ch;
+  max-width: 68ch;
   margin: 0;
   color: var(--color-muted);
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
 }
 .actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 @media (max-width: 1100px) {
@@ -39,8 +40,8 @@
   }
 }
 @media (max-width: 560px) {
-  .copy h1 {
-    font-size: 26px;
+  .header {
+    margin-bottom: 24px;
   }
   .actions > * {
     flex: 1 1 100%;
