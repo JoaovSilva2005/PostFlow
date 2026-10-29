@@ -58,7 +58,11 @@ export function isAuthProviderUnavailable(error: unknown): boolean {
   const { status } = readProviderError(error)
   if ((error as { name?: unknown }).name === 'AuthRetryableFetchError') return true
   if (status !== undefined && status >= 500) return true
-  if (error instanceof TypeError) return true
+  if (
+    error instanceof TypeError &&
+    /fetch failed|failed to fetch|network/i.test(error.message)
+  )
+    return true
 
   return (
     hasNetworkCode(error) || hasNetworkCode((error as { cause?: unknown }).cause)
@@ -141,6 +145,9 @@ export class AuthService {
       return await this.provider.login(email, password)
     } catch (error) {
       if (isAuthProviderUnavailable(error)) {
+        console.warn('Falha no login.', {
+          name: error instanceof Error ? error.name : typeof error,
+        })
         throw new HttpError(
           503,
           'Serviço de autenticação indisponível. Tente novamente em instantes.',

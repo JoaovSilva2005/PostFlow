@@ -520,6 +520,10 @@ describe('social publishing demo mode', () => {
     return { id: connectionId }
   }
   it('runs the whole flow to a simulated published post without any network call', async () => {
+    const globalFetch = vi.fn(async () => {
+      throw new Error('network call in demo mode')
+    })
+    vi.stubGlobal('fetch', globalFetch)
     const f = demoFixture()
     await image(f.repo)
     const connection = await connectDemo(f)
@@ -548,6 +552,8 @@ describe('social publishing demo mode', () => {
       _dispatched: true,
     })
     expect(f.fetchSpy).not.toHaveBeenCalled()
+    expect(globalFetch).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
   })
   it('keeps simulated true when the worker reconciles an unknown dispatch', async () => {
     const f = demoFixture()
@@ -654,6 +660,96 @@ describe('social publishing demo mode', () => {
     })
     await f.service.runWorker()
     expect(f.repo.publications.get(job.id)!.status).toBe('published')
+  })
+  describe('account mode bound to server mode', () => {
+    const mismatch =
+      'Esta conta foi conectada em outro modo (demonstração/real). Reconecte a conta.'
+    const cancelled =
+      'Envio cancelado: a conta pertence a outro modo de publicação.'
+
+    it('rejects enqueue of a real account while the server is in demo mode', async () => {
+      const f = demoFixture()
+      await image(f.repo)
+      seedDemoConnection(f)
+      f.repo.connections.get(connectionId)!.accountType = 'Page'
+      await expect(
+        f.service.enqueue(workspace, userId, { ...input, connectionId }),
+      ).rejects.toMatchObject({ statusCode: 409, message: mismatch })
+    })
+
+    it('rejects enqueue of a demo account while the server is in real mode', async () => {
+      const f = fixture()
+      await image(f.repo)
+      f.repo.connections.get(connectionId)!.accountType = 'demo'
+      await expect(
+        f.service.enqueue(workspace, userId, { ...input, connectionId }),
+      ).rejects.toMatchObject({ statusCode: 409, message: mismatch })
+      expect(f.provider.publish).not.toHaveBeenCalled()
+    })
+
+    it('cancels a queued job whose real account meets a demo server, without calling the provider', async () => {
+      const f = demoFixture()
+      await image(f.repo)
+      seedDemoConnection(f)
+      const job = await f.service.enqueue(workspace, userId, {
+        ...input,
+        connectionId,
+      })
+      f.repo.connections.get(connectionId)!.accountType = 'Page'
+      await f.service.runWorker()
+      expect(f.repo.publications.get(job.id)).toMatchObject({
+        status: 'cancelled',
+        error: cancelled,
+      })
+      expect(f.fetchSpy).not.toHaveBeenCalled()
+    })
+
+    it('cancels a queued job whose demo account meets a real server, without calling the provider', async () => {
+      const f = fixture()
+      await image(f.repo)
+      const job = await f.service.enqueue(workspace, userId, {
+        ...input,
+        connectionId,
+      })
+      f.repo.connections.get(connectionId)!.accountType = 'demo'
+      await f.service.runWorker()
+      expect(f.repo.publications.get(job.id)).toMatchObject({
+        status: 'cancelled',
+        error: cancelled,
+      })
+      expect(f.provider.prepare).not.toHaveBeenCalled()
+      expect(f.provider.publish).not.toHaveBeenCalled()
+      expect(f.provider.reconcile).not.toHaveBeenCalled()
+    })
+
+    it('keeps the unknown handling when the mismatched job was already dispatched', async () => {
+      const f = fixture()
+      await image(f.repo)
+      const job = await f.service.enqueue(workspace, userId, {
+        ...input,
+        connectionId,
+      })
+      const record = f.repo.publications.get(job.id)!
+      record.operation = { _dispatched: true }
+      f.repo.connections.get(connectionId)!.accountType = 'demo'
+      await f.service.runWorker()
+      expect(f.repo.publications.get(job.id)!.status).toBe('unknown')
+      expect(f.provider.publish).not.toHaveBeenCalled()
+      expect(f.provider.reconcile).not.toHaveBeenCalled()
+    })
+
+    it('prefers the demoMode option over the environment flag', async () => {
+      const service = new SocialService({
+        repository: new InMemorySocialRepository(),
+        providers: Object.values(createSocialProviders({ demoMode: true })),
+        access: new InMemoryWorkspaceAccessRepository(workspace, 'owner'),
+        crypto: encryption,
+        appUrl: 'https://postflow.test',
+        demoMode: true,
+        config: { ...config, SOCIAL_DEMO_MODE: undefined },
+      })
+      expect((await service.overview(workspace, userId)).demoMode).toBe(true)
+    })
   })
   it('keeps the real adapters when the flag is absent or not exactly true', async () => {
     for (const value of [undefined, 'false', 'TRUE', '1']) {

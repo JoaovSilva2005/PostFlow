@@ -3,6 +3,7 @@ import sharp from 'sharp'
 import { HttpError } from '../../shared/HttpError.js'
 import type { WorkspaceAccessRepository } from '../tenancy/workspaceTypes.js'
 import {
+  DEMO_ACCOUNT_TYPE,
   SOCIAL_PROVIDERS,
   type CreatePublicationInput,
   type SocialOverview,
@@ -99,6 +100,7 @@ export class SocialService {
   private providers: Map<SocialProviderId, SocialProvider>
   private access: WorkspaceAccessRepository
   private config: Record<string, string | undefined>
+  private readonly demoModeOption?: boolean
   constructor(options: {
     repository: SocialRepository
     providers: SocialProvider[]
@@ -106,6 +108,8 @@ export class SocialService {
     crypto?: SocialCrypto
     appUrl: string
     config?: Record<string, string | undefined>
+    /** Fonte única do modo demonstração; sem ele, usa SOCIAL_DEMO_MODE do config. */
+    demoMode?: boolean
   }) {
     this.repository = options.repository
     this.providers = new Map(options.providers.map((p) => [p.id, p]))
@@ -113,6 +117,7 @@ export class SocialService {
     this.crypto = options.crypto ?? new SocialCrypto()
     this.appUrl = options.appUrl.replace(/\/$/, '')
     this.config = options.config ?? process.env
+    this.demoModeOption = options.demoMode
   }
   private provider(id: SocialProviderId) {
     const p = this.providers.get(id)
@@ -120,7 +125,10 @@ export class SocialService {
     return p
   }
   private get demoMode() {
-    return this.config.SOCIAL_DEMO_MODE === 'true'
+    return this.demoModeOption ?? this.config.SOCIAL_DEMO_MODE === 'true'
+  }
+  private modeMismatch(accountType: string) {
+    return (accountType === DEMO_ACCOUNT_TYPE) !== this.demoMode
   }
   private missing(id: SocialProviderId) {
     const result = this.demoMode
@@ -442,6 +450,11 @@ export class SocialService {
     )
     if (!c || c.status !== 'connected')
       throw new HttpError(400, 'Selecione uma conta conectada desta marca.')
+    if (this.modeMismatch(c.accountType))
+      throw new HttpError(
+        409,
+        'Esta conta foi conectada em outro modo (demonstração/real). Reconecte a conta.',
+      )
     this.ensureConfigured(c.provider)
     const existing = (await this.repository.listPublications(workspaceId)).find(
       (p) =>
@@ -690,9 +703,11 @@ export class SocialService {
         (member?.role === 'owner' &&
           Boolean(await this.access.getActiveBillingWorkspaceId(job.userId))) ||
         (await this.access.getPlatformRole(job.userId)) === 'platform_owner'
+      const modeMismatch = Boolean(c) && this.modeMismatch(c!.accountType)
       if (
         !c ||
         c.status === 'disconnected' ||
+        modeMismatch ||
         !member ||
         !['owner', 'admin', 'editor'].includes(member.role) ||
         !active
@@ -701,7 +716,9 @@ export class SocialService {
           status: dispatched ? 'unknown' : 'cancelled',
           error: dispatched
             ? 'Verifique o resultado na rede; a autorização mudou durante o envio.'
-            : 'Envio cancelado: conta, permissão ou plano indisponível.',
+            : modeMismatch
+              ? 'Envio cancelado: a conta pertence a outro modo de publicação.'
+              : 'Envio cancelado: conta, permissão ou plano indisponível.',
           nextAttemptAt: new Date(Date.now() + 600_000).toISOString(),
         })
         return
