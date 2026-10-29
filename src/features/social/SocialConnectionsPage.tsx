@@ -23,8 +23,12 @@ import {
   type IntegrationDefinition,
 } from './integrationCatalog'
 import {
+  hasPendingPublication,
+  publicationStatusLabel,
+  usePublicationPolling,
+} from './publicationStatus'
+import {
   DEMO_ACCOUNT_TYPE,
-  type PublicationDTO,
   type SocialConnectionDTO,
 } from '../../../shared/domain/socialPublishing'
 
@@ -52,24 +56,31 @@ export function SocialConnectionsPage() {
   )
   const [busy, setBusy] = useState<string | null>(null)
 
-  async function load(signal?: AbortSignal) {
+  async function load(signal?: AbortSignal, silent = false) {
     if (!currentWorkspace) return
-    setLoading(true)
-    setError('')
+    if (!silent) {
+      setLoading(true)
+      setError('')
+    }
     try {
       const result = await socialApi.overview(currentWorkspace.id, signal)
       if (!signal?.aborted) setOverview(result)
     } catch (cause) {
-      if (!signal?.aborted)
+      if (!signal?.aborted && !silent)
         setError(
           cause instanceof Error
             ? cause.message
             : 'Não foi possível carregar as conexões.',
         )
     } finally {
-      if (!signal?.aborted) setLoading(false)
+      if (!signal?.aborted && !silent) setLoading(false)
     }
   }
+
+  usePublicationPolling(
+    hasPendingPublication(overview?.publications ?? []),
+    () => void load(undefined, true),
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -99,9 +110,14 @@ export function SocialConnectionsPage() {
         linkedin: ['linkedin.com', 'www.linkedin.com'],
         tiktok: ['tiktok.com', 'www.tiktok.com'],
       }
+      const isDemoCallback =
+        overview?.demoMode === true &&
+        target.origin === window.location.origin &&
+        target.pathname === `/api/social/oauth/${provider}/callback`
       if (
-        target.protocol !== 'https:' ||
-        !allowedHosts[provider].includes(target.hostname)
+        !isDemoCallback &&
+        (target.protocol !== 'https:' ||
+          !allowedHosts[provider].includes(target.hostname))
       )
         throw new Error(
           'O servidor retornou um destino de autorização inválido.',
@@ -509,7 +525,7 @@ export function SocialConnectionsPage() {
                   {overview.publications.map((publication) => (
                     <article key={publication.id}>
                       <span data-status={publication.status}>
-                        {statusLabel(publication)}
+                        {publicationStatusLabel(publication)}
                       </span>
                       <span>{providerNames[publication.provider]}</span>
                       <span>
@@ -582,28 +598,4 @@ function expiryLabel(connection: SocialConnectionDTO) {
   if (!Number.isFinite(days)) return 'Validade não informada'
   if (days <= 0) return 'Autorização expirada'
   return days === 1 ? 'Expira em 1 dia' : 'Expira em ' + days + ' dias'
-}
-
-function statusLabel(
-  publication: Pick<PublicationDTO, 'status' | 'simulated'>,
-) {
-  const { status } = publication
-  if (status === 'published' && publication.simulated)
-    return 'Publicado (simulado)'
-  return (
-    (
-      {
-        queued: 'Na fila',
-        preparing: 'Preparando',
-        processing: 'Processando',
-        publishing: 'Publicando',
-        published: 'Publicado',
-        retry_wait: 'Nova tentativa agendada',
-        failed: 'Falhou',
-        needs_reconnect: 'Reconexão necessária',
-        cancelled: 'Cancelado',
-        unknown: 'Status desconhecido',
-      } as Record<string, string>
-    )[status] ?? status
-  )
 }

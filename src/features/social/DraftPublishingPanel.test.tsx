@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
@@ -172,8 +172,9 @@ describe('DraftPublishingPanel', () => {
       await screen.findByText(/Acompanhe a confirmação da rede/),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('Solicitação registrada: queued.'),
+      screen.getByText('Solicitação registrada: Na fila.'),
     ).toBeInTheDocument()
+    expect(screen.queryByText(/queued/)).not.toBeInTheDocument()
   })
 
   it('bloqueia carrossel, reels e edição não salva no publicador estático', async () => {
@@ -242,41 +243,105 @@ describe('DraftPublishingPanel', () => {
       ),
     )
   })
-  it('demoMode true mostra aviso curto e acompanhamento "Publicado (simulado)"', async () => {
-    const user = userEvent.setup()
-    vi.mocked(socialApi.overview).mockResolvedValue({
-      ...overview,
-      demoMode: true,
+  describe('modo demonstração', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
     })
-    vi.mocked(socialApi.publish).mockResolvedValue({
+
+    async function publishDemo() {
+      const user = userEvent.setup({
+        advanceTimers: (ms) => vi.advanceTimersByTime(ms),
+      })
+      renderPanel({ ...draft, platform: 'Facebook' })
+      expect(
+        await screen.findByText(
+          'Modo demonstração: nada é enviado às redes sociais.',
+        ),
+      ).toBeInTheDocument()
+      await user.click(await screen.findByLabelText('Aurora Facebook'))
+      await user.click(
+        screen.getByLabelText(/Confirmo a publicação desta prévia/),
+      )
+      await user.click(screen.getByRole('button', { name: 'Publicar agora' }))
+    }
+
+    const queuedPublication = {
       id: 'pub-demo',
       draftId: draft.id,
       connectionId: otherNetworkConnection.id,
-      provider: 'facebook',
+      provider: 'facebook' as const,
       title: 'Post',
-      status: 'published',
+      status: 'queued' as const,
       scheduledAt: '2026-10-12T12:00:00Z',
-      remotePostId: 'demo-1',
+      remotePostId: null,
       remoteUrl: null,
       error: null,
-      attempts: 1,
+      attempts: 0,
       simulated: true,
       createdAt: '2026-10-12T12:00:00Z',
+    }
+
+    it('enfileira, traduz o status e passa a "Publicado (simulado)" após a atualização automática', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const demoOverview = { ...overview, demoMode: true }
+      vi.mocked(socialApi.overview)
+        .mockResolvedValueOnce(demoOverview)
+        .mockResolvedValue({
+          ...demoOverview,
+          publications: [
+            {
+              ...queuedPublication,
+              status: 'published',
+              remotePostId: 'demo-1',
+            },
+          ],
+        })
+      vi.mocked(socialApi.publish).mockResolvedValue(queuedPublication)
+      await publishDemo()
+      expect(
+        await screen.findByText('Solicitação registrada: Na fila.'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/queued/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Publicado \(simulado\)/)).toBeNull()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_500)
+      })
+      expect(
+        await screen.findByText(
+          /Facebook · Publicado \(simulado\)|Aurora Facebook · Publicado \(simulado\)/,
+        ),
+      ).toBeInTheDocument()
+      const calls = vi.mocked(socialApi.overview).mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+      expect(vi.mocked(socialApi.overview).mock.calls.length).toBe(calls)
     })
-    renderPanel({ ...draft, platform: 'Facebook' })
-    expect(
-      await screen.findByText(
-        'Modo demonstração: nada é enviado às redes sociais.',
-      ),
-    ).toBeInTheDocument()
-    await user.click(await screen.findByLabelText('Aurora Facebook'))
-    await user.click(
-      screen.getByLabelText(/Confirmo a publicação desta prévia/),
-    )
-    await user.click(screen.getByRole('button', { name: 'Publicar agora' }))
-    expect(
-      await screen.findByText(/Publicado \(simulado\)/),
-    ).toBeInTheDocument()
+
+    it('não consulta com a aba oculta e para ao desmontar', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const visibility = vi
+        .spyOn(document, 'visibilityState', 'get')
+        .mockReturnValue('hidden')
+      vi.mocked(socialApi.overview).mockResolvedValue({
+        ...overview,
+        demoMode: true,
+      })
+      vi.mocked(socialApi.publish).mockResolvedValue(queuedPublication)
+      await publishDemo()
+      await screen.findByText('Solicitação registrada: Na fila.')
+      const calls = vi.mocked(socialApi.overview).mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(45_000)
+      })
+      expect(vi.mocked(socialApi.overview).mock.calls.length).toBe(calls)
+      visibility.mockReturnValue('visible')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000)
+      })
+      expect(vi.mocked(socialApi.overview).mock.calls.length).toBe(calls + 1)
+    })
   })
 
   it('demoMode false não mostra o aviso curto', async () => {
