@@ -149,6 +149,7 @@ export function BrandPage() {
     createWorkspace,
     availableWorkspaces,
     selectWorkspace,
+    platformRole,
   } = useApp()
   const isCreating = location.pathname.endsWith('/new')
   const [form, setForm] = useState<BrandProfile>(() => ({
@@ -161,6 +162,11 @@ export function BrandPage() {
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const ownedBrandCount = availableWorkspaces.filter(
+    (workspace) => workspace.isOwnedByUser ?? workspace.role === 'owner',
+  ).length
+  const canCreateBrand =
+    platformRole === 'platform_owner' || ownedBrandCount < 2
 
   useEffect(() => {
     if (!isCreating && brand && !hasChanges) {
@@ -211,6 +217,11 @@ export function BrandPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
 
+    if (isCreating && !canCreateBrand) {
+      setSaveError('Sua conta pode cadastrar até duas marcas.')
+      return
+    }
+
     if (!form.name.trim()) {
       setError('Informe o nome da marca.')
       setActiveSection('identity')
@@ -232,8 +243,12 @@ export function BrandPage() {
       if (isCreating) await createWorkspace(payload)
       else await saveBrand(payload)
       navigate('/chat')
-    } catch {
-      setSaveError('Não foi possível salvar a marca no Supabase.')
+    } catch (cause) {
+      setSaveError(
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível salvar a marca no Supabase.',
+      )
     } finally {
       setIsSaving(false)
     }
@@ -264,7 +279,7 @@ export function BrandPage() {
             }}
           />
         ) : null}
-        {!isCreating ? (
+        {!isCreating && canCreateBrand ? (
           <Button
             type="button"
             variant="secondary"
@@ -272,6 +287,9 @@ export function BrandPage() {
           >
             <Plus size={16} /> Nova marca
           </Button>
+        ) : null}
+        {!isCreating && !canCreateBrand ? (
+          <small>Limite de duas marcas atingido.</small>
         ) : null}
       </PageHeader>
 

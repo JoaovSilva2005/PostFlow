@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
-import { CalendarPlus, Image, MoreHorizontal } from 'lucide-react'
+import {
+  CalendarPlus,
+  Image,
+  LoaderCircle,
+  MoreHorizontal,
+} from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { DateField } from '../../components/ui/DateField'
 import { TextField } from '../../components/ui/FormField'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import type { PostDraft } from '../../domain/models'
+import type { Platform } from './generationService'
 import styles from './ChatPage.module.css'
 
 interface PostPreviewProps {
@@ -12,8 +18,11 @@ interface PostPreviewProps {
   brandName?: string
   draft: PostDraft | null
   drafts: PostDraft[]
-  activePlatform: PostDraft['platform'] | null
-  onSelectPlatform: (platform: PostDraft['platform']) => void
+  activePlatform: Platform | null
+  platforms: Platform[]
+  pendingPlatforms: Platform[]
+  failedPlatforms: Platform[]
+  onSelectPlatform: (platform: Platform) => void
   pendingCount: number
   generationIssue?: string
   onRetry: (() => Promise<void>) | null
@@ -29,6 +38,9 @@ export function PostPreview({
   draft,
   drafts,
   activePlatform,
+  platforms,
+  pendingPlatforms,
+  failedPlatforms,
   onSelectPlatform,
   pendingCount,
   generationIssue,
@@ -40,6 +52,45 @@ export function PostPreview({
 }: PostPreviewProps) {
   const [view, setView] = useState('preview')
   const disabled = isAdding || isGenerating
+  const previewPlatform =
+    activePlatform ?? (draft?.platform as Platform | undefined) ?? platforms[0] ?? null
+  const activePlatformIsPending = Boolean(
+    previewPlatform && pendingPlatforms.includes(previewPlatform),
+  )
+  const activePlatformFailed = Boolean(
+    previewPlatform && failedPlatforms.includes(previewPlatform),
+  )
+  const platformTabs =
+    platforms.length > 1 ? (
+      <div className={styles.platformTabs} aria-label="Rascunhos por rede">
+        {platforms.map((platform) => {
+          const isPending = pendingPlatforms.includes(platform)
+          const hasFailed = failedPlatforms.includes(platform)
+          return (
+            <button
+              key={platform}
+              type="button"
+              aria-label={`Revisar rascunho de ${platform}`}
+              aria-pressed={activePlatform === platform}
+              aria-busy={isPending}
+              data-failed={hasFailed || undefined}
+              onClick={() => onSelectPlatform(platform)}
+            >
+              {isPending ? (
+                <LoaderCircle
+                  size={15}
+                  className={styles.spinner}
+                  aria-hidden="true"
+                />
+              ) : (
+                <SocialPlatformIcon platform={platform} size={15} />
+              )}
+              {platform}
+            </button>
+          )
+        })}
+      </div>
+    ) : null
   useEffect(() => {
     if (!draft) setView('preview')
   }, [draft])
@@ -56,31 +107,15 @@ export function PostPreview({
             ? drafts.length > 1
               ? 'Revise seus rascunhos'
               : 'Revise seu rascunho'
-            : 'Seu rascunho'}
+            : isGenerating && previewPlatform
+              ? `Preparando ${previewPlatform}`
+              : 'Seu rascunho'}
         </h2>
         <span className={styles.unpublished}>Não publicado</span>
       </header>
+      {platformTabs}
       {draft ? (
         <>
-          {drafts.length > 1 ? (
-            <div
-              className={styles.platformTabs}
-              aria-label="Rascunhos por rede"
-            >
-              {drafts.map((item) => (
-                <button
-                  key={item.platform}
-                  type="button"
-                  aria-label={`Revisar rascunho de ${item.platform}`}
-                  aria-pressed={activePlatform === item.platform}
-                  onClick={() => onSelectPlatform(item.platform)}
-                >
-                  <SocialPlatformIcon platform={item.platform} size={15} />
-                  {item.platform}
-                </button>
-              ))}
-            </div>
-          ) : null}
           <div
             className={styles.previewSwitch}
             aria-label="Visualização do rascunho"
@@ -126,6 +161,16 @@ export function PostPreview({
                       alt={`Arte gerada para ${draft.title}`}
                     />
                     <span>Arte gerada por IA</span>
+                    {activePlatformIsPending ? (
+                      <div className={styles.imageLoadingOverlay} role="status">
+                        <LoaderCircle
+                          size={20}
+                          className={styles.spinner}
+                          aria-hidden="true"
+                        />
+                        Atualizando texto e imagem...
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <div
@@ -136,6 +181,16 @@ export function PostPreview({
                     <span>{brandName || 'Sua marca'}</span>
                     <strong>{draft.visualText}</strong>
                     <small>Composição ilustrativa</small>
+                    {activePlatformIsPending ? (
+                      <div className={styles.imageLoadingOverlay} role="status">
+                        <LoaderCircle
+                          size={20}
+                          className={styles.spinner}
+                          aria-hidden="true"
+                        />
+                        Gerando texto e imagem...
+                      </div>
+                    ) : null}
                   </div>
                 )}
                 <div className={styles.postCopy}>
@@ -268,6 +323,77 @@ export function PostPreview({
             </p>
           </footer>
         </>
+      ) : activePlatformIsPending && previewPlatform ? (
+        <div className={styles.pendingPreview}>
+          <div
+            className={styles.pendingArtwork}
+            role="status"
+            aria-live="polite"
+            aria-label={`Gerando texto e imagem para ${previewPlatform}`}
+          >
+            <LoaderCircle
+              size={28}
+              className={styles.spinner}
+              aria-hidden="true"
+            />
+            <strong>Gerando imagem para {previewPlatform}...</strong>
+            <span>O rascunho aparecerá aqui assim que estiver pronto.</span>
+          </div>
+          {pendingPlatforms.length > 1 ? (
+            <p className={styles.pendingDrafts}>
+              Ainda gerando para: {pendingPlatforms.join(', ')}.
+            </p>
+          ) : null}
+        </div>
+      ) : activePlatformFailed && previewPlatform ? (
+        <div className={styles.failedPreview}>
+          <div className={styles.pendingArtwork}>
+            <Image size={26} strokeWidth={1.2} />
+            <strong>Não foi possível preparar {previewPlatform}.</strong>
+            <span>A imagem e o rascunho dessa rede ainda não estão prontos.</span>
+          </div>
+          {generationIssue ? (
+            <p className={styles.error} role="alert">
+              {generationIssue}
+            </p>
+          ) : null}
+          {onRetry ? (
+            <Button
+              fullWidth
+              variant="secondary"
+              disabled={disabled}
+              onClick={() => void onRetry()}
+            >
+              Tentar gerar novamente
+            </Button>
+          ) : null}
+        </div>
+      ) : previewPlatform && pendingCount > 0 ? (
+        <div className={styles.failedPreview}>
+          <div className={styles.pendingArtwork}>
+            <Image size={26} strokeWidth={1.2} />
+            <strong>O rascunho de {previewPlatform} ainda não foi concluído.</strong>
+            <span>
+              Você pode tentar novamente; os posts já prontos continuam salvos
+              nesta revisão.
+            </span>
+          </div>
+          {generationIssue ? (
+            <p className={styles.error} role="alert">
+              {generationIssue}
+            </p>
+          ) : null}
+          {onRetry ? (
+            <Button
+              fullWidth
+              variant="secondary"
+              disabled={disabled}
+              onClick={() => void onRetry()}
+            >
+              Tentar gerar novamente
+            </Button>
+          ) : null}
+        </div>
       ) : (
         <div className={styles.emptyPreview}>
           <div className={styles.paper}>

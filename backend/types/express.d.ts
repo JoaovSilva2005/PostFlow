@@ -9,6 +9,7 @@ declare module 'express-serve-static-core' {
     accessToken?: string
     authUser?: AuthenticatedUser
     workspaceContext?: WorkspaceContext
+    billingWorkspaceId?: string
     platformRole?: PlatformRole | null
   }
 }

@@ -24,12 +24,17 @@ import {
   ApiPostFlowRepository,
   type PostFlowDataRepository,
 } from '../services/postFlowRepository'
+import {
+  SESSION_EXPIRED_EVENT,
+  SESSION_EXPIRED_MESSAGE,
+} from '../services/apiClient'
 
 type AppAction =
   | { type: 'AUTH_CHECKING' }
   | { type: 'AUTHENTICATED'; payload: AuthSession }
   | { type: 'AUTH_ANONYMOUS'; payload?: string }
   | { type: 'WORKSPACES_LOADED'; payload: BrandWorkspace[] }
+  | { type: 'WORKSPACES_LOAD_FAILED' }
   | {
       type: 'SELECT_WORKSPACE'
       payload: { workspace: BrandWorkspace; brand: BrandProfile | null }
@@ -46,6 +51,8 @@ type AppAction =
   | { type: 'REMOVE_DRAFT'; payload: string }
 
 interface AppContextValue extends AppState {
+  billingWorkspaceId: string | null
+  hasActivePlan: boolean
   login: (credentials: LoginCredentials) => Promise<void>
   logout: () => Promise<void>
   recoverPassword: (email: string) => Promise<string>
@@ -60,9 +67,15 @@ interface AppContextValue extends AppState {
   addDraftsForWorkspace: (
     workspaceId: string,
     drafts: PostDraft[],
+    billingWorkspaceId?: string,
   ) => Promise<PostDraft[]>
   refreshDraftImageUrl: (draftId: string) => Promise<string | null>
-  saveDraftImage: (draftId: string, imageUrl: string) => Promise<PostDraft>
+  saveDraftImage: (
+    draftId: string,
+    imageUrl: string,
+    workspaceId?: string,
+    billingWorkspaceId?: string,
+  ) => Promise<PostDraft>
   updateDraft: (draft: PostDraft) => Promise<void>
   removeDraft: (id: string) => Promise<void>
 }
@@ -80,6 +93,9 @@ function createInitialState(): AppState {
     authUser: null,
     currentWorkspace: null,
     availableWorkspaces: [],
+    workspacesLoaded: false,
+    workspaceLoadVersion: 0,
+    billingWorkspaceId: null,
     platformRole: null,
     billingStatus: 'none',
     isAuthenticated: false,
@@ -100,10 +116,16 @@ function appReducer(state: AppState, action: AppAction): AppState {
         authError: null,
         authStatus: 'authenticated',
         authUser: action.payload.user,
-        currentWorkspace: action.payload.workspace,
+        currentWorkspace:
+          state.authUser?.id === action.payload.user.id
+            ? (state.currentWorkspace ?? action.payload.workspace)
+            : action.payload.workspace,
         availableWorkspaces: [],
+        workspacesLoaded: false,
+        workspaceLoadVersion: state.workspaceLoadVersion + 1,
         platformRole: action.payload.platformRole,
         billingStatus: action.payload.billingStatus,
+        billingWorkspaceId: action.payload.billingWorkspaceId ?? null,
         isAuthenticated: true,
       }
     case 'AUTH_ANONYMOUS':
@@ -114,8 +136,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
         authUser: null,
         currentWorkspace: null,
         availableWorkspaces: [],
+        workspacesLoaded: false,
+        workspaceLoadVersion: state.workspaceLoadVersion + 1,
         platformRole: null,
         billingStatus: 'none',
+        billingWorkspaceId: null,
         isAuthenticated: false,
       }
     case 'WORKSPACES_LOADED': {
@@ -125,15 +150,30 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         availableWorkspaces: action.payload,
+        workspacesLoaded: true,
+        billingWorkspaceId:
+          (state.billingWorkspaceId &&
+          action.payload.some(({ id }) => id === state.billingWorkspaceId)
+            ? state.billingWorkspaceId
+            : action.payload.find(({ billingStatus }) =>
+                hasActiveBillingStatus(billingStatus),
+              )?.id) ?? null,
         brand: active?.brand ?? state.brand,
         billingStatus: active?.billingStatus ?? state.billingStatus,
       }
     }
+    case 'WORKSPACES_LOAD_FAILED':
+      return { ...state, workspacesLoaded: true }
     case 'SELECT_WORKSPACE':
       return {
         ...state,
         currentWorkspace: action.payload.workspace,
         billingStatus: action.payload.workspace.billingStatus,
+        billingWorkspaceId: hasActiveBillingStatus(
+          action.payload.workspace.billingStatus,
+        )
+          ? action.payload.workspace.id
+          : state.billingWorkspaceId,
         brand: action.payload.brand,
         drafts: [],
         databaseStatus: 'connecting',
@@ -204,6 +244,30 @@ function authenticationError(error: unknown): string {
     : 'Não foi possível autenticar agora.'
 }
 
+function hasActiveBillingStatus(status: BrandWorkspace['billingStatus']) {
+  return status === 'active' || status === 'trialing'
+}
+
+function billingWorkspaceIdFor(state: AppState) {
+  if (state.billingWorkspaceId) return state.billingWorkspaceId
+
+  const currentWorkspace = state.currentWorkspace
+  if (currentWorkspace) {
+    const current = state.availableWorkspaces.find(
+      ({ id }) => id === currentWorkspace.id,
+    )
+    if (current && hasActiveBillingStatus(current.billingStatus)) {
+      return currentWorkspace.id
+    }
+  }
+
+  return (
+    state.availableWorkspaces.find(({ billingStatus }) =>
+      hasActiveBillingStatus(billingStatus),
+    )?.id ?? null
+  )
+}
+
 const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({
@@ -217,6 +281,20 @@ export function AppProvider({
     createInitialState,
   )
   const authOperation = useRef(0)
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      authOperation.current += 1
+      dispatch({
+        type: 'AUTH_ANONYMOUS',
+        payload: SESSION_EXPIRED_MESSAGE,
+      })
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpiredSession)
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpiredSession)
+    }
+  }, [])
 
   useEffect(() => {
     let isActive = true
@@ -249,7 +327,13 @@ export function AppProvider({
 
   useEffect(() => {
     let isActive = true
-    if (state.authStatus !== 'authenticated' || !repository.listWorkspaces) {
+    if (state.authStatus !== 'authenticated') {
+      return () => {
+        isActive = false
+      }
+    }
+    if (!repository.listWorkspaces) {
+      dispatch({ type: 'WORKSPACES_LOADED', payload: [] })
       return () => {
         isActive = false
       }
@@ -261,18 +345,26 @@ export function AppProvider({
           dispatch({ type: 'WORKSPACES_LOADED', payload: workspaces })
       })
       .catch((error: unknown) => {
-        if (isActive)
+        if (isActive) {
           dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
+          dispatch({ type: 'WORKSPACES_LOAD_FAILED' })
+        }
       })
     return () => {
       isActive = false
     }
-  }, [repository, state.authStatus])
+  }, [repository, state.authStatus, state.workspaceLoadVersion])
 
   useEffect(() => {
     let isActive = true
 
     if (state.authStatus !== 'authenticated') {
+      return () => {
+        isActive = false
+      }
+    }
+
+    if (!state.workspacesLoaded) {
       return () => {
         isActive = false
       }
@@ -288,8 +380,8 @@ export function AppProvider({
       }
     }
 
-    const hasActivePlan =
-      state.billingStatus === 'active' || state.billingStatus === 'trialing'
+    const billingWorkspaceId = billingWorkspaceIdFor(state)
+    const hasActivePlan = Boolean(billingWorkspaceId)
     if (!hasActivePlan && state.platformRole !== 'platform_owner') {
       dispatch({
         type: 'DATABASE_CONNECTED',
@@ -301,7 +393,7 @@ export function AppProvider({
     }
 
     repository
-      .load(state.currentWorkspace.id)
+      .load(state.currentWorkspace.id, billingWorkspaceId ?? undefined)
       .then((data) => {
         if (isActive) {
           dispatch({ type: 'DATABASE_CONNECTED', payload: data })
@@ -321,12 +413,18 @@ export function AppProvider({
     state.authStatus,
     state.billingStatus,
     state.currentWorkspace,
+    state.availableWorkspaces,
+    state.workspacesLoaded,
     state.platformRole,
   ])
 
   const value = useMemo<AppContextValue>(
     () => ({
       ...state,
+      billingWorkspaceId: billingWorkspaceIdFor(state),
+      hasActivePlan:
+        Boolean(billingWorkspaceIdFor(state)) ||
+        state.platformRole === 'platform_owner',
       login: async (credentials) => {
         authOperation.current += 1
         dispatch({ type: 'AUTH_CHECKING' })
@@ -420,6 +518,7 @@ export function AppProvider({
           const savedBrand = await repository.saveBrand(
             state.currentWorkspace.id,
             brand,
+            billingWorkspaceIdFor(state) ?? undefined,
           )
           dispatch({ type: 'SAVE_BRAND', payload: savedBrand })
         } catch (error) {
@@ -433,6 +532,7 @@ export function AppProvider({
           const createdDraft = await repository.createDraft(
             state.currentWorkspace.id,
             draft,
+            billingWorkspaceIdFor(state) ?? undefined,
           )
           dispatch({ type: 'ADD_DRAFT', payload: createdDraft })
         } catch (error) {
@@ -442,7 +542,11 @@ export function AppProvider({
       },
       addDraftForWorkspace: async (workspaceId, draft) => {
         try {
-          const createdDraft = await repository.createDraft(workspaceId, draft)
+          const createdDraft = await repository.createDraft(
+            workspaceId,
+            draft,
+            billingWorkspaceIdFor(state) ?? undefined,
+          )
           if (state.currentWorkspace?.id === workspaceId)
             dispatch({ type: 'ADD_DRAFT', payload: createdDraft })
         } catch (error) {
@@ -450,13 +554,27 @@ export function AppProvider({
           throw error
         }
       },
-      addDraftsForWorkspace: async (workspaceId, drafts) => {
+      addDraftsForWorkspace: async (
+        workspaceId,
+        drafts,
+        billingWorkspaceId,
+      ) => {
         try {
           const createdDrafts = repository.createDrafts
-            ? await repository.createDrafts(workspaceId, drafts)
+            ? await repository.createDrafts(
+                workspaceId,
+                drafts,
+                billingWorkspaceId ?? billingWorkspaceIdFor(state) ?? undefined,
+              )
             : await Promise.all(
                 drafts.map((draft) =>
-                  repository.createDraft(workspaceId, draft),
+                  repository.createDraft(
+                    workspaceId,
+                    draft,
+                    billingWorkspaceId ??
+                      billingWorkspaceIdFor(state) ??
+                      undefined,
+                  ),
                 ),
               )
           if (state.currentWorkspace?.id === workspaceId)
@@ -471,10 +589,18 @@ export function AppProvider({
         if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
         try {
           const createdDrafts = repository.createDrafts
-            ? await repository.createDrafts(state.currentWorkspace.id, drafts)
+            ? await repository.createDrafts(
+                state.currentWorkspace.id,
+                drafts,
+                billingWorkspaceIdFor(state) ?? undefined,
+              )
             : await Promise.all(
                 drafts.map((draft) =>
-                  repository.createDraft(state.currentWorkspace!.id, draft),
+                  repository.createDraft(
+                    state.currentWorkspace!.id,
+                    draft,
+                    billingWorkspaceIdFor(state) ?? undefined,
+                  ),
                 ),
               )
           dispatch({ type: 'ADD_DRAFTS', payload: createdDrafts })
@@ -490,6 +616,7 @@ export function AppProvider({
         const imageUrl = await repository.refreshDraftImageUrl(
           workspaceId,
           draftId,
+          billingWorkspaceIdFor(state) ?? undefined,
         )
         if (imageUrl) {
           const draft = state.drafts.find((item) => item.id === draftId)
@@ -502,8 +629,13 @@ export function AppProvider({
         }
         return imageUrl
       },
-      saveDraftImage: async (draftId, imageUrl) => {
-        const workspaceId = state.currentWorkspace?.id
+      saveDraftImage: async (
+        draftId,
+        imageUrl,
+        requestedWorkspaceId,
+        billingWorkspaceId,
+      ) => {
+        const workspaceId = requestedWorkspaceId ?? state.currentWorkspace?.id
         if (!workspaceId || !repository.saveDraftImage) {
           throw new Error('Não foi possível salvar a imagem neste workspace.')
         }
@@ -512,8 +644,11 @@ export function AppProvider({
             workspaceId,
             draftId,
             imageUrl,
+            billingWorkspaceId ?? billingWorkspaceIdFor(state) ?? undefined,
           )
-          dispatch({ type: 'UPDATE_DRAFT', payload: updatedDraft })
+          if (state.currentWorkspace?.id === workspaceId) {
+            dispatch({ type: 'UPDATE_DRAFT', payload: updatedDraft })
+          }
           return updatedDraft
         } catch (error) {
           dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })
@@ -526,6 +661,7 @@ export function AppProvider({
           const updatedDraft = await repository.updateDraft(
             state.currentWorkspace.id,
             draft,
+            billingWorkspaceIdFor(state) ?? undefined,
           )
           dispatch({ type: 'UPDATE_DRAFT', payload: updatedDraft })
         } catch (error) {
@@ -536,7 +672,11 @@ export function AppProvider({
       removeDraft: async (id) => {
         if (!state.currentWorkspace) throw new Error('Nenhum workspace ativo.')
         try {
-          await repository.deleteDraft(state.currentWorkspace.id, id)
+          await repository.deleteDraft(
+            state.currentWorkspace.id,
+            id,
+            billingWorkspaceIdFor(state) ?? undefined,
+          )
           dispatch({ type: 'REMOVE_DRAFT', payload: id })
         } catch (error) {
           dispatch({ type: 'DATABASE_ERROR', payload: errorMessage(error) })

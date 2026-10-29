@@ -106,7 +106,7 @@ export interface PublicationSnapshot {
   timezone: string
   options?: TikTokPublishOptions
 }
-export interface PublicationRecord extends PublicationDTO {
+export interface PublicationRecord extends Omit<PublicationDTO, 'simulated'> {
   workspaceId: string
   userId: string
   snapshot: PublicationSnapshot

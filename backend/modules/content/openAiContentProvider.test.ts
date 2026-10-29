@@ -144,7 +144,7 @@ describe('OpenAiContentProvider', () => {
     vi.unstubAllGlobals()
   })
 
-  it('gera texto e imagem no backend, converte b64_json para data URL e envia parâmetros configuráveis', async () => {
+  it('gera texto e imagem no backend e mantém o tamanho configurado quando combina com a rede', async () => {
     const fetch = vi
       .fn()
       .mockResolvedValueOnce(textResponse())
@@ -158,9 +158,9 @@ describe('OpenAiContentProvider', () => {
       'text-model',
       'image-model',
       'high',
-      '1536x1024',
+      '1280x720',
     )
-    const result = await provider.generate(input)
+    const result = await provider.generate({ ...input, platform: 'X / Twitter' })
 
     expect(result.imageUrl).toBe('data:image/webp;base64,aW1hZ2U=')
     expect(fetch).toHaveBeenCalledTimes(2)
@@ -172,11 +172,98 @@ describe('OpenAiContentProvider', () => {
     })
     expect(JSON.parse(String(fetch.mock.calls[1]?.[1]?.body))).toMatchObject({
       model: 'image-model',
-      size: '1536x1024',
+      size: '1280x720',
       quality: 'high',
       output_format: 'webp',
       n: 1,
     })
+  })
+
+  it('reporta o uso informado pelas APIs de texto e imagem', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: 'resp_text_test',
+            model: 'gpt-6-luna',
+            usage: {
+              input_tokens: 120,
+              input_tokens_details: {
+                cached_tokens: 20,
+                text_tokens: 100,
+              },
+              output_tokens: 40,
+              output_tokens_details: {
+                reasoning_tokens: 10,
+                text_tokens: 30,
+              },
+            },
+            output_text: JSON.stringify({
+              title: 'Café para começar bem',
+              caption: 'Uma pausa com intenção.',
+              hashtags: ['#Cafe'],
+              visualText: 'Comece com presença',
+            }),
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: 'resp_image_test',
+            model: 'gpt-image-2.5-flare',
+            usage: {
+              input_tokens: 70,
+              input_tokens_details: {
+                cached_tokens: 10,
+                text_tokens: 60,
+              },
+              output_tokens: 5_100,
+              output_tokens_details: {
+                text_tokens: 100,
+                image_tokens: 5_000,
+              },
+            },
+            data: [{ b64_json: 'aW1hZ2U=' }],
+          }),
+        ),
+      )
+    vi.stubGlobal('fetch', fetch)
+    const reportUsage = vi.fn()
+
+    await new OpenAiContentProvider(() => 'test-key', 'gpt-6-luna').generate(
+      input,
+      undefined,
+      reportUsage,
+    )
+
+    expect(reportUsage).toHaveBeenCalledTimes(2)
+    expect(reportUsage).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        providerRequestId: 'resp_text_test',
+        operation: 'text_generation',
+        model: 'gpt-6-luna',
+        inputTokens: 120,
+        cachedInputTokens: 20,
+        outputTokens: 40,
+        reasoningTokens: 10,
+        usageAccuracy: 'reported',
+      }),
+    )
+    expect(reportUsage).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        providerRequestId: 'resp_image_test',
+        operation: 'image_generation',
+        model: 'gpt-image-2.5-flare',
+        inputTokens: 70,
+        cachedInputTokens: 10,
+        imageOutputTokens: 5_000,
+        usageAccuracy: 'reported',
+      }),
+    )
   })
 
   it('usa GPT-6 Luna e Flare por padrão e permite escolher Sunburst no servidor', async () => {
