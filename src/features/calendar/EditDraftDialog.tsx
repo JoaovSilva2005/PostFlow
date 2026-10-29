@@ -13,7 +13,6 @@ import {
 } from 'react'
 import {
   CalendarClock,
-  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -285,7 +284,11 @@ function EditDraftCard({
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
   const [hashtagInput, setHashtagInput] = useState('')
-  const [scheduleOpen, setScheduleOpen] = useState(false)
+  // Pílula que abriu o editor de agenda (null = fechado).
+  const [scheduleTrigger, setScheduleTrigger] = useState<
+    'date' | 'status' | null
+  >(null)
+  const scheduleOpen = scheduleTrigger !== null
   const [publishOpen, setPublishOpen] = useState(false)
   const [imageGeneration, setImageGeneration] = useState<ImageGenerationState>({
     available: false,
@@ -297,7 +300,6 @@ function EditDraftCard({
   const previewRef = useRef<PostCreativePreviewHandle>(null)
   const datePillRef = useRef<HTMLButtonElement>(null)
   const statusPillRef = useRef<HTMLButtonElement>(null)
-  const lastScheduleTrigger = useRef<HTMLButtonElement | null>(null)
   const publishTriggerRef = useRef<HTMLButtonElement>(null)
   const scheduleTriggerRefs = useRef([datePillRef, statusPillRef]).current
   // Publicado (situação salva) fica somente leitura no texto, como na referência.
@@ -459,15 +461,27 @@ function EditDraftCard({
     }
   }
 
-  function openScheduleEditor(trigger: HTMLButtonElement | null) {
-    lastScheduleTrigger.current = trigger
-    setScheduleOpen((open) => !open)
+  function pillRef(trigger: 'date' | 'status') {
+    return trigger === 'date' ? datePillRef : statusPillRef
   }
 
-  const closeScheduleEditor = useCallback((restoreFocus: boolean) => {
-    setScheduleOpen(false)
-    if (restoreFocus) lastScheduleTrigger.current?.focus()
-  }, [])
+  function toggleScheduleEditor(trigger: 'date' | 'status') {
+    // A mesma pílula alterna; a outra pílula mantém o editor aberto.
+    setScheduleTrigger((current) => (current === trigger ? null : trigger))
+    pillRef(trigger).current?.focus()
+  }
+
+  const closeScheduleEditor = useCallback(
+    (restoreFocus: boolean) => {
+      if (restoreFocus && scheduleTrigger)
+        (scheduleTrigger === 'date'
+          ? datePillRef
+          : statusPillRef
+        ).current?.focus()
+      setScheduleTrigger(null)
+    },
+    [scheduleTrigger],
+  )
 
   const closePublishDialog = useCallback(() => setPublishOpen(false), [])
 
@@ -572,6 +586,9 @@ function EditDraftCard({
     )
   }
 
+  // Post publicado sem alterações não tem o que salvar: o rodapé some.
+  const showFooter =
+    Boolean(error || notice) || !isPublished || hasUnsavedChanges
   const statusLabel = STATUS_LABELS[form.status] ?? form.status
   const timeLabel = form.time ?? '12:00'
 
@@ -601,11 +618,13 @@ function EditDraftCard({
             type="button"
             className={styles.statusBadge}
             data-status={form.status}
-            aria-label={`Situação: ${statusLabel}. Editar situação`}
+            aria-label={`${statusLabel}, editar situação`}
             aria-haspopup="dialog"
-            aria-expanded={scheduleOpen}
-            aria-controls={scheduleOpen ? scheduleEditorId : undefined}
-            onClick={() => openScheduleEditor(statusPillRef.current)}
+            aria-expanded={scheduleTrigger === 'status'}
+            aria-controls={
+              scheduleTrigger === 'status' ? scheduleEditorId : undefined
+            }
+            onClick={() => toggleScheduleEditor('status')}
           >
             <span />
             {statusLabel}
@@ -615,11 +634,13 @@ function EditDraftCard({
             ref={datePillRef}
             type="button"
             className={styles.metaDate}
-            aria-label={`Editar data e horário: ${formatShortDate(form.date)} às ${timeLabel}`}
+            aria-label={`${formatShortDate(form.date)} · ${timeLabel}, editar data e horário`}
             aria-haspopup="dialog"
-            aria-expanded={scheduleOpen}
-            aria-controls={scheduleOpen ? scheduleEditorId : undefined}
-            onClick={() => openScheduleEditor(datePillRef.current)}
+            aria-expanded={scheduleTrigger === 'date'}
+            aria-controls={
+              scheduleTrigger === 'date' ? scheduleEditorId : undefined
+            }
+            onClick={() => toggleScheduleEditor('date')}
           >
             <CalendarClock size={15} aria-hidden="true" />
             <span>
@@ -798,15 +819,6 @@ function EditDraftCard({
                   />
                 ) : null}
                 <ResourceItem
-                  icon={copied ? CopyCheck : Copy}
-                  title="Copiar legenda"
-                  description={
-                    copied ? 'Legenda copiada' : 'Copie o texto com as hashtags'
-                  }
-                  trailing={copied ? <Check size={14} /> : null}
-                  onClick={handleCopyCaption}
-                />
-                <ResourceItem
                   icon={CopyPlus}
                   title="Duplicar como rascunho"
                   description="Crie uma cópia editável deste post"
@@ -833,35 +845,39 @@ function EditDraftCard({
           </aside>
         </div>
 
-        <footer className={styles.detailFooter}>
-          <div className={styles.detailFeedback}>
-            {error ? (
-              <p className={styles.dialogError} role="alert">
-                {error}
-              </p>
-            ) : notice ? (
-              <p className={styles.saveNotice} role="status">
-                {notice}
-              </p>
-            ) : null}
-          </div>
-          <div className={styles.detailFooterActions}>
-            {form.status === 'draft' ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleSchedule}
-                disabled={isSaving}
-              >
-                <CalendarClock size={16} />
-                {isSaving ? 'Salvando...' : 'Salvar como agendado'}
-              </Button>
-            ) : null}
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? 'Salvando...' : 'Salvar alterações'}
-            </Button>
-          </div>
-        </footer>
+        {showFooter ? (
+          <footer className={styles.detailFooter}>
+            <div className={styles.detailFeedback}>
+              {error ? (
+                <p className={styles.dialogError} role="alert">
+                  {error}
+                </p>
+              ) : notice ? (
+                <p className={styles.saveNotice} role="status">
+                  {notice}
+                </p>
+              ) : null}
+            </div>
+            <div className={styles.detailFooterActions}>
+              {form.status === 'draft' ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleSchedule}
+                  disabled={isSaving}
+                >
+                  <CalendarClock size={16} />
+                  {isSaving ? 'Salvando...' : 'Salvar como agendado'}
+                </Button>
+              ) : null}
+              {isPublished && !hasUnsavedChanges ? null : (
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? 'Salvando...' : 'Salvar alterações'}
+                </Button>
+              )}
+            </div>
+          </footer>
+        ) : null}
       </form>
 
       <DraftPublishDialog

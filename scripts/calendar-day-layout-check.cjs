@@ -236,7 +236,7 @@ async function runCase(browser, { width, theme }) {
     })
     await facebook.scrollIntoViewIfNeeded()
     await facebook
-      .getByRole('button', { name: /Editar data e horário/ })
+      .getByRole('button', { name: /editar data e horário/ })
       .click()
     const editor = page.getByRole('dialog', { name: 'Agenda do post' })
     await editor.waitFor()
