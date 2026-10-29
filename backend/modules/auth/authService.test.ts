@@ -29,6 +29,21 @@ describe('isAuthProviderUnavailable', () => {
     }
   })
 
+  it('não trata um TypeError não relacionado à rede como indisponibilidade', () => {
+    expect(
+      isAuthProviderUnavailable(
+        new TypeError("Cannot read properties of undefined (reading 'user')"),
+      ),
+    ).toBe(false)
+    expect(
+      isAuthProviderUnavailable(
+        Object.assign(new TypeError('x'), { cause: { code: 'ECONNREFUSED' } }),
+      ),
+    ).toBe(true)
+    expect(isAuthProviderUnavailable(new TypeError('Failed to fetch'))).toBe(true)
+    expect(isAuthProviderUnavailable(new TypeError('NetworkError when attempting'))).toBe(true)
+  })
+
   it('não trata credenciais inválidas ou erros comuns como indisponibilidade', () => {
     expect(
       isAuthProviderUnavailable(

@@ -116,6 +116,41 @@ describe('autenticação', () => {
     )
   })
 
+  it('TypeError não relacionado à rede → 401', async () => {
+    const provider = new InMemoryAuthProvider()
+    provider.login = async () => {
+      throw new TypeError("Cannot read properties of undefined (reading 'x')")
+    }
+    const { app } = testApp(provider)
+    const response = await request(app).post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    expect(response.status).toBe(401)
+  })
+
+  it('registra apenas o nome do erro ao responder 503', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const provider = new InMemoryAuthProvider()
+    provider.login = async () => {
+      throw Object.assign(new Error('secret@mail.com token'), {
+        name: 'AuthRetryableFetchError',
+        status: 0,
+      })
+    }
+    const { app } = testApp(provider)
+    await request(app).post('/api/auth/login').send({
+      email: 'aluno@postflow.com',
+      password: '123456',
+    })
+
+    expect(warn).toHaveBeenCalledWith('Falha no login.', {
+      name: 'AuthRetryableFetchError',
+    })
+    warn.mockRestore()
+  })
+
   it('provedor lança erro com status 503 → 503', async () => {
     const provider = new InMemoryAuthProvider()
     provider.login = async () => {

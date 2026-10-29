@@ -132,6 +132,7 @@ export function createApp(options: AppOptions = {}) {
       ),
       access: workspaceAccess,
       appUrl: environment.appUrl,
+      demoMode: environment.socialDemoMode,
     })
   const aiUsageService =
     options.aiUsageService ??
