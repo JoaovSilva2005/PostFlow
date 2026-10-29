@@ -577,6 +577,12 @@
   border-radius: 8px;
   background: var(--color-surface);
 }
+.publishPanelEmbedded {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
 .publishTitle {
   display: flex;
   justify-content: space-between;
