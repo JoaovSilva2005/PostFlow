@@ -1,0 +1,182 @@
+{
+  "projectRef": "evijkmzbdbtnukigukxt",
+  "observedAt": "2026-10-29",
+  "readOnlyAudit": true,
+  "normalization": "CRLF to LF, trim outer whitespace; SHA256 is evidence, never an application instruction",
+  "records": [
+    {
+      "remoteVersion": "20260918015151",
+      "name": "production_tenancy",
+      "localPath": "database/migrations/20260917_production_tenancy.sql",
+      "localSha256": "e46d2381d6a9ce8758a138f774e0f856657c568dd0a6beecee95065ec1c9bf9c",
+      "remoteSha256": "e46d2381d6a9ce8758a138f774e0f856657c568dd0a6beecee95065ec1c9bf9c",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260918015204",
+      "name": "saas_billing_authorization",
+      "localPath": "database/migrations/20260917_saas_billing_authorization.sql",
+      "localSha256": "4f21af456d940965000f256ad5e6eae1d6dbaf6dcafd6c45d031e2a253760669",
+      "remoteSha256": "4f21af456d940965000f256ad5e6eae1d6dbaf6dcafd6c45d031e2a253760669",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260918015659",
+      "name": "fix_billing_workflow_ambiguity",
+      "localPath": "database/migrations/20260917_fix_billing_workflow_ambiguity.sql",
+      "localSha256": "ae8b68d8b22c1d8d01f1e8b13d6fb6cf36135f548cfe7aa32d0970395cb3aaec",
+      "remoteSha256": "ae8b68d8b22c1d8d01f1e8b13d6fb6cf36135f548cfe7aa32d0970395cb3aaec",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260918015802",
+      "name": "fix_billing_uuid_schema",
+      "localPath": "database/migrations/20260917_fix_billing_uuid_schema.sql",
+      "localSha256": "2b686fa898a0b1c63af3c890788b96cb352703389784f240deeb8f04b4b9d1b5",
+      "remoteSha256": "2b686fa898a0b1c63af3c890788b96cb352703389784f240deeb8f04b4b9d1b5",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260918015916",
+      "name": "harden_rls_and_billing_indexes",
+      "localPath": "database/migrations/20260917_harden_rls_and_billing_indexes.sql",
+      "localSha256": "4ebdfe9d7fb2487bc763a440100b1c134c62f8de81a3e01bdd108b46d051e33e",
+      "remoteSha256": "4ebdfe9d7fb2487bc763a440100b1c134c62f8de81a3e01bdd108b46d051e33e",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260918020617",
+      "name": "grant_bff_service_role_access",
+      "localPath": "database/migrations/20260917_grant_bff_service_role_access.sql",
+      "localSha256": "c0a8726e72fb145aa2e0e4f15ab044ab0b7361c83717247c9de369de6e216f9f",
+      "remoteSha256": "c0a8726e72fb145aa2e0e4f15ab044ab0b7361c83717247c9de369de6e216f9f",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260918141406",
+      "name": "simulated_service_invoice_snapshot",
+      "localPath": "supabase/migrations/20260918141406_simulated_service_invoice_snapshot.sql",
+      "localSha256": "d2064310fa834d9cc16dd7ac03268d52e69421cf2bd5eb1c915ae518421b0f66",
+      "remoteSha256": "d2064310fa834d9cc16dd7ac03268d52e69421cf2bd5eb1c915ae518421b0f66",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260918144609",
+      "name": "harden_registration_profile_constraints",
+      "localPath": "supabase/migrations/20260918144609_harden_registration_profile_constraints.sql",
+      "localSha256": "27433690292c6fc9e27c50105564fd051a17c0464bfc5ad0d987db9f714edd64",
+      "remoteSha256": "27433690292c6fc9e27c50105564fd051a17c0464bfc5ad0d987db9f714edd64",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260923210143",
+      "name": "postflow_batched_content_planner",
+      "localPath": "supabase/migrations/20260923210143_postflow_batched_content_planner.sql",
+      "localSha256": "53e08305aee6e6f1a900e63510c6a469ebd6b3842d210990452495297b754f30",
+      "remoteSha256": "53e08305aee6e6f1a900e63510c6a469ebd6b3842d210990452495297b754f30",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260924012932",
+      "name": "brand_ai_context",
+      "localPath": "supabase/migrations/20260924012932_brand_ai_context.sql",
+      "localSha256": "ed8f6bf04628c582302c20aa6da07f690c295a8b1b7d53bcdf7db130eaf1fc87",
+      "remoteSha256": "ed8f6bf04628c582302c20aa6da07f690c295a8b1b7d53bcdf7db130eaf1fc87",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260924014810",
+      "name": "brand_color_palette",
+      "localPath": "supabase/migrations/20260924014810_brand_color_palette.sql",
+      "localSha256": "696f24840b80fad32c864cac03586e08a0d761d984677618b3f6a6df701f5665",
+      "remoteSha256": "696f24840b80fad32c864cac03586e08a0d761d984677618b3f6a6df701f5665",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260924020635",
+      "name": "allow_multiple_brands",
+      "localPath": "supabase/migrations/20260924030000_allow_multiple_brands.sql",
+      "localSha256": "15f2de2e02dd0b97ab14bd074dd814b1dd7943b6a0eb60b40d5c8e8dfdcb0aa1",
+      "remoteSha256": "fdde65ba4e122c1f46f2ecbec06f6c1b0ded1f090ae0703fec058e5dd48ae991",
+      "comparison": "reviewed_comments_whitespace_transaction_wrapper_only"
+    },
+    {
+      "remoteVersion": "20260925133852",
+      "name": "transactional_workspace_and_content_quotas",
+      "localPath": "supabase/migrations/20260925024139_transactional_workspace_and_content_quotas.sql",
+      "localSha256": "90c1cc839e2e68a7a5915265a5842b7927599ebb53016e4ff2410fdf1cf1d741",
+      "remoteSha256": "90c1cc839e2e68a7a5915265a5842b7927599ebb53016e4ff2410fdf1cf1d741",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260925160228",
+      "name": "persist_draft_images",
+      "localPath": "supabase/migrations/20260925160228_persist_draft_images.sql",
+      "localSha256": "f6be0250d0d6dd47d21732e27935be069f9b3eae8b7c8652627ad1a288c44af1",
+      "remoteSha256": "f6be0250d0d6dd47d21732e27935be069f9b3eae8b7c8652627ad1a288c44af1",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20260925183820",
+      "name": "keep_access_for_existing_subscriptions",
+      "localPath": "supabase/migrations/20260925183820_keep_access_for_existing_subscriptions.sql",
+      "localSha256": "247df5bd7b1cba14aecda42bae2b0decf699cfa65a886f160c983dd51b924581",
+      "remoteSha256": "247df5bd7b1cba14aecda42bae2b0decf699cfa65a886f160c983dd51b924581",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20261012183759",
+      "name": "social_publishing",
+      "localPath": "supabase/migrations/20261012181805_social_publishing.sql",
+      "localSha256": "db81b87f15882b07bc426d0cfdaa1f68b463f20c958c54373f10a720373b0b04",
+      "remoteSha256": "db81b87f15882b07bc426d0cfdaa1f68b463f20c958c54373f10a720373b0b04",
+      "comparison": "exact_after_line_endings"
+    },
+    {
+      "remoteVersion": "20261029010442",
+      "name": "security_minimum_api_table_privileges",
+      "localPath": "supabase/migrations/20260925212250_security_minimum_api_table_privileges.sql",
+      "localSha256": "ded0c597be2e86e46b5d5ad28f860b41bc16d78958af73f33772b84af8316244",
+      "remoteSha256": "ac8018c5582f376ae444fd4d13631ecd779e58c070d1fd2a1dca93f0687259a6",
+      "comparison": "reviewed_comments_whitespace_transaction_wrapper_only"
+    },
+    {
+      "remoteVersion": "20261029010457",
+      "name": "account_billing_and_brand_limit",
+      "localPath": "supabase/migrations/20260928172236_account_billing_and_brand_limit.sql",
+      "localSha256": "35c09aba56b39b93d9e1e91f70d667a17a2dc060f04e099b4fd3b8f7042c8d4e",
+      "remoteSha256": "63c0c116ab3a14f22012a39db0453c3ed5be8fa4c2e028aa0865e07d960e70e4",
+      "comparison": "reviewed_comments_whitespace_transaction_wrapper_only"
+    },
+    {
+      "remoteVersion": "20261029010529",
+      "name": "ai_usage_cost_accounting",
+      "localPath": "supabase/migrations/20260928205117_ai_usage_cost_accounting.sql",
+      "localSha256": "053c8da5ad718776bdebe7cb2fddd0e3604da72a6fc7e170f50d1b55038daa60",
+      "remoteSha256": "b991b9a3736b0d7423063dd35e688b6ace6e481809b9ad55d01dd61058c40427",
+      "comparison": "reviewed_comments_whitespace_transaction_wrapper_only"
+    }
+  ],
+  "remoteOperations": [
+    {
+      "version": "20261029010803",
+      "name": "enable_social_publishing_scheduler_extensions",
+      "coveredBy": "database/operations/social-publishing-cron.sql",
+      "note": "Infrastructure operation; not a missing business schema migration."
+    }
+  ],
+  "localWithoutSeparateRemoteEntry": [
+    {
+      "localPath": "database/migrations/20260915_financial_module.sql",
+      "action": "inspect_existing_objects_before_any_application"
+    },
+    {
+      "localPath": "database/migrations/20260917_financial_service_role_grant.sql",
+      "action": "inspect_existing_objects_before_any_application"
+    },
+    {
+      "localPath": "supabase/migrations/20260918022418_grant_service_role_social_platforms.sql",
+      "action": "inspect_existing_objects_before_any_application"
+    }
+  ]
+}

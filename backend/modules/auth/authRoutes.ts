@@ -59,6 +59,28 @@ const registerSchema = z
 
 const recoverSchema = z.object({ email: emailSchema })
 
+const resetPasswordSchema = z
+  .object({
+    tokenHash: z.string().min(1, 'Link de recuperação inválido.').max(512),
+    password: z
+      .string()
+      .min(8, 'Use pelo menos 8 caracteres.')
+      .max(128, 'A senha deve ter no máximo 128 caracteres.')
+      .regex(/[A-Za-zÀ-ÖØ-öø-ÿ]/, 'Inclua pelo menos uma letra na senha.')
+      .regex(/\d/, 'Inclua pelo menos um número na senha.'),
+    confirmPassword: z.string(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.password !== input.confirmPassword) {
+      context.addIssue({
+        code: 'custom',
+        path: ['confirmPassword'],
+        message: 'As senhas não coincidem.',
+      })
+    }
+  })
+
 function validate<T>(schema: z.ZodType<T>, value: unknown) {
   const result = schema.safeParse(value)
 
@@ -149,6 +171,15 @@ export function createAuthRouter(
           'Se o e-mail estiver cadastrado, você receberá as instruções de recuperação.',
       },
     })
+  })
+
+  router.post('/reset-password', async (request, response) => {
+    const { tokenHash, password } = validate(resetPasswordSchema, request.body)
+    await service.resetPassword(tokenHash, password)
+    // A password reset never creates a browser session. Any old BFF session is
+    // removed so the user explicitly signs in with the new password.
+    clearSessionCookies(response)
+    response.status(204).send()
   })
 
   router.post('/refresh', async (request, response) => {

@@ -5,6 +5,7 @@ import { createApp } from '../../app.js'
 import {
   InMemoryAuthProvider,
   TEST_ACCESS_TOKEN,
+  TEST_RECOVERY_TOKEN_HASH,
 } from '../../test/InMemoryAuthProvider.js'
 import { InMemoryFinancialRepository } from '../../test/InMemoryFinancialRepository.js'
 import { AuthService } from './authService.js'
@@ -31,6 +32,81 @@ function testApp(
 }
 
 describe('autenticação', () => {
+  it('exige confirmação igual antes de consumir o token de recuperação', async () => {
+    const { app, provider } = testApp()
+    await request(app)
+      .post('/api/auth/recover')
+      .send({ email: 'aluno@postflow.com' })
+    const mismatch = await request(app).post('/api/auth/reset-password').send({
+      tokenHash: TEST_RECOVERY_TOKEN_HASH,
+      password: 'novaSenha123',
+      confirmPassword: 'outraSenha123',
+    })
+    expect(mismatch.status).toBe(400)
+    expect(mismatch.body.error).toBe('As senhas não coincidem.')
+    expect(await provider.login('aluno@postflow.com', '123456')).toBeDefined()
+  })
+
+  it('rejeita token inválido e token reutilizado; aceita login com a nova senha', async () => {
+    const { app } = testApp()
+    await request(app)
+      .post('/api/auth/recover')
+      .send({ email: 'aluno@postflow.com' })
+    const invalid = await request(app).post('/api/auth/reset-password').send({
+      tokenHash: TEST_ACCESS_TOKEN,
+      password: 'novaSenha123',
+      confirmPassword: 'novaSenha123',
+    })
+    expect(invalid.status).toBe(400)
+    expect(invalid.body.error).toContain('inválido ou expirado')
+
+    const reset = await request(app).post('/api/auth/reset-password').send({
+      tokenHash: TEST_RECOVERY_TOKEN_HASH,
+      password: 'novaSenha123',
+      confirmPassword: 'novaSenha123',
+    })
+    expect(reset.status).toBe(204)
+    expect(reset.headers['set-cookie']).toBeDefined()
+    expect(
+      (
+        await request(app)
+          .post('/api/auth/login')
+          .send({ email: 'aluno@postflow.com', password: '123456' })
+      ).status,
+    ).toBe(401)
+    expect(
+      (
+        await request(app)
+          .post('/api/auth/login')
+          .send({ email: 'aluno@postflow.com', password: 'novaSenha123' })
+      ).status,
+    ).toBe(200)
+
+    const reused = await request(app).post('/api/auth/reset-password').send({
+      tokenHash: TEST_RECOVERY_TOKEN_HASH,
+      password: 'thirdSenha123',
+      confirmPassword: 'thirdSenha123',
+    })
+    expect(reused.status).toBe(400)
+  })
+
+  it('distingue indisponibilidade do provedor durante a troca', async () => {
+    const provider = new InMemoryAuthProvider()
+    provider.resetPassword = async () => {
+      throw Object.assign(new Error('fetch failed'), {
+        name: 'AuthRetryableFetchError',
+      })
+    }
+    const { app } = testApp(provider)
+    const response = await request(app).post('/api/auth/reset-password').send({
+      tokenHash: TEST_RECOVERY_TOKEN_HASH,
+      password: 'novaSenha123',
+      confirmPassword: 'novaSenha123',
+    })
+    expect(response.status).toBe(503)
+    expect(response.body.error).toContain('indisponível')
+  })
+
   it('aceita o frontend local e rejeita origens desconhecidas', async () => {
     const { app } = testApp()
     const allowed = await request(app)

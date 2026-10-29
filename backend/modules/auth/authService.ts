@@ -29,7 +29,9 @@ function readProviderError(error: unknown): {
     message:
       typeof providerError.message === 'string' ? providerError.message : '',
     status:
-      typeof providerError.status === 'number' ? providerError.status : undefined,
+      typeof providerError.status === 'number'
+        ? providerError.status
+        : undefined,
   }
 }
 
@@ -56,7 +58,8 @@ export function isAuthProviderUnavailable(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
 
   const { status } = readProviderError(error)
-  if ((error as { name?: unknown }).name === 'AuthRetryableFetchError') return true
+  if ((error as { name?: unknown }).name === 'AuthRetryableFetchError')
+    return true
   if (status !== undefined && status >= 500) return true
   if (
     error instanceof TypeError &&
@@ -65,13 +68,15 @@ export function isAuthProviderUnavailable(error: unknown): boolean {
     return true
 
   return (
-    hasNetworkCode(error) || hasNetworkCode((error as { cause?: unknown }).cause)
+    hasNetworkCode(error) ||
+    hasNetworkCode((error as { cause?: unknown }).cause)
   )
 }
 
 function registrationError(error: unknown) {
   const providerError = readProviderError(error)
-  const searchableError = `${providerError.code} ${providerError.message}`.toLowerCase()
+  const searchableError =
+    `${providerError.code} ${providerError.message}`.toLowerCase()
 
   // O SMTP padrão do Supabase tem uma cota pequena. Esta resposta informa a
   // indisponibilidade temporária sem expor dados internos do provedor.
@@ -189,6 +194,37 @@ export class AuthService {
       throw new HttpError(
         503,
         'Não foi possível enviar o e-mail de recuperação agora.',
+      )
+    }
+  }
+
+  async resetPassword(tokenHash: string, password: string) {
+    try {
+      await this.provider.resetPassword(tokenHash, password)
+    } catch (error) {
+      if (isAuthProviderUnavailable(error)) {
+        throw new HttpError(
+          503,
+          'Serviço de autenticação indisponível. Tente novamente em instantes.',
+        )
+      }
+
+      const providerError = readProviderError(error)
+      const description =
+        `${providerError.code} ${providerError.message}`.toLowerCase()
+      if (
+        description.includes('weak_password') ||
+        description.includes('password should')
+      ) {
+        throw new HttpError(
+          400,
+          'A senha não atende aos requisitos de segurança. Escolha uma senha mais forte.',
+        )
+      }
+
+      throw new HttpError(
+        400,
+        'Link de recuperação inválido ou expirado. Solicite outro e-mail.',
       )
     }
   }

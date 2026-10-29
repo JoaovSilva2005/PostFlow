@@ -2,6 +2,7 @@ import type { RequestHandler } from 'express'
 import { HttpError } from '../../shared/HttpError.js'
 import type { WorkspaceAccessRepository } from './workspaceTypes.js'
 import type { PlatformRole, WorkspaceRole } from './workspaceTypes.js'
+import { resolveWorkspaceBilling } from './workspaceBilling.js'
 
 function workspaceIdFromRequest(request: Parameters<RequestHandler>[0]) {
   const param = request.params.workspaceId
@@ -61,42 +62,16 @@ export function requireActiveSubscription(
     try {
       if (!request.workspaceContext)
         throw new HttpError(400, 'Contexto de workspace ausente.')
-      const requestedBillingWorkspaceId = request.header(
-        'x-billing-workspace-id',
+      if (!request.authUser)
+        throw new HttpError(401, 'Autenticação necessária.')
+      const billing = await resolveWorkspaceBilling(
+        repository,
+        request.authUser.id,
+        request.workspaceContext,
+        request.header('x-billing-workspace-id'),
       )
-      const billingWorkspaceId =
-        requestedBillingWorkspaceId ?? request.workspaceContext.workspaceId
-      if (billingWorkspaceId !== request.workspaceContext.workspaceId) {
-        if (!request.authUser)
-          throw new HttpError(401, 'Autenticação necessária.')
-        const billingMembership = await repository.getMembership(
-          request.authUser.id,
-          billingWorkspaceId,
-        )
-        if (!billingMembership) {
-          throw new HttpError(
-            403,
-            'Você não possui acesso ao workspace da assinatura.',
-          )
-        }
-      }
-      let resolvedBillingWorkspaceId = billingWorkspaceId
-      let status = await repository.getBillingStatus(resolvedBillingWorkspaceId)
-      if (
-        status !== 'active' &&
-        status !== 'trialing' &&
-        request.authUser &&
-        request.workspaceContext.role === 'owner'
-      ) {
-        const accountBillingWorkspaceId =
-          await repository.getActiveBillingWorkspaceId(request.authUser.id)
-        if (accountBillingWorkspaceId) {
-          resolvedBillingWorkspaceId = accountBillingWorkspaceId
-          status = await repository.getBillingStatus(resolvedBillingWorkspaceId)
-        }
-      }
-      request.billingWorkspaceId = resolvedBillingWorkspaceId
-      const hasActivePlan = status === 'active' || status === 'trialing'
+      request.billingWorkspaceId = billing.workspaceId
+      const hasActivePlan = billing.hasActivePlan
       const canBypassBilling =
         !hasActivePlan &&
         request.authUser &&
