@@ -409,7 +409,6 @@ export function AppShell({
           {(platformRole || databaseStatus === 'error') && (
             <div
               className={`${styles.databaseStatus} ${styles[databaseStatus]}`}
-              role="status"
             >
               <i aria-hidden="true" />
               <span>
