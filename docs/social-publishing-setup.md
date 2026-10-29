@@ -1,6 +1,6 @@
 # Configuração das integrações diretas
 
-Implementação de 12/10/2026 — SCRUM-58. O usuário confirmou que ainda não possui apps de desenvolvedor. A integração fica desabilitada até a configuração real; nenhum cliente recebe conexão ou publicação fictícia.
+Implementação de 12/10/2026 — SCRUM-58. O usuário confirmou que ainda não possui apps de desenvolvedor. A integração fica desabilitada até a configuração real; nenhum cliente recebe conexão ou publicação fictícia, com a única exceção do [modo demonstração](#modo-demonstração), válida somente com `SOCIAL_DEMO_MODE=true`.
 
 ## Escopo disponível
 
@@ -61,10 +61,52 @@ Cancelar funciona antes do dispatch e sem reserva ativa. Não desfaz conteúdo q
 
 Testar com duas marcas e titulares diferentes, no mínimo: consentimento OAuth, seleção da conta, imagem revisada, envio agora, agendamento com navegador fechado, cancelamento futuro, revogação/reconexão, falha parcial e link/status confirmado. TikTok precisa de escolha manual de privacidade, declaração de IA e opções comerciais/consentimentos correspondentes. Liberar público apenas após a auditoria.
 
-Nesta entrega, não existe conta de rede conectada nem publicação externa real; faltam os apps, segredos e aprovações. Os testes automatizados validam a implementação e as falhas, com provas de banco e interface documentadas separadamente.
+Nesta entrega, não existe conta de rede conectada nem publicação externa real (exceto no modo demonstração); faltam os apps, segredos e aprovações. Os testes automatizados validam a implementação e as falhas, com provas de banco e interface documentadas separadamente.
 
 ## Tela de Integrações
 
 A interface de contas fica em `/integrations`; `/social` redireciona preservando parâmetros de OAuth e links antigos. Os quatro adaptadores estão agrupados em cartões com as contas da marca, validade, seleção pós-OAuth e controles de acesso. A aba Publicações reúne a fila e seus resultados.
 
-A tela exibe somente as quatro redes com adaptadores implementados. Os cartões de X, Canva, Threads, Pinterest, YouTube e WordPress foram removidos. X e Blog continuam disponíveis para criação editorial na marca, sem conexão ou publicação direta pela API. As opções de conexão continuam condicionadas à configuração real dos apps no servidor.
+A tela exibe somente as quatro redes com adaptadores implementados. Os cartões de X, Canva, Threads, Pinterest, YouTube e WordPress foram removidos. X e Blog continuam disponíveis para criação editorial na marca, sem conexão ou publicação direta pela API. As opções de conexão continuam condicionadas à configuração real dos apps no servidor, salvo no modo demonstração.
+
+## Modo demonstração
+
+Exceção explícita à regra de que nenhum cliente recebe conexão ou publicação fictícia (ADR-0014). Só existe com `SOCIAL_DEMO_MODE=true` (string exata) no servidor; qualquer outro valor mantém os adaptadores reais. Destinado à apresentação de 03/11/2026 e a ambientes de teste; deve ficar desligado para clientes.
+
+**Variáveis (somente nomes; gerar e cadastrar os valores no painel da Vercel):**
+
+- `SOCIAL_DEMO_MODE=true`
+- `SOCIAL_TOKEN_ENCRYPTION_KEY`
+- `SOCIAL_CRON_SECRET` (32 ou mais caracteres, igual ao `postflow_social_cron_secret` do Vault)
+- `SOCIAL_SCHEDULER_ENABLED=true`
+- `APP_URL` com https em produção
+
+Não são necessárias as credenciais dos apps (`META_*`, LinkedIn, TikTok) nem `TIKTOK_MEDIA_DOMAIN_VERIFIED` / `TIKTOK_DIRECT_POST_APPROVED`.
+
+**O que é simulado:** o OAuth "retorna" na hora, sem sair do PostFlow; cada rede oferece uma conta "<Rede> — conta de demonstração" (`accountType: 'demo'`, `externalAccountId: 'demo-<rede>'`); o envio não faz nenhuma chamada HTTP a redes e termina `published` com `simulated: true`, `remotePostId` iniciado por `demo-` e sem link externo. O TikTok devolve opções de privacidade simuladas (`SELF_ONLY` e `PUBLIC_TO_EVERYONE`).
+
+**O que continua real:** membership e papel, assinatura, state do OAuth, criptografia dos tokens, snapshot aprovado, fila, lease do worker e o Supabase Cron. Por isso o executor e os segredos de infraestrutura continuam obrigatórios.
+
+**Na interface:** a tela de Integrações exibe "Modo demonstração: as conexões e publicações são simuladas e nada é enviado às redes sociais."; o painel de publicação do rascunho exibe "Modo demonstração: nada é enviado às redes sociais."; publicações concluídas aparecem como "Publicado (simulado)".
+
+### Ativação para a apresentação
+
+Executar com o responsável pelo projeto, fora do código. Nunca registrar valores de segredos em Git, logs ou mensagens.
+
+- [ ] Reativar o projeto Supabase (pausado ou indisponível desde pelo menos 28/10).
+- [ ] Fazer backup do banco.
+- [ ] Aplicar as quatro migrações recuperadas de 25–28/09:
+      `20260925183820_keep_access_for_existing_subscriptions.sql`,
+      `20260925212250_security_minimum_api_table_privileges.sql`,
+      `20260928172236_account_billing_and_brand_limit.sql` e
+      `20260928205117_ai_usage_cost_accounting.sql`.
+      Atenção: seus timestamps são anteriores a `20261012181805_social_publishing.sql`, que provavelmente já foi aplicada. Conferir antes o histórico remoto de migrações; a CLI recusa migrações fora de ordem sem `supabase db push --include-all`. Alternativa: executar cada arquivo, na ordem, pelo SQL Editor.
+- [ ] Na Vercel, cadastrar as variáveis acima e fazer o redeploy.
+- [ ] Criar `postflow_app_url` e `postflow_social_cron_secret` no Supabase Vault e executar [social-publishing-cron.sql](../database/operations/social-publishing-cron.sql). O job `postflow-social-publisher` roda a cada minuto (`* * * * *`); a limpeza de sessões OAuth (`postflow-social-oauth-cleanup`) roda no minuto 17 de cada hora. Conferir HTTP 200 do worker nos registros de pg_net.
+- [ ] Teste ao vivo: conectar "Instagram — conta de demonstração" em Integrações, aprovar um post com horário alguns minutos à frente e aguardar até aparecer "Publicado (simulado)". Após o retorno imediato do OAuth, clicar em "Conectar conta" na linha da conta de demonstração; o status é atualizado automaticamente a cada 15 s (ou clicar em "Sincronizar"), e o cron roda a cada minuto, então o resultado surge em poucos minutos. Contas conectadas num modo (demonstração/real) não funcionam no outro: reconectar após trocar o modo.
+
+### Desligar o modo demonstração
+
+1. Remover `SOCIAL_DEMO_MODE` ou defini-lo como `false` na Vercel e fazer o redeploy.
+2. Desconectar as contas "conta de demonstração" em Integrações; elas não funcionam com adaptadores reais.
+3. Para ativação real, cadastrar os apps e credenciais conforme as seções anteriores.

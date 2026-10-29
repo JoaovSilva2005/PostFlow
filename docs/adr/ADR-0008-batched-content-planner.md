@@ -12,15 +12,19 @@ A Agenda tinha geração unitária e não persistia horário, fuso, público ou 
 
 - A UI aceita até sete datas futuras e seis destinos de conteúdo por lote. Cada combinação data × destino representa um rascunho distinto, até 42.
 - O BFF valida a entrada e o resultado estruturado da IA. O `ContentProvider` faz uma chamada de texto para o lote, preservando a fronteira de fornecedor atual. O chat individual permanece como caminho separado.
+- Antes de salvar os rascunhos, a Agenda gera uma imagem quadrada por data e a associa a todos os destinos daquela data. O formato, a ideia central e a marca orientam a imagem; destinos diferentes não geram variações visuais nem consomem unidades adicionais.
 - Os rascunhos guardam `content_format`, `format_data`, público, fuso e instante em `scheduled_at`. `scheduled_at` é formado no Postgres com `AT TIME ZONE`, e o fuso IANA também é retido para apresentação local.
 - A Agenda persiste todos os itens do lote por um RPC transacional, incluindo hashtags, ou não persiste nenhum.
 - A primeira versão cria conteúdo para Instagram, Facebook, X / Twitter, LinkedIn, TikTok e Blog. São destinos editoriais para rascunhos: a seleção não indica que a conta esteja conectada, nem executa publicação automática.
-- A geração em lote entrega texto e estrutura de formato. Ela não replica geração de imagem por item nem renderiza vídeo; esses ativos e o ciclo de mídia exigem evolução própria.
+- Se uma imagem falhar, nada é salvo; uma nova tentativa na mesma configuração reaproveita os textos e as imagens já gerados, sem repetir chamadas concluídas. Posts sem imagem podem receber arte pela ação manual na prévia. Cada tentativa de imagem reserva uma unidade; falhas do provedor liberam a reserva.
+- O lote não renderiza vídeo para Reels; os rascunhos mantêm o roteiro estruturado para revisão.
 - Estruturas de formato usam contratos puros em `shared/`, sem dependência do React, Express ou Supabase.
 
 ## Consequências
 
 - Um lote tem resultado e persistência determinísticos, com limite explícito de 42 itens.
+- A franquia de imagem escala com as datas, não com as combinações data × destino.
+- O lote só é gravado depois que textos e imagens ficam prontos; tentativas repetidas não consomem de novo as chamadas já concluídas.
 - Formatos estruturados permitem que o editor evolua para prévias de slides e roteiros sem reinterpretar o prompt original.
 - Zona e instante evitam perda do horário escolhido e mantêm a leitura correta em calendário.
 - Haverá uma migração incremental de Postgres e um RPC restrito ao `service_role`; autorização e validação de workspace continuam no BFF.
@@ -30,8 +34,9 @@ A Agenda tinha geração unitária e não persistia horário, fuso, público ou 
 
 1. Fazer uma requisição por combinação: descartada por latência/custo e por tornar cancelamento e salvamento de lote mais frágeis.
 2. Persistir um item por vez no cliente: descartada por poder deixar parte do lote na agenda.
-3. Guardar todo o conteúdo em um único JSON opaco: descartada porque data, hora, fuso e formato precisam continuar consultáveis e editáveis.
-4. Gerar imagem/vídeo para cada item já nesta etapa: descartada por multiplicar custo e exigir um ciclo de armazenamento/revisão de mídia ainda inexistente.
+3. Gerar uma imagem para cada destino: descartada porque os destinos da mesma data compartilham a direção visual e não precisam consumir franquia repetida.
+4. Guardar todo o conteúdo em um único JSON opaco: descartada porque data, hora, fuso e formato precisam continuar consultáveis e editáveis.
+5. Renderizar vídeo para Reels: adiada; a primeira versão gera roteiro estruturado e mantém a publicação manual.
 
 ## Validação
 

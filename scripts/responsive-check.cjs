@@ -96,10 +96,56 @@ const summary = {
   pendingExpenses: 650,
   pendingCount: 1,
 }
+const aiUsageReport = {
+  month: '2026-09',
+  totals: {
+    calls: 2,
+    textCalls: 1,
+    imageCalls: 1,
+    generations: 1,
+    postsGenerated: 2,
+    inputTokens: 220,
+    cachedInputTokens: 20,
+    outputTokens: 540,
+    imageOutputTokens: 5000,
+    totalCostUsd: 0.2,
+    totalCostBrl: 1,
+    estimatedCalls: 1,
+    unpricedCalls: 0,
+    missingExchangeRateCalls: 0,
+  },
+  users: [
+    {
+      userId: 'qa',
+      userEmail: 'qa@example.com',
+      userDisplayName: 'João Silva',
+      calls: 2,
+      textCalls: 1,
+      imageCalls: 1,
+      generations: 1,
+      postsGenerated: 2,
+      inputTokens: 220,
+      cachedInputTokens: 20,
+      outputTokens: 540,
+      imageOutputTokens: 5000,
+      totalCostUsd: 0.2,
+      totalCostBrl: 1,
+      estimatedCalls: 1,
+      unpricedCalls: 0,
+      missingExchangeRateCalls: 0,
+    },
+  ],
+}
 
 async function mockNetwork(page, name) {
-  const state = { batchInput: null, generatedBatch: null, persistedBatch: null }
-  await page.route('**/api/**', (route) => {
+  const state = {
+    batchInput: null,
+    generatedBatch: null,
+    persistedBatch: null,
+    persistedImages: [],
+    imageRequests: 0,
+  }
+  await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname
     let data
     if (path.includes('/auth/')) {
@@ -158,6 +204,16 @@ async function mockNetwork(page, name) {
       data = state.persistedBatch
     } else if (
       path.includes('/workspaces/') &&
+      /\/drafts\/[^/]+\/image$/.test(path) &&
+      route.request().method() === 'PUT'
+    ) {
+      const image = JSON.parse(route.request().postData() || '{}')
+      const draftId = path.match(/\/drafts\/([^/]+)\/image$/)?.[1]
+      const draft = state.persistedBatch?.find(({ id }) => id === draftId)
+      state.persistedImages.push({ id: draftId, imageUrl: image.imageUrl })
+      data = { ...draft, imageUrl: image.imageUrl, imageAvailable: true }
+    } else if (
+      path.includes('/workspaces/') &&
       /\/drafts\/[^/]+$/.test(path) &&
       route.request().method() === 'PATCH'
     ) {
@@ -176,6 +232,18 @@ async function mockNetwork(page, name) {
         visualText: original?.visual_text,
         color: original?.color,
         ...state.updatedDraft,
+      }
+    } else if (
+      path.includes('/workspaces/') &&
+      path.endsWith('/drafts') &&
+      route.request().method() === 'POST'
+    ) {
+      const persistedDraft = JSON.parse(route.request().postData() || '{}')
+      state.persistedBatch ??= []
+      state.persistedBatch.push(persistedDraft)
+      data = {
+        ...persistedDraft,
+        imageAvailable: Boolean(persistedDraft.imageUrl),
       }
     } else if (path.includes('/workspaces/') && path.endsWith('/drafts'))
       data = drafts.map((draft) => ({
@@ -247,6 +315,7 @@ async function mockNetwork(page, name) {
             ]
     else if (path.endsWith('/finance/summary')) data = summary
     else if (path.endsWith('/finance/transactions')) data = transactions
+    else if (path.endsWith('/admin/ai-usage/monthly')) data = aiUsageReport
     else if (path.endsWith('/content/generate-batch')) {
       state.batchInput = JSON.parse(route.request().postData() || '{}')
       const requestBody = state.batchInput
@@ -292,8 +361,16 @@ async function mockNetwork(page, name) {
         })),
       )
       data = state.generatedBatch
+    } else if (path.endsWith('/content/generate-image')) {
+      state.imageRequests += 1
+      if (name === 'calendar')
+        await new Promise((resolve) => setTimeout(resolve, 250))
+      data =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nAAAAABJRU5ErkJggg=='
     } else if (path.endsWith('/content/generate')) {
       const input = JSON.parse(route.request().postData() || '{}')
+      if (input.platform === 'LinkedIn')
+        await new Promise((resolve) => setTimeout(resolve, 700))
       data = {
         id: `generated-${input.platform}`,
         title: `Uma nova forma de criar para ${input.platform}`,
@@ -304,6 +381,8 @@ async function mockNetwork(page, name) {
         status: 'draft',
         visualText: 'Ideias que conectam.',
         color: '#4F46E5',
+        imageUrl:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nAAAAABJRU5ErkJggg==',
       }
     } else if (path.endsWith('/fiscal/report'))
       data = {
@@ -365,7 +444,7 @@ module.exports = { mockNetwork }
       .map(Number)) {
       for (const name of (
         process.env.QA_PAGES ||
-        'login,login-register,brand,brand-new,chat,calendar,finance,fiscal,billing,billing-empty,admin-plans'
+        'login,login-register,brand,brand-new,chat,calendar,finance,fiscal,billing,billing-empty,admin-plans,ai-usage'
       ).split(',')) {
         const page = await browser.newPage({
           viewport: { width, height: 900 },
@@ -378,6 +457,8 @@ module.exports = { mockNetwork }
         const routePath =
           name === 'admin-plans'
             ? 'admin/plans'
+            : name === 'ai-usage'
+              ? 'admin/ai-usage'
             : name === 'billing-empty'
               ? 'billing'
               : name === 'login-register'
@@ -427,6 +508,16 @@ module.exports = { mockNetwork }
           await page
             .getByText('Consultoria de conteúdo', { exact: true })
             .waitFor()
+        if (name === 'ai-usage') {
+          await page.getByRole('heading', { name: 'Uso por usuário' }).waitFor()
+          await page.getByText('qa@example.com', { exact: true }).waitFor()
+          await page
+            .getByText(/Custos de imagem sem tokens informados/)
+            .waitFor()
+          await page
+            .getByRole('columnheader', { name: 'Média por rascunho' })
+            .waitFor()
+        }
         if (name === 'login-register') {
           await page.getByRole('button', { name: 'Criar conta' }).click()
           await page.getByRole('heading', { name: 'Criar conta' }).waitFor()
@@ -478,7 +569,7 @@ module.exports = { mockNetwork }
             .click()
           await page
             .getByText(
-              '14 rascunhos salvos na agenda para revisão. A publicação é manual.',
+              '14 rascunhos com imagens salvos na agenda para revisão. Abra o post para revisar e publicar nas redes conectadas.',
               { exact: true },
             )
             .waitFor()
@@ -489,6 +580,13 @@ module.exports = { mockNetwork }
           assert.equal(mock.batchInput.format, 'reels')
           assert.equal(mock.generatedBatch.length, 14)
           assert.equal(mock.persistedBatch.length, 14)
+          assert.equal(mock.imageRequests, 7)
+          assert.equal(mock.persistedImages.length, 0)
+          assert.ok(
+            mock.persistedBatch.every(({ imageUrl }) =>
+              imageUrl.startsWith('data:image/png;base64,'),
+            ),
+          )
           assert.equal(
             new Set(
               mock.persistedBatch.map(
@@ -727,8 +825,18 @@ module.exports = { mockNetwork }
             await page.locator('[class*="_platformPicker_"] summary').click()
             await page.getByLabel('Pedido para a IA').fill('Uma dica da marca')
             await page.getByRole('button', { name: 'Gerar 3 posts' }).click()
+            const pendingLinkedIn = page.getByRole('button', {
+              name: 'Revisar rascunho de LinkedIn',
+            })
+            await pendingLinkedIn.waitFor()
+            await pendingLinkedIn.click()
+            await page.getByText('Gerando imagem para LinkedIn...').waitFor()
+            assert.equal(
+              await pendingLinkedIn.getAttribute('aria-busy'),
+              'true',
+            )
             await page
-              .getByRole('heading', { name: 'Revise seus rascunhos' })
+              .getByRole('button', { name: 'Adicionar 3 à agenda' })
               .waitFor()
             await page
               .getByRole('button', { name: 'Revisar rascunho de LinkedIn' })
@@ -744,6 +852,11 @@ module.exports = { mockNetwork }
             assert.deepEqual(
               mock.persistedBatch.map((draft) => draft.platform),
               ['Instagram', 'Facebook', 'LinkedIn'],
+            )
+            assert.ok(
+              mock.persistedBatch.every(({ imageUrl }) =>
+                imageUrl?.startsWith('data:image/png;base64,'),
+              ),
             )
             assert.equal(
               new Set(mock.persistedBatch.map((draft) => draft.id)).size,

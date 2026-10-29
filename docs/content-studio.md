@@ -77,18 +77,19 @@ Na agenda, “Gerar imagem com IA” cria uma arte para um post sem imagem salva
 de imagem, sem alterar a legenda nem consumir texto.
 `PUT /api/workspaces/:workspaceId/drafts/:draftId/image` envia a arte ao bucket
 privado, atualiza o caminho do objeto e devolve uma URL assinada. A prévia
-renova o link quando ele expira. Quando uma geração multirrede inclui imagens,
-cada rascunho é salvo pelo endpoint individual; o lote do planejador continua
-textual.
+renova o link quando ele expira. No planejador, antes de salvar os rascunhos, uma
+imagem é gerada por data e associada a todos os destinos daquele dia. Cada
+rascunho guarda sua referência persistida à arte; em caso de falha, nada é
+salvo e a nova tentativa reaproveita os textos e as imagens já gerados.
 
 Os limites efetivos vêm de `plans.text_limit` e `plans.image_limit`; o BFF não
 usa limites enviados pelo navegador. Antes de chamar a OpenAI, o backend reserva
 as unidades no PostgreSQL por uma RPC que bloqueia a linha de uso do workspace
 e período. Uma geração individual reserva **1 texto + 1 imagem**. Gerar uma
 imagem para um rascunho existente reserva **1 imagem**. Um lote reserva **1 texto
-por item retornado** (até 42) e **0 imagens**, porque o provedor atual não gera
-imagens no lote. A cobrança mostra consumo concluído e
-reservas em andamento, sempre para o período da assinatura atual.
+por item retornado** (até 42). Depois, a etapa de imagens reserva **1 imagem por
+data**, compartilhada entre os destinos dessa data. A cobrança mostra consumo
+concluído e reservas em andamento, sempre para o período da assinatura atual.
 
 Quando o provedor falha, a reserva é liberada; quando responde com sucesso, as
 unidades são consumidas. Reservas deixadas por encerramento abrupto expiram em

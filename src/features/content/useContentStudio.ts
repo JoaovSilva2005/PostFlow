@@ -6,6 +6,7 @@ import {
   type ContentRequest,
   type ConversationMessage,
   type GenerationService,
+  type Platform,
 } from './generationService'
 
 interface PendingGeneration {
@@ -26,15 +27,18 @@ function mergeDrafts(current: PostDraft[], generated: PostDraft[]) {
 export function useContentStudio(service: GenerationService) {
   const [messages, setMessages] = useState<ConversationMessage[]>([])
   const [drafts, setDrafts] = useState<PostDraft[]>([])
-  const [activePlatform, setActivePlatform] = useState<string | null>(null)
+  const [activePlatform, setActivePlatform] = useState<Platform | null>(null)
+  const [pendingPlatforms, setPendingPlatforms] = useState<Platform[]>([])
+  const [failedPlatforms, setFailedPlatforms] = useState<Platform[]>([])
   const [draftWorkspaceId, setDraftWorkspaceId] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [lastRequest, setLastRequest] = useState<PendingGeneration | null>(null)
   const active = useRef<AbortController | null>(null)
-  const draft =
-    drafts.find((item) => item.platform === activePlatform) ?? drafts[0] ?? null
+  const draft = activePlatform
+    ? drafts.find((item) => item.platform === activePlatform) ?? null
+    : drafts[0] ?? null
 
   useEffect(() => () => active.current?.abort(), [])
 
@@ -50,6 +54,15 @@ export function useContentStudio(service: GenerationService) {
     setNotice('')
     setIsGenerating(true)
     setLastRequest({ requests, replace })
+    setPendingPlatforms(requests.map(({ platform }) => platform))
+    setFailedPlatforms([])
+    if (replace) {
+      setDrafts([])
+      setActivePlatform(requests[0].platform)
+      setDraftWorkspaceId(requests[0].workspaceId ?? null)
+    } else {
+      setActivePlatform((current) => current ?? requests[0].platform)
+    }
     if (!retry)
       setMessages((current) => [
         ...current,
@@ -72,9 +85,39 @@ export function useContentStudio(service: GenerationService) {
     try {
       const outcomes = await Promise.race([
         Promise.allSettled(
-          requests.map((request) =>
-            service.generate(request, controller.signal),
-          ),
+          requests.map(async (request) => {
+            try {
+              const generatedDraft = await service.generate(
+                request,
+                controller.signal,
+              )
+              if (active.current === controller && !controller.signal.aborted) {
+                setDrafts((current) => mergeDrafts(current, [generatedDraft]))
+                setActivePlatform(
+                  (current) => current ?? (generatedDraft.platform as Platform),
+                )
+                setDraftWorkspaceId(
+                  (current) => current ?? request.workspaceId ?? null,
+                )
+                setPendingPlatforms((current) =>
+                  current.filter((platform) => platform !== request.platform),
+                )
+              }
+              return generatedDraft
+            } catch (cause) {
+              if (active.current === controller && !controller.signal.aborted) {
+                setFailedPlatforms((current) =>
+                  current.includes(request.platform)
+                    ? current
+                    : [...current, request.platform],
+                )
+                setPendingPlatforms((current) =>
+                  current.filter((platform) => platform !== request.platform),
+                )
+              }
+              throw cause
+            }
+          }),
         ),
         aborted,
       ])
@@ -90,16 +133,6 @@ export function useContentStudio(service: GenerationService) {
       )
 
       if (generated.length) {
-        setDrafts((current) =>
-          replace
-            ? mergeDrafts([], generated)
-            : mergeDrafts(current, generated),
-        )
-        setActivePlatform((current) =>
-          replace ? generated[0].platform : (current ?? generated[0].platform),
-        )
-        if (replace || !draftWorkspaceId)
-          setDraftWorkspaceId(requests[0].workspaceId ?? null)
         const message =
           requests.length === 1 && !retry
             ? requests[0].previousDraft
@@ -142,6 +175,7 @@ export function useContentStudio(service: GenerationService) {
       if (active.current === controller) {
         active.current = null
         setIsGenerating(false)
+        setPendingPlatforms([])
         if (timedOut)
           setError(generationError(new DOMException('', 'TimeoutError')))
       }
@@ -149,10 +183,21 @@ export function useContentStudio(service: GenerationService) {
   }
 
   function cancel() {
+    const retryPlatforms = new Set([...pendingPlatforms, ...failedPlatforms])
+    if (lastRequest && retryPlatforms.size > 0) {
+      const remainingRequests = lastRequest.requests.filter(({ platform }) =>
+        retryPlatforms.has(platform),
+      )
+      if (remainingRequests.length) {
+        setLastRequest({ requests: remainingRequests, replace: false })
+      }
+    }
     active.current?.abort()
     active.current = null
     setIsGenerating(false)
-    setNotice('Geração cancelada. Os rascunhos anteriores foram mantidos.')
+    setPendingPlatforms([])
+    setFailedPlatforms([])
+    setNotice('Geração cancelada. Os rascunhos já concluídos foram mantidos.')
   }
 
   function reset() {
@@ -175,6 +220,8 @@ export function useContentStudio(service: GenerationService) {
     draft,
     drafts,
     activePlatform,
+    pendingPlatforms,
+    failedPlatforms,
     setActivePlatform,
     draftWorkspaceId,
     setDraft,

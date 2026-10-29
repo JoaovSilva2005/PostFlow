@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import type { BrandProfile, PostDraft } from '../../domain/models'
-import { ApiError, apiRequest } from '../../services/apiClient'
+import {
+  ApiError,
+  apiRequest,
+  SESSION_REFRESH_UNAVAILABLE_CODE,
+} from '../../services/apiClient'
 import { localDate } from '../../domain/dates'
 import {
   CONTENT_FORMATS,
@@ -24,6 +28,7 @@ export interface ConversationMessage {
 }
 export interface ContentRequest {
   workspaceId?: string
+  billingWorkspaceId?: string
   prompt: string
   platform: Platform
   date: string
@@ -39,6 +44,7 @@ export interface ContentRequest {
 }
 export interface BatchContentRequest {
   workspaceId?: string
+  billingWorkspaceId?: string
   prompt: string
   dates: string[]
   time: string
@@ -56,6 +62,17 @@ export interface GenerationService {
     request: BatchContentRequest,
     signal: AbortSignal,
   ): Promise<PostDraft[]>
+}
+
+function generationHeaders(
+  workspaceId?: string,
+  billingWorkspaceId?: string,
+): HeadersInit | undefined {
+  const headers: Record<string, string> = {}
+  if (workspaceId) headers['X-Workspace-Id'] = workspaceId
+  if (billingWorkspaceId)
+    headers['X-Billing-Workspace-Id'] = billingWorkspaceId
+  return Object.keys(headers).length ? headers : undefined
 }
 
 const dateSchema = z
@@ -99,10 +116,16 @@ export const draftSchema = z.object({
 
 export function generationError(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.code === SESSION_REFRESH_UNAVAILABLE_CODE)
+      return 'Não foi possível validar sua sessão agora. Tente novamente em instantes.'
     if (error.status === 401)
       return 'Sua sessão expirou. Entre novamente para gerar conteúdo.'
     if (error.status === 402)
       return 'Um plano ativo é necessário para gerar conteúdo. Acesse Assinatura e cobrança.'
+    if (error.status === 429 && /franquia de imagens/i.test(error.message))
+      return 'A franquia de imagens do plano foi atingida. Consulte Assinatura e cobrança antes de tentar novamente.'
+    if (error.status === 429 && /franquia de textos/i.test(error.message))
+      return 'A franquia de textos do plano foi atingida. Consulte Assinatura e cobrança antes de tentar novamente.'
     if (error.status === 429)
       return 'Limite de geração atingido. Aguarde um pouco e tente novamente.'
     if (error.status === 404 || error.status === 503)
@@ -261,6 +284,7 @@ export const apiGenerationService: GenerationService = {
   async generate(request, signal) {
     const {
       workspaceId,
+      billingWorkspaceId,
       previousDraft,
       imageTier = 'standard',
       ...requestWithoutWorkspace
@@ -275,7 +299,7 @@ export const apiGenerationService: GenerationService = {
     const result = await apiRequest<unknown>('/content/generate', {
       method: 'POST',
       body: JSON.stringify(contentRequest),
-      headers: workspaceId ? { 'X-Workspace-Id': workspaceId } : undefined,
+      headers: generationHeaders(workspaceId, billingWorkspaceId),
       signal,
     })
     return draftSchema.parse(result)
@@ -283,6 +307,7 @@ export const apiGenerationService: GenerationService = {
   async generateImage(request, signal) {
     const {
       workspaceId,
+      billingWorkspaceId,
       previousDraft,
       imageTier = 'standard',
       ...requestWithoutWorkspace
@@ -300,7 +325,7 @@ export const apiGenerationService: GenerationService = {
           : null,
         imageTier,
       }),
-      headers: workspaceId ? { 'X-Workspace-Id': workspaceId } : undefined,
+      headers: generationHeaders(workspaceId, billingWorkspaceId),
       signal,
     })
     return z
@@ -309,16 +334,16 @@ export const apiGenerationService: GenerationService = {
       .refine(
         (value) =>
           /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value) ||
-          /^https:\/\//.test(value),
+          value.startsWith('https://'),
       )
       .parse(result)
   },
   async generateBatch(request, signal) {
-    const { workspaceId, ...contentRequest } = request
+    const { workspaceId, billingWorkspaceId, ...contentRequest } = request
     const result = await apiRequest<unknown>('/content/generate-batch', {
       method: 'POST',
       body: JSON.stringify(contentRequest),
-      headers: workspaceId ? { 'X-Workspace-Id': workspaceId } : undefined,
+      headers: generationHeaders(workspaceId, billingWorkspaceId),
       signal,
     })
     const batchSchema = z

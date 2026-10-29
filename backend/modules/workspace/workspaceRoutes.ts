@@ -65,7 +65,7 @@ const draftCreateSchema = draftSchema.extend({
     .refine(
       (value) =>
         /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value) ||
-        /^https:\/\//.test(value),
+        value.startsWith('https://'),
       'A imagem gerada possui um formato inválido.',
     )
     .optional(),
@@ -78,7 +78,7 @@ const draftImageSchema = z
       .refine(
         (value) =>
           /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value) ||
-          /^https:\/\//.test(value),
+          value.startsWith('https://'),
         'A imagem gerada possui um formato inválido.',
       ),
   })

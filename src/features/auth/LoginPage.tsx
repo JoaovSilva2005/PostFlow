@@ -13,7 +13,7 @@ import {
   Settings,
   Sparkles,
 } from 'lucide-react'
-import { Navigate, useNavigate } from 'react-router'
+import { Navigate, useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
 import { Button } from '../../components/ui/Button'
 import { SelectField, TextField } from '../../components/ui/FormField'
@@ -188,6 +188,7 @@ function validateRegistration(input: {
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated, login, recoverPassword, register } = useApp()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [displayName, setDisplayName] = useState('')
@@ -198,14 +199,33 @@ export function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+  const routeState =
+    typeof location.state === 'object' && location.state !== null
+      ? (location.state as Record<string, unknown>)
+      : null
+  const requestedDestination = routeState?.from
+  const returnTo =
+    typeof requestedDestination === 'string' &&
+    requestedDestination.startsWith('/') &&
+    !requestedDestination.startsWith('//')
+      ? requestedDestination
+      : '/brand'
+  const sessionExpired = routeState?.sessionExpired === true
   const [feedback, setFeedback] = useState<{
     message: string
     type: 'error' | 'success'
-  } | null>(null)
+  } | null>(
+    sessionExpired
+      ? {
+          message: 'Sua sessão expirou. Entre novamente para continuar.',
+          type: 'error',
+        }
+      : null,
+  )
   const isBusy = isSubmitting
 
   if (isAuthenticated) {
-    return <Navigate to="/brand" replace />
+    return <Navigate to={returnTo} replace />
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -255,7 +275,7 @@ export function LoginPage() {
         await login({ email, password })
       }
 
-      navigate('/brand', { replace: true })
+      navigate(returnTo, { replace: true })
     } catch (error) {
       setFeedback({
         message:

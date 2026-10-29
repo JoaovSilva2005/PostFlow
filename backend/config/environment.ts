@@ -66,6 +66,7 @@ const explicitlyAllowedOrigins = (process.env.APP_ALLOWED_ORIGINS ?? '')
 export const environment = {
   apiPort: Number(process.env.API_PORT ?? 3001),
   appUrl,
+  socialDemoMode: process.env.SOCIAL_DEMO_MODE === 'true',
   isProduction,
   allowDemoFallback:
     !isProduction && process.env.POSTFLOW_ALLOW_DEMO_FALLBACK === 'true',
@@ -106,4 +107,7 @@ export const environment = {
     'gpt-image-2.5-sunburst',
   openAiImageQuality: process.env.OPENAI_IMAGE_QUALITY?.trim() || 'medium',
   openAiImageSize: process.env.OPENAI_IMAGE_SIZE?.trim() || '1024x1024',
+  aiCostUsdBrlFallbackRate: Number(
+    process.env.AI_COST_USD_BRL_FALLBACK_RATE ?? 0,
+  ),
 }
