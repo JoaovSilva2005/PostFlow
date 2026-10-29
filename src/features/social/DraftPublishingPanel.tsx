@@ -3,6 +3,7 @@ import { CheckCircle2, Clock3, Send } from 'lucide-react'
 import { Link } from 'react-router'
 import type { PostDraft } from '../../domain/models'
 import type {
+  PublicationStatus,
   SocialProviderId,
   TikTokCreatorInfo,
 } from '../../../shared/domain/socialPublishing'
@@ -10,6 +11,11 @@ import { useApp } from '../../app/AppContext'
 import { Button } from '../../components/ui/Button'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
 import { socialApi } from './socialApi'
+import {
+  hasPendingPublication,
+  publicationStatusLabel,
+  usePublicationPolling,
+} from './publicationStatus'
 import styles from './social.module.css'
 
 interface Props {
@@ -18,9 +24,11 @@ interface Props {
 }
 interface Outcome {
   provider: string
-  status: string
-  label?: string
-  message: string
+  status: PublicationStatus
+  simulated?: boolean
+  publicationId?: string
+  /** Mensagem fixa (erros); resultados aceitos derivam do status atual. */
+  message?: string
 }
 
 export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
@@ -49,6 +57,7 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [outcomes, setOutcomes] = useState<Outcome[]>([])
+  const [pendingInOverview, setPendingInOverview] = useState(false)
   const isStatic = !draft.format || draft.format === 'static'
   const draftProvider = socialProviderForPlatform(draft.platform)
 
@@ -61,6 +70,7 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
       .then((overview) => {
         if (active) {
           setDemoMode(overview.demoMode)
+          setPendingInOverview(hasPendingPublication(overview.publications))
           const configured = overview.providers.filter(
             (provider) =>
               provider.configured && provider.formats.includes('static'),
@@ -95,6 +105,35 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
       active = false
     }
   }, [currentWorkspace?.id, draft.platform])
+
+  usePublicationPolling(
+    pendingInOverview || hasPendingPublication(outcomes),
+    () => void refreshStatuses(),
+  )
+
+  async function refreshStatuses() {
+    if (!currentWorkspace) return
+    try {
+      const overview = await socialApi.overview(currentWorkspace.id)
+      setPendingInOverview(hasPendingPublication(overview.publications))
+      setOutcomes((current) =>
+        current.map((outcome) => {
+          const latest = overview.publications.find(
+            (item) => item.id === outcome.publicationId,
+          )
+          return latest
+            ? {
+                ...outcome,
+                status: latest.status,
+                simulated: latest.simulated,
+              }
+            : outcome
+        }),
+      )
+    } catch {
+      // Mantém o último status conhecido; a próxima consulta tenta de novo.
+    }
+  }
 
   async function toggleConnection(id: string, checked: boolean) {
     setSelected((current) =>
@@ -189,11 +228,8 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
           return {
             provider: connection.displayName,
             status: publication.status,
-            label:
-              publication.status === 'published' && publication.simulated
-                ? 'Publicado (simulado)'
-                : undefined,
-            message: `Solicitação registrada: ${publication.status}.`,
+            simulated: publication.simulated,
+            publicationId: publication.id,
           }
         } catch (cause) {
           return {
@@ -473,9 +509,12 @@ export function DraftPublishingPanel({ draft, hasUnsavedChanges }: Props) {
           {outcomes.map((result) => (
             <li key={result.provider}>
               <strong>
-                {result.provider} · {result.label ?? result.status}
+                {result.provider} · {publicationStatusLabel(result)}
               </strong>
-              <span>{result.message}</span>
+              <span>
+                {result.message ??
+                  `Solicitação registrada: ${publicationStatusLabel(result)}.`}
+              </span>
             </li>
           ))}
         </ul>

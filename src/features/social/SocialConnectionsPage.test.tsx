@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
@@ -300,6 +300,173 @@ describe('SocialConnectionsPage', () => {
       })
       renderConnections()
       expect(await screen.findByText('Demonstração')).toBeInTheDocument()
+    })
+
+    describe('autorização de demonstração', () => {
+      const assign = vi.fn()
+      const demoOverview: SocialOverview = {
+        ...overview,
+        demoMode: true,
+        providers: overview.providers.map((provider) => ({
+          ...provider,
+          configured: true,
+        })),
+        connections: [],
+        pending: [],
+        publications: [],
+      }
+      const origin = window.location.origin
+
+      async function clickConnect(provider: 'Instagram' | 'Facebook') {
+        const user = userEvent.setup()
+        renderConnections()
+        await screen.findByText(
+          'Modo demonstração: as conexões e publicações são simuladas e nada é enviado às redes sociais.',
+        )
+        const card = screen
+          .getByRole('heading', { name: provider })
+          .closest('article') as HTMLElement
+        await waitFor(() =>
+          expect(
+            within(card).getByRole('button', { name: 'Conectar conta' }),
+          ).toBeEnabled(),
+        )
+        await user.click(
+          within(card).getByRole('button', { name: 'Conectar conta' }),
+        )
+      }
+
+      beforeEach(() => {
+        assign.mockReset()
+        vi.stubGlobal('location', { origin, assign })
+      })
+      afterEach(() => {
+        vi.unstubAllGlobals()
+      })
+
+      it('demo ligado + callback do próprio domínio navega', async () => {
+        vi.mocked(socialApi.overview).mockResolvedValue(demoOverview)
+        const url = `${origin}/api/social/oauth/instagram/callback?code=demo-code&state=abc`
+        vi.mocked(socialApi.beginOAuth).mockResolvedValue({
+          authorizationUrl: url,
+        })
+        await clickConnect('Instagram')
+        await waitFor(() => expect(assign).toHaveBeenCalledWith(url))
+      })
+
+      it('demo desligado + mesma URL é rejeitada', async () => {
+        vi.mocked(socialApi.overview).mockResolvedValue({
+          ...demoOverview,
+          demoMode: false,
+        })
+        vi.mocked(socialApi.beginOAuth).mockResolvedValue({
+          authorizationUrl: `${origin}/api/social/oauth/instagram/callback?code=demo-code&state=abc`,
+        })
+        const user = userEvent.setup()
+        renderConnections()
+        const card = (
+          await screen.findByRole('heading', { name: 'Instagram' })
+        ).closest('article') as HTMLElement
+        await waitFor(() =>
+          expect(
+            within(card).getByRole('button', { name: 'Conectar conta' }),
+          ).toBeEnabled(),
+        )
+        await user.click(
+          within(card).getByRole('button', { name: 'Conectar conta' }),
+        )
+        expect(
+          await screen.findByText(/destino de autorização inválido/),
+        ).toBeInTheDocument()
+        expect(assign).not.toHaveBeenCalled()
+      })
+
+      it.each([
+        ['outro caminho', `${origin}/api/social/oauth/instagram/other`],
+        [
+          'outro provedor',
+          `${origin}/api/social/oauth/facebook/callback?code=demo-code`,
+        ],
+        [
+          'outra origem',
+          'https://evil.example/api/social/oauth/instagram/callback',
+        ],
+      ])('demo ligado + %s é rejeitado', async (_name, url) => {
+        vi.mocked(socialApi.overview).mockResolvedValue(demoOverview)
+        vi.mocked(socialApi.beginOAuth).mockResolvedValue({
+          authorizationUrl: url,
+        })
+        await clickConnect('Instagram')
+        expect(
+          await screen.findByText(/destino de autorização inválido/),
+        ).toBeInTheDocument()
+        expect(assign).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('atualização automática', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    })
+    const published = {
+      ...overview,
+      publications: [
+        {
+          ...overview.publications[0],
+          status: 'published' as const,
+          simulated: true,
+        },
+      ],
+    }
+
+    it('atualiza a cada 15 s enquanto há publicação pendente e para ao concluir', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      vi.mocked(socialApi.overview)
+        .mockResolvedValueOnce(overview)
+        .mockResolvedValue(published)
+      renderConnections()
+      expect(await screen.findByText('Na fila')).toBeInTheDocument()
+      expect(socialApi.overview).toHaveBeenCalledTimes(1)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(14_000)
+      })
+      expect(socialApi.overview).toHaveBeenCalledTimes(1)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_500)
+      })
+      expect(
+        await screen.findByText('Publicado (simulado)'),
+      ).toBeInTheDocument()
+      expect(socialApi.overview).toHaveBeenCalledTimes(2)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+      expect(socialApi.overview).toHaveBeenCalledTimes(2)
+    })
+
+    it('não atualiza com a aba oculta e limpa o intervalo ao desmontar', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const visibility = vi
+        .spyOn(document, 'visibilityState', 'get')
+        .mockReturnValue('hidden')
+      const { unmount } = renderConnections()
+      expect(await screen.findByText('Na fila')).toBeInTheDocument()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(45_000)
+      })
+      expect(socialApi.overview).toHaveBeenCalledTimes(1)
+      visibility.mockReturnValue('visible')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000)
+      })
+      expect(socialApi.overview).toHaveBeenCalledTimes(2)
+      unmount()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+      expect(socialApi.overview).toHaveBeenCalledTimes(2)
     })
   })
 })
