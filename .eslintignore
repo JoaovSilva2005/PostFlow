@@ -1,0 +1,2 @@
+# Bundled agent tooling is outside the PostFlow application lint scope.
+.agents/

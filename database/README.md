@@ -47,6 +47,11 @@ SaaS.
 
 ## Migrações novas e bases existentes
 
+Para o projeto existente, consulte primeiro a
+[reconciliação de 29/10/2026](../docs/migration-reconciliation-2026-10-29.md).
+Há SQLs equivalentes registrados com timestamps diferentes. Não reaplique as
+migrações locais por diferença de versão nem use `db push` sem comparar o histórico.
+
 Não mova nem renomeie migrações históricas: arquivos em qualquer diretório
 podem já ter sido aplicados manualmente ou pelo CLI. Para uma nova alteração:
 

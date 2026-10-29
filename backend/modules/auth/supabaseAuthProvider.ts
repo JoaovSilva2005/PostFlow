@@ -111,6 +111,22 @@ export class SupabaseAuthProvider implements AuthProvider {
     if (error) throw error
   }
 
+  async resetPassword(tokenHash: string, password: string) {
+    const client = this.createClient()
+    // A recovery OTP is the authority for this operation. Cookies or an
+    // ordinary access token must never authorize a password reset.
+    const { data, error } = await client.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: 'recovery',
+    })
+    if (error || !data.session) {
+      throw error ?? new Error('Token de recuperação inválido.')
+    }
+
+    const { error: updateError } = await client.auth.updateUser({ password })
+    if (updateError) throw updateError
+  }
+
   async logout(accessToken: string, refreshToken: string) {
     const client = this.createClient()
     const { error: sessionError } = await client.auth.setSession({

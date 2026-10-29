@@ -178,7 +178,7 @@ Na Vercel:
 2. mantenha a raiz do projeto como `Root Directory`;
 3. cadastre as variáveis de produção;
 4. não defina `VITE_API_URL`, ou use somente `/api`;
-5. cadastre `${APP_URL}/login` nas URLs de redirecionamento do Supabase Auth.
+5. cadastre `${APP_URL}/reset-password` nas URLs de redirecionamento do Supabase Auth.
 
 Depois do deploy, valide:
 
