@@ -216,8 +216,13 @@ async function runCase(browser, { width, theme }) {
       setter.call(input, '#b4532a')
       input.dispatchEvent(new Event('input', { bubbles: true }))
     })
+    await page.getByLabel('Segmento').selectOption('Alimentação e bebidas')
     await assertNoOverflow(page)
     await shot(page, `brand-setup-step1-${tag}`)
+    // Keyboard focus on the first palette swatch shows the solid ring.
+    await page.getByLabel('Segmento').focus()
+    await page.keyboard.press('Tab')
+    await shot(page, `brand-setup-focus-${tag}`)
     await page.getByRole('button', { name: /Continuar/ }).click()
     await page.getByLabel('O que a marca faz?').fill(fullBrand.description)
     await page.getByRole('button', { name: /Continuar/ }).click()

@@ -1,7 +1,11 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { BrandProfile } from '../../domain/models'
-import { createTestRepository } from '../../test/testRepository'
+import type { BrandProfile, BrandWorkspace } from '../../domain/models'
+import {
+  createTestRepository,
+  type TestRepository,
+} from '../../test/testRepository'
+import { createTestAuthGateway } from '../../test/testAuthGateway'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
 
 const savedBrand: BrandProfile = {
@@ -30,6 +34,7 @@ describe('BrandPage · primeiro cadastro', () => {
       await screen.findByLabelText('Nome da marca'),
       'Café Aurora',
     )
+    await user.selectOptions(screen.getByLabelText('Segmento'), 'Tecnologia')
     fireEvent.change(screen.getByLabelText('Cor principal'), {
       target: { value: '#123456' },
     })
@@ -64,6 +69,8 @@ describe('BrandPage · primeiro cadastro', () => {
 
     await user.click(screen.getByRole('button', { name: /Continuar/ }))
     expect(screen.getByText('Informe o nome da marca.')).toBeInTheDocument()
+    expect(screen.getByText('Selecione o segmento.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nome da marca')).toHaveFocus()
     expect(
       screen.getByRole('heading', { name: 'Identidade da marca' }),
     ).toBeInTheDocument()
@@ -72,6 +79,10 @@ describe('BrandPage · primeiro cadastro', () => {
     expect(
       screen.queryByText('Informe o nome da marca.'),
     ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Continuar/ }))
+    expect(screen.getByLabelText('Segmento')).toHaveFocus()
+    await user.selectOptions(screen.getByLabelText('Segmento'), 'Tecnologia')
+    expect(screen.queryByText('Selecione o segmento.')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Continuar/ }))
 
     expect(
@@ -97,6 +108,7 @@ describe('BrandPage · primeiro cadastro', () => {
     )
 
     await user.type(screen.getByLabelText('Nome da marca'), 'Café Aurora')
+    await user.selectOptions(screen.getByLabelText('Segmento'), 'Tecnologia')
     fireEvent.change(screen.getByLabelText('Cor principal'), {
       target: { value: '#123456' },
     })
@@ -136,6 +148,7 @@ describe('BrandPage · primeiro cadastro', () => {
       await screen.findByLabelText('Nome da marca'),
       'Café Aurora',
     )
+    await user.selectOptions(screen.getByLabelText('Segmento'), 'Tecnologia')
     await user.click(screen.getByRole('button', { name: /Continuar/ }))
     await user.type(
       screen.getByLabelText('O que a marca faz?'),
@@ -190,9 +203,10 @@ describe('BrandPage · marca criada no cadastro da conta', () => {
       await screen.findByRole('heading', { name: 'Cadastre sua marca' }),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Nome da marca')).toHaveValue('Studio Maria')
-    expect(screen.getByLabelText('Segmento')).toHaveValue(
-      'Alimentação e bebidas',
-    )
+    expect(screen.getByLabelText('Segmento')).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: /Continuar/ }))
+    expect(screen.getByText('Selecione o segmento.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Segmento')).toHaveFocus()
 
     await user.click(
       screen.getByRole('button', { name: 'Ver todos os campos de uma vez' }),
@@ -256,6 +270,197 @@ describe('BrandPage · marca existente', () => {
     await user.click(screen.getByRole('button', { name: 'Salvar' }))
 
     expect(screen.getByText('Informe o nome da marca.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nome da marca')).toHaveFocus()
     expect(repository.snapshot().brand?.name).toBe('Café Aurora')
+  })
+})
+
+function withWorkspaces(
+  repository: TestRepository,
+  workspaces: BrandWorkspace[],
+): TestRepository {
+  return {
+    ...repository,
+    listWorkspaces: async () => workspaces,
+    // Each workspace loads its own brand, like the API does.
+    async load(workspaceId, billingWorkspaceId) {
+      const data = await repository.load(workspaceId, billingWorkspaceId)
+      const workspace = workspaces.find(({ id }) => id === workspaceId)
+      return workspace && workspaceId !== 'brand-1'
+        ? { ...data, brand: workspace.brand }
+        : data
+    },
+  }
+}
+
+/** A regular customer (no platform role), so the brand limit applies. */
+const customerGateway = () =>
+  createTestAuthGateway({
+    user: {
+      id: 'test-user',
+      email: 'aluno@postflow.com',
+      displayName: 'Aluno PostFlow',
+    },
+    workspace: { id: 'brand-1', role: 'owner' },
+    platformRole: null,
+    billingStatus: 'active',
+  })
+
+const otherBrand: BrandProfile = {
+  ...savedBrand,
+  name: 'Studio Maria',
+  primaryColor: '#DB2777',
+  colorPalette: ['#DB2777'],
+}
+
+const twoOwnedWorkspaces: BrandWorkspace[] = [
+  { id: 'brand-1', role: 'owner', billingStatus: 'active', brand: savedBrand },
+  { id: 'brand-2', role: 'owner', billingStatus: 'active', brand: otherBrand },
+]
+
+describe('BrandPage · regras', () => {
+  it('limita a paleta a cinco cores', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    renderApp('/brand', createTestRepository({ brand: savedBrand }))
+
+    await screen.findByDisplayValue('Café Aurora')
+    expect(screen.getByText('2/5')).toBeInTheDocument()
+    for (let added = 0; added < 3; added++)
+      await user.click(screen.getByRole('button', { name: /Adicionar cor/ }))
+
+    expect(screen.getByText('5/5')).toBeInTheDocument()
+    expect(screen.getByLabelText('Cor de apoio 4')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Adicionar cor/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('avisa sobre o limite de marcas em Nova marca', async () => {
+    authenticateDemo()
+    renderApp(
+      '/brand/new',
+      withWorkspaces(
+        createTestRepository({ brand: savedBrand }),
+        twoOwnedWorkspaces,
+      ),
+      customerGateway(),
+    )
+
+    expect(
+      await screen.findByText(/Sua conta pode cadastrar até duas marcas\./),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Nova marca', level: 1 }),
+    ).toBeInTheDocument()
+    await userEvent.click(
+      screen.getByRole('button', { name: /Trocar de marca/ }),
+    )
+    expect(
+      screen.getByText('Limite de duas marcas atingido.'),
+    ).toBeInTheDocument()
+  })
+
+  it('pede confirmação antes de trocar de marca com alterações não salvas', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    try {
+      renderApp(
+        '/brand',
+        withWorkspaces(
+          createTestRepository({ brand: savedBrand }),
+          twoOwnedWorkspaces,
+        ),
+      )
+
+      const name = await screen.findByDisplayValue('Café Aurora')
+      await user.type(name, ' Torrefação')
+      await user.click(screen.getByRole('button', { name: /Trocar de marca/ }))
+      await user.click(screen.getByRole('button', { name: /Studio Maria/ }))
+
+      expect(confirm).toHaveBeenCalledTimes(1)
+      expect(screen.getByLabelText('Nome da marca')).toHaveValue(
+        'Café Aurora Torrefação',
+      )
+
+      confirm.mockReturnValue(true)
+      await user.click(screen.getByRole('button', { name: /Trocar de marca/ }))
+      await user.click(screen.getByRole('button', { name: /Studio Maria/ }))
+
+      expect(confirm).toHaveBeenCalledTimes(2)
+      expect(
+        await screen.findByDisplayValue('Studio Maria'),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText('Alterações não salvas'),
+      ).not.toBeInTheDocument()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('troca de marca sem perguntar quando não há alterações', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const confirm = vi.spyOn(window, 'confirm')
+    try {
+      renderApp(
+        '/brand',
+        withWorkspaces(
+          createTestRepository({ brand: savedBrand }),
+          twoOwnedWorkspaces,
+        ),
+      )
+      await screen.findByDisplayValue('Café Aurora')
+      await user.click(screen.getByRole('button', { name: /Trocar de marca/ }))
+      await user.click(screen.getByRole('button', { name: /Studio Maria/ }))
+      expect(
+        await screen.findByDisplayValue('Studio Maria'),
+      ).toBeInTheDocument()
+      expect(confirm).not.toHaveBeenCalled()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('preserva um segmento personalizado ao salvar', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    const repository = createTestRepository({
+      brand: { ...savedBrand, segment: 'Padaria artesanal' },
+    })
+    renderApp('/brand', repository)
+
+    await screen.findByDisplayValue('Café Aurora')
+    expect(screen.getByLabelText('Segmento')).toHaveValue('Padaria artesanal')
+    await user.selectOptions(screen.getByLabelText('Tom de voz'), 'Inspirador')
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(await screen.findByText(/Marca salva\./)).toBeInTheDocument()
+    expect(repository.snapshot().brand).toMatchObject({
+      segment: 'Padaria artesanal',
+      toneOfVoice: 'Inspirador',
+    })
+  })
+
+  it('continua nas configurações depois de salvar sem contexto', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    renderApp(
+      '/brand',
+      createTestRepository({
+        brand: { ...savedBrand, targetAudience: '' },
+      }),
+    )
+
+    const description = await screen.findByDisplayValue('Torrefação artesanal.')
+    await user.clear(description)
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(await screen.findByText(/Marca salva\./)).toBeInTheDocument()
+    expect(
+      screen.getByRole('navigation', { name: 'Seções da marca' }),
+    ).toBeInTheDocument()
   })
 })

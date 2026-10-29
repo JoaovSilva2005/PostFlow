@@ -9,6 +9,7 @@ import {
 import { ArrowLeft, ArrowRight, Check, Plus, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
+import { useCanCreateBrand } from '../../app/useBrandCreation'
 import { AppShell } from '../../components/AppShell/AppShell'
 import { Button } from '../../components/ui/Button'
 import { SelectField, TextField } from '../../components/ui/FormField'
@@ -61,7 +62,7 @@ type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]['id']
 
 const EMPTY_BRAND_PROFILE: BrandProfile = {
   name: '',
-  segment: 'Alimentação e bebidas',
+  segment: '',
   toneOfVoice: 'Próximo e acolhedor',
   primaryColor: '#4F46E5',
   colorPalette: DEFAULT_PALETTE,
@@ -76,6 +77,13 @@ const EMPTY_BRAND_PROFILE: BrandProfile = {
 }
 
 const NAME_REQUIRED = 'Informe o nome da marca.'
+const SEGMENT_REQUIRED = 'Selecione o segmento.'
+/** Segment stored by account signup before the owner picks one. */
+const PLACEHOLDER_SEGMENT = 'A definir'
+const NAME_FIELD_ID = 'brand-name'
+const SEGMENT_FIELD_ID = 'segment'
+
+type FieldErrors = { name?: string; segment?: string }
 const BRAND_LIMIT = 'Sua conta pode cadastrar até duas marcas.'
 
 function getPalette(brand: BrandProfile | null | undefined) {
@@ -96,10 +104,52 @@ function formFromBrand(brand: BrandProfile | null | undefined): BrandProfile {
     ...brand,
     colorPalette: getPalette(brand),
   }
-  // Accounts start with a placeholder segment; show what will be saved.
-  if (!KNOWN_SEGMENTS.has(form.segment))
-    form.segment = EMPTY_BRAND_PROFILE.segment
+  // Accounts start with a placeholder segment: ask for a real one instead.
+  const segment = form.segment?.trim() ?? ''
+  form.segment = segment === PLACEHOLDER_SEGMENT ? '' : segment
   return form
+}
+
+/** Known segments plus a custom stored one, so saving never drops it. */
+function segmentOptions(storedSegment: string | undefined) {
+  const custom = storedSegment?.trim()
+  return custom && custom !== PLACEHOLDER_SEGMENT && !KNOWN_SEGMENTS.has(custom)
+    ? [...BRAND_SEGMENT_OPTIONS, { label: custom, value: custom }]
+    : BRAND_SEGMENT_OPTIONS
+}
+
+function validateIdentity(form: BrandProfile): FieldErrors {
+  const errors: FieldErrors = {}
+  if (!form.name.trim()) errors.name = NAME_REQUIRED
+  if (!form.segment.trim()) errors.segment = SEGMENT_REQUIRED
+  return errors
+}
+
+function firstInvalidField(errors: FieldErrors) {
+  if (errors.name) return NAME_FIELD_ID
+  if (errors.segment) return SEGMENT_FIELD_ID
+  return null
+}
+
+function clearFieldError(
+  errors: FieldErrors,
+  field: keyof BrandProfile,
+): FieldErrors {
+  if (field === 'name' && errors.name) return { ...errors, name: undefined }
+  if (field === 'segment' && errors.segment)
+    return { ...errors, segment: undefined }
+  return errors
+}
+
+/** Moves focus to a field after the render that shows it. */
+function useFocusRequest() {
+  const [request, setRequest] = useState<{ id: string } | null>(null)
+  useEffect(() => {
+    if (request) document.getElementById(request.id)?.focus()
+  }, [request])
+  return (id: string | null) => {
+    if (id) setRequest({ id })
+  }
 }
 
 /** A brand counts as set up once any of its AI context has been filled in. */
@@ -286,7 +336,8 @@ function PaletteEditor({
 
 function IdentityFields({
   form,
-  error,
+  errors,
+  segments,
   update,
   palette,
   onChangeColor,
@@ -294,7 +345,8 @@ function IdentityFields({
   onRemoveColor,
 }: {
   form: BrandProfile
-  error: string
+  errors: FieldErrors
+  segments: Array<{ label: string; value: string }>
   update: FormUpdater
   palette: string[]
   onChangeColor: (index: number, color: string) => void
@@ -306,19 +358,21 @@ function IdentityFields({
       <div className={styles.fieldPair}>
         <TextField
           label="Nome da marca"
-          name="brand-name"
+          name={NAME_FIELD_ID}
           placeholder="Ex.: Café Aurora"
           value={form.name}
           autoComplete="organization"
           onChange={(event) => update('name', event.target.value)}
-          error={error}
+          error={errors.name}
         />
         <SelectField
           label="Segmento"
-          name="segment"
+          name={SEGMENT_FIELD_ID}
           value={form.segment}
+          placeholder="Selecione o segmento"
           onChange={(event) => update('segment', event.target.value)}
-          options={BRAND_SEGMENT_OPTIONS}
+          options={segments}
+          error={errors.segment}
         />
       </div>
       <PaletteEditor
@@ -590,18 +644,22 @@ function BrandSetup({
   isCreating,
   canCreateBrand,
   onSkip,
+  onDirtyChange,
 }: {
   initialBrand: BrandProfile | null
   isCreating: boolean
   canCreateBrand: boolean
   onSkip?: () => void
+  onDirtyChange: (dirty: boolean) => void
 }) {
   const navigate = useNavigate()
   const { saveBrand, createWorkspace } = useApp()
   const brandForm = useBrandForm(formFromBrand(initialBrand))
-  const { form, palette, update } = brandForm
+  const { form, palette, update, hasChanges } = brandForm
+  const [segments] = useState(() => segmentOptions(initialBrand?.segment))
   const [step, setStep] = useState(0)
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState<FieldErrors>({})
+  const requestFocus = useFocusRequest()
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -614,17 +672,28 @@ function BrandSetup({
     previousStep.current = step
   }, [step])
 
+  useEffect(() => {
+    onDirtyChange(hasChanges)
+  }, [hasChanges, onDirtyChange])
+
   const updateField: FormUpdater = (field, value) => {
-    if (field === 'name' && error) setError('')
+    setErrors((current) => clearFieldError(current, field))
     update(field, value)
   }
 
+  /** Validates step 1; on failure returns to it and focuses the field. */
+  function identityIsValid() {
+    const nextErrors = validateIdentity(form)
+    setErrors(nextErrors)
+    const invalid = firstInvalidField(nextErrors)
+    if (!invalid) return true
+    setStep(0)
+    requestFocus(invalid)
+    return false
+  }
+
   function goTo(nextStep: number) {
-    if (nextStep > 0 && !form.name.trim()) {
-      setError(NAME_REQUIRED)
-      setStep(0)
-      return
-    }
+    if (nextStep > 0 && !identityIsValid()) return
     setStep(Math.max(0, Math.min(nextStep, SETUP_STEPS.length - 1)))
   }
 
@@ -638,18 +707,14 @@ function BrandSetup({
       setSaveError(BRAND_LIMIT)
       return
     }
-    if (!form.name.trim()) {
-      setError(NAME_REQUIRED)
-      setStep(0)
-      return
-    }
-    setError('')
+    if (!identityIsValid()) return
     setSaveError('')
     setIsSaving(true)
     try {
       const payload = toPayload(form)
       if (isCreating) await createWorkspace(payload)
       else await saveBrand(payload)
+      onDirtyChange(false)
       navigate('/chat')
     } catch (cause) {
       setSaveError(errorMessage(cause))
@@ -709,7 +774,9 @@ function BrandSetup({
                 <button
                   type="button"
                   onClick={() => goTo(index)}
-                  disabled={index > step && !form.name.trim()}
+                  disabled={
+                    index > step && (!form.name.trim() || !form.segment)
+                  }
                 >
                   <span className={styles.stepNumber} aria-hidden="true">
                     {state === 'done' ? <Check size={12} /> : index + 1}
@@ -738,7 +805,8 @@ function BrandSetup({
           {step === 0 ? (
             <IdentityFields
               form={form}
-              error={error}
+              errors={errors}
+              segments={segments}
               update={updateField}
               palette={palette}
               onChangeColor={brandForm.changeColor}
@@ -817,9 +885,11 @@ function SettingsSection({
 function BrandSettings({
   brand,
   canCreateBrand,
+  onDirtyChange,
 }: {
   brand: BrandProfile
   canCreateBrand: boolean
+  onDirtyChange: (dirty: boolean) => void
 }) {
   const navigate = useNavigate()
   const { saveBrand } = useApp()
@@ -827,31 +897,70 @@ function BrandSettings({
   const { form, palette, hasChanges, update, reset } = brandForm
   const [activeSection, setActiveSection] =
     useState<SettingsSectionId>('identity')
-  const [error, setError] = useState('')
+  const [segments] = useState(() => segmentOptions(brand.segment))
+  const [errors, setErrors] = useState<FieldErrors>({})
   const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const requestFocus = useFocusRequest()
+  const scrollingTo = useRef<SettingsSectionId | null>(null)
 
   useEffect(() => {
+    onDirtyChange(hasChanges)
+  }, [hasChanges, onDirtyChange])
+
+  // Section nav follows the section in view. Without IntersectionObserver
+  // (tests, old browsers) it simply follows clicks.
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    const sections = SETTINGS_SECTIONS.map(({ id }) =>
+      document.getElementById(`brand-section-${id}`),
+    ).filter((section): section is HTMLElement => Boolean(section))
+    const visible = new Map<string, boolean>()
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) =>
+          visible.set(entry.target.id, entry.isIntersecting),
+        )
+        const first = SETTINGS_SECTIONS.find(({ id }) =>
+          visible.get(`brand-section-${id}`),
+        )
+        if (!first) return
+        if (scrollingTo.current && scrollingTo.current !== first.id) return
+        scrollingTo.current = null
+        setActiveSection(first.id)
+      },
+      { rootMargin: '-80px 0px -55% 0px' },
+    )
+    sections.forEach((section) => observer.observe(section))
+    return () => observer.disconnect()
+  }, [])
+
+  // Follow external brand updates while the form is untouched. The mount
+  // value is already in the form, so a late first effect cannot wipe edits.
+  const lastBrand = useRef(brand)
+  useEffect(() => {
+    if (lastBrand.current === brand) return
+    lastBrand.current = brand
     if (!hasChanges) reset(formFromBrand(brand))
-    // Only follow external brand updates while the form is untouched.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand])
 
   const updateField: FormUpdater = (field, value) => {
-    if (field === 'name' && error) setError('')
+    setErrors((current) => clearFieldError(current, field))
     setSaved(false)
     update(field, value)
   }
 
   function discard() {
     reset(formFromBrand(brand))
-    setError('')
+    setErrors({})
     setSaveError('')
   }
 
   function goToSection(id: SettingsSectionId) {
     setActiveSection(id)
+    scrollingTo.current = id
     document
       .getElementById(`brand-section-${id}`)
       ?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
@@ -859,12 +968,14 @@ function BrandSettings({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!form.name.trim()) {
-      setError(NAME_REQUIRED)
-      goToSection('identity')
+    const nextErrors = validateIdentity(form)
+    setErrors(nextErrors)
+    const invalid = firstInvalidField(nextErrors)
+    if (invalid) {
+      setActiveSection('identity')
+      requestFocus(invalid)
       return
     }
-    setError('')
     setSaveError('')
     setIsSaving(true)
     try {
@@ -929,7 +1040,8 @@ function BrandSettings({
           >
             <IdentityFields
               form={form}
-              error={error}
+              errors={errors}
+              segments={segments}
               update={updateField}
               palette={palette}
               onChangeColor={(index, color) => {
@@ -1010,28 +1122,26 @@ function BrandSettings({
 
 export function BrandPage() {
   const location = useLocation()
-  const {
-    brand,
-    currentWorkspace,
-    availableWorkspaces,
-    platformRole,
-    databaseStatus,
-  } = useApp()
+  const { brand, currentWorkspace, databaseStatus } = useApp()
   const isCreating = location.pathname.endsWith('/new')
-  const ownedBrandCount = availableWorkspaces.filter(
-    (workspace) => workspace.isOwnedByUser ?? workspace.role === 'owner',
-  ).length
-  const canCreateBrand =
-    platformRole === 'platform_owner' || ownedBrandCount < 2
+  const canCreateBrand = useCanCreateBrand()
   const workspaceKey = currentWorkspace?.id ?? 'none'
-  const [skippedSetupFor, setSkippedSetupFor] = useState<string | null>(null)
+  const [isDirty, setIsDirty] = useState(false)
+  // Once the settings view is shown for a workspace it stays, even if a save
+  // clears every context field.
+  const [settingsFor, setSettingsFor] = useState<string | null>(null)
   const showSettings =
     !isCreating &&
     brand !== null &&
-    (hasBrandContext(brand) || skippedSetupFor === workspaceKey)
+    (hasBrandContext(brand) || settingsFor === workspaceKey)
+
+  useEffect(() => {
+    if (showSettings && settingsFor !== workspaceKey)
+      setSettingsFor(workspaceKey)
+  }, [showSettings, settingsFor, workspaceKey])
 
   return (
-    <AppShell>
+    <AppShell hasUnsavedChanges={isDirty}>
       {!isCreating && !brand && databaseStatus === 'connecting' ? (
         <p className={styles.loading} role="status">
           Carregando a marca...
@@ -1041,6 +1151,7 @@ export function BrandPage() {
           key={`settings-${workspaceKey}`}
           brand={brand}
           canCreateBrand={canCreateBrand}
+          onDirtyChange={setIsDirty}
         />
       ) : (
         <BrandSetup
@@ -1050,9 +1161,10 @@ export function BrandPage() {
           canCreateBrand={canCreateBrand}
           onSkip={
             !isCreating && brand
-              ? () => setSkippedSetupFor(workspaceKey)
+              ? () => setSettingsFor(workspaceKey)
               : undefined
           }
+          onDirtyChange={setIsDirty}
         />
       )}
     </AppShell>
