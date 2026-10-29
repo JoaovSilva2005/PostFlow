@@ -43,8 +43,18 @@
 }
 
 /* Workspace switcher */
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .switcher {
   position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.drawerClose {
+  display: none;
 }
 .switcherButton {
   display: flex;
@@ -438,6 +448,9 @@ button.switcherButton[aria-expanded='true'] {
   .topbar {
     padding: 0 12px 0 8px;
     gap: 8px;
+  }
+  .drawerClose {
+    display: grid;
   }
   .menuButton {
     display: grid;

@@ -17,6 +17,8 @@ interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
   error?: string
   hint?: string
   optional?: boolean
+  /** Shown as an empty, non-selectable first option while value is ''. */
+  placeholder?: string
   options: Array<{ label: string; value: string }>
 }
 
@@ -84,6 +86,7 @@ export function SelectField({
   error,
   hint,
   optional,
+  placeholder,
   options,
   id,
   ...props
@@ -106,6 +109,11 @@ export function SelectField({
         aria-describedby={descriptionId}
         {...props}
       >
+        {placeholder ? (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        ) : null}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

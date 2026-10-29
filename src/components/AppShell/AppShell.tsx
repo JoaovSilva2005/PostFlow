@@ -26,6 +26,7 @@ import {
 } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router'
 import { useApp } from '../../app/AppContext'
+import { useCanCreateBrand } from '../../app/useBrandCreation'
 import type { PlatformRole, WorkspaceRole } from '../../domain/auth'
 import styles from './AppShell.module.css'
 import { ThemeSwitcher } from '../ThemeSwitcher/ThemeSwitcher'
@@ -74,11 +75,14 @@ export function AppShell({
   children,
   contentLayout = 'default',
   actions,
+  hasUnsavedChanges = false,
 }: {
   children: ReactNode
   contentLayout?: 'default' | 'edge'
   /** Page-level actions shown on the right side of the top bar. */
   actions?: ReactNode
+  /** Asks for confirmation before the switcher leaves a dirty form. */
+  hasUnsavedChanges?: boolean
 }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -122,11 +126,7 @@ export function AppShell({
   }, [switcherOpen])
 
   const canUseProduct = hasActivePlan || platformRole === 'platform_owner'
-  const ownedBrandCount = availableWorkspaces.filter(
-    (workspace) => workspace.isOwnedByUser ?? workspace.role === 'owner',
-  ).length
-  const canCreateBrand =
-    canUseProduct && (platformRole === 'platform_owner' || ownedBrandCount < 2)
+  const canCreateBrand = useCanCreateBrand()
   const visibleWorkspaceNavigation = canUseProduct
     ? workspaceNavigation
     : workspaceNavigation
@@ -220,11 +220,27 @@ export function AppShell({
     }
   }
 
+  function confirmLeavingChanges() {
+    return (
+      !hasUnsavedChanges ||
+      window.confirm(
+        'Há alterações não salvas na marca. Se continuar, elas serão perdidas.',
+      )
+    )
+  }
+
   async function handleSelectWorkspace(workspaceId: string) {
     setSwitcherOpen(false)
     if (workspaceId === currentWorkspace?.id) return
+    if (!confirmLeavingChanges()) return
     await selectWorkspace(workspaceId)
     closeMenu()
+  }
+
+  function handleNewBrand() {
+    setSwitcherOpen(false)
+    if (!confirmLeavingChanges()) return
+    navigate('/brand/new')
   }
 
   async function handleLogout() {
@@ -243,7 +259,7 @@ export function AppShell({
         <button
           type="button"
           className={styles.menuBackdrop}
-          aria-label="Fechar menu"
+          aria-hidden="true"
           tabIndex={-1}
           onClick={handleEscape}
         />
@@ -256,115 +272,137 @@ export function AppShell({
         aria-label={menuOpen ? 'Menu principal' : undefined}
         onKeyDown={handleMenuKeyDown}
       >
-        <div className={styles.switcher} ref={switcherRef}>
-          {canSwitch ? (
-            <button
-              ref={switcherButton}
-              type="button"
-              className={styles.switcherButton}
-              aria-expanded={switcherOpen}
-              aria-controls="workspace-switcher"
-              aria-label={`Marca ativa: ${workspaceName}. Trocar de marca`}
-              onClick={() => setSwitcherOpen(!switcherOpen)}
-            >
-              <span
-                className={styles.workspaceAvatar}
-                style={
-                  brand?.primaryColor
-                    ? {
-                        backgroundColor: brand.primaryColor,
-                        color: readableTextOn(brand.primaryColor),
-                      }
-                    : undefined
-                }
-                aria-hidden="true"
+        <div className={styles.sidebarHeader}>
+          <div
+            className={styles.switcher}
+            ref={switcherRef}
+            onBlur={(event) => {
+              if (
+                switcherOpen &&
+                event.relatedTarget &&
+                !event.currentTarget.contains(event.relatedTarget as Node)
+              )
+                setSwitcherOpen(false)
+            }}
+          >
+            {canSwitch ? (
+              <button
+                ref={switcherButton}
+                type="button"
+                className={styles.switcherButton}
+                aria-expanded={switcherOpen}
+                aria-controls="workspace-switcher"
+                aria-label={`Marca ativa: ${workspaceName}. Trocar de marca`}
+                onClick={() => setSwitcherOpen(!switcherOpen)}
               >
-                {initialOf(brand?.name, 'P')}
-              </span>
-              <span className={styles.switcherText}>
-                <strong>{workspaceName}</strong>
-                <small>{workspaceRole}</small>
-              </span>
-              <ChevronsUpDown size={16} aria-hidden="true" />
-            </button>
-          ) : (
-            <div className={styles.switcherButton}>
-              <span className={styles.workspaceAvatar} aria-hidden="true">
-                {currentWorkspace ? initialOf(brand?.name, 'P') : 'P'}
-              </span>
-              <span className={styles.switcherText}>
-                <strong>{workspaceName}</strong>
-                <small>{workspaceRole}</small>
-              </span>
-            </div>
-          )}
-          {switcherOpen && (
-            <div
-              id="workspace-switcher"
-              className={styles.switcherMenu}
-              aria-label="Trocar de marca"
-              role="group"
-            >
-              <p className={styles.switcherHeading}>Suas marcas</p>
-              {availableWorkspaces.map((workspace) => {
-                const isCurrent = workspace.id === currentWorkspace?.id
-                return (
+                <span
+                  className={styles.workspaceAvatar}
+                  style={
+                    brand?.primaryColor
+                      ? {
+                          backgroundColor: brand.primaryColor,
+                          color: readableTextOn(brand.primaryColor),
+                        }
+                      : undefined
+                  }
+                  aria-hidden="true"
+                >
+                  {initialOf(brand?.name, 'P')}
+                </span>
+                <span className={styles.switcherText}>
+                  <strong>{workspaceName}</strong>
+                  <small>{workspaceRole}</small>
+                </span>
+                <ChevronsUpDown size={16} aria-hidden="true" />
+              </button>
+            ) : (
+              <div className={styles.switcherButton}>
+                <span className={styles.workspaceAvatar} aria-hidden="true">
+                  {currentWorkspace ? initialOf(brand?.name, 'P') : 'P'}
+                </span>
+                <span className={styles.switcherText}>
+                  <strong>{workspaceName}</strong>
+                  <small>{workspaceRole}</small>
+                </span>
+              </div>
+            )}
+            {switcherOpen && (
+              <div
+                id="workspace-switcher"
+                className={styles.switcherMenu}
+                aria-label="Trocar de marca"
+                role="group"
+              >
+                <p className={styles.switcherHeading}>Suas marcas</p>
+                {availableWorkspaces.map((workspace) => {
+                  const isCurrent = workspace.id === currentWorkspace?.id
+                  return (
+                    <button
+                      key={workspace.id}
+                      type="button"
+                      className={styles.switcherOption}
+                      aria-current={isCurrent ? 'true' : undefined}
+                      onClick={() => void handleSelectWorkspace(workspace.id)}
+                    >
+                      <span
+                        className={styles.optionAvatar}
+                        style={{
+                          backgroundColor: workspace.brand.primaryColor,
+                          color: readableTextOn(workspace.brand.primaryColor),
+                        }}
+                        aria-hidden="true"
+                      >
+                        {initialOf(workspace.brand.name, 'P')}
+                      </span>
+                      <span className={styles.switcherText}>
+                        <strong>
+                          {workspace.brand.name || 'Marca sem nome'}
+                        </strong>
+                        <small>{workspaceRoleLabels[workspace.role]}</small>
+                      </span>
+                      {isCurrent ? (
+                        <Check size={16} aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  )
+                })}
+                {!availableWorkspaces.length && (
+                  <p className={styles.switcherEmpty}>
+                    Nenhuma outra marca disponível.
+                  </p>
+                )}
+                <div className={styles.switcherDivider} />
+                {canCreateBrand ? (
                   <button
-                    key={workspace.id}
                     type="button"
                     className={styles.switcherOption}
-                    aria-current={isCurrent ? 'true' : undefined}
-                    onClick={() => void handleSelectWorkspace(workspace.id)}
+                    onClick={handleNewBrand}
                   >
-                    <span
-                      className={styles.optionAvatar}
-                      style={{
-                        backgroundColor: workspace.brand.primaryColor,
-                        color: readableTextOn(workspace.brand.primaryColor),
-                      }}
-                      aria-hidden="true"
-                    >
-                      {initialOf(workspace.brand.name, 'P')}
+                    <span className={styles.optionIcon} aria-hidden="true">
+                      <Plus size={16} />
                     </span>
                     <span className={styles.switcherText}>
-                      <strong>
-                        {workspace.brand.name || 'Marca sem nome'}
-                      </strong>
-                      <small>{workspaceRoleLabels[workspace.role]}</small>
+                      <strong>Nova marca</strong>
                     </span>
-                    {isCurrent ? <Check size={16} aria-hidden="true" /> : null}
                   </button>
-                )
-              })}
-              {!availableWorkspaces.length && (
-                <p className={styles.switcherEmpty}>
-                  Nenhuma outra marca disponível.
-                </p>
-              )}
-              <div className={styles.switcherDivider} />
-              {canCreateBrand ? (
-                <button
-                  type="button"
-                  className={styles.switcherOption}
-                  onClick={() => {
-                    setSwitcherOpen(false)
-                    navigate('/brand/new')
-                  }}
-                >
-                  <span className={styles.optionIcon} aria-hidden="true">
-                    <Plus size={16} />
-                  </span>
-                  <span className={styles.switcherText}>
-                    <strong>Nova marca</strong>
-                  </span>
-                </button>
-              ) : (
-                <p className={styles.switcherEmpty}>
-                  Limite de duas marcas atingido.
-                </p>
-              )}
-            </div>
-          )}
+                ) : (
+                  <p className={styles.switcherEmpty}>
+                    Limite de duas marcas atingido.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          {menuOpen ? (
+            <button
+              type="button"
+              className={`${styles.iconButton} ${styles.drawerClose}`}
+              aria-label="Fechar menu"
+              onClick={handleEscape}
+            >
+              <X size={18} />
+            </button>
+          ) : null}
         </div>
 
         <label className={styles.search}>

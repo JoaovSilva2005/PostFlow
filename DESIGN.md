@@ -15,9 +15,9 @@ PostFlow's interface is a calm, precise product UI in the lineage of Supabase, V
 Both themes ship; dark is the default. Tokens live in `src/styles/tokens.css` and every component reads them — no hard-coded colors.
 
 - **Neutrals:** a single gray scale (12 steps, Radix/Vercel-like). Dark: background near `#0a0a0a`, surface `#111`, elevated `#171717`, border `#262626`, strong border `#333`, text `#ededed`, muted `#a1a1a1`. Light: background `#fafafa`, surface `#fff`, elevated `#f5f5f5`, border `#e5e5e5`, strong border `#d4d4d4`, text `#171717`, muted `#666`.
-- **Accent:** emerald (Supabase-like). Dark `#3ecf8e` with dark text on it; light `#0f9d63` with white text. Muted accent backgrounds at low alpha for selected rows and active nav.
+- **Accent:** emerald (Supabase-like). Dark `#3ecf8e` with dark text on it; light `#0a7d4f` with white text (darkened from `#0f9d63`, which reaches only 3.5:1 on white; `#0a7d4f` gives 5.2:1 on white and 5.0:1 on `#fafafa`, AA for 13px labels and accent text). Muted accent backgrounds at low alpha for selected rows and active nav.
 - **Status:** success = accent family; warning amber; danger red; info blue — each with a muted background and border token, AA contrast in both themes.
-- **Focus:** 2px ring in the accent at ~40% alpha with 1px offset, on every interactive element.
+- **Focus:** solid 2px outline in the accent (`--color-primary`) with 2px offset on every button, link, nav item, switcher, step/section link and swatch, so the indicator meets WCAG 1.4.11 (a 40% alpha ring only reaches 1.8:1 light / 2.4:1 dark). Text inputs, selects and textareas instead switch their border to the accent and add a 2px translucent accent halo.
 
 ## Typography
 
