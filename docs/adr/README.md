@@ -14,5 +14,5 @@
 | [ADR-0010](ADR-0010-atomic-workflows-and-ai-quotas.md)                | RPCs atômicas e franquias de IA        | Accepted |
 | [ADR-0011](ADR-0011-derived-accounting-report.md)                     | DRE derivada do Financeiro e Fiscal    | Accepted |
 | [ADR-0011 — Agenda](ADR-0011-complete-calendar-posts.md)              | Posts com arte compartilhada na agenda | Accepted |
-| [ADR-0012](ADR-0012-social-publishing-integration.md)                 | Publicação social multitenant          | Proposed |
+| [ADR-0012](ADR-0012-social-publishing-integration.md)                 | Publicação social multitenant          | Accepted |
 | [ADR-0014](ADR-0014-social-publishing-demo-mode.md)                   | Modo demonstração da publicação social | Accepted |

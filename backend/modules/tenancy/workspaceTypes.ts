@@ -30,6 +30,7 @@ export interface WorkspaceContext {
 }
 
 export interface WorkspaceAccessRepository {
+  isWorkspaceOwner(userId: string, workspaceId: string): Promise<boolean>
   getMembership(
     userId: string,
     workspaceId: string,

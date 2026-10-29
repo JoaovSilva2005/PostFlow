@@ -1,3 +1,4 @@
+import { resolveWorkspaceBilling } from '../tenancy/workspaceBilling.js'
 import { randomUUID } from 'node:crypto'
 import sharp from 'sharp'
 import { HttpError } from '../../shared/HttpError.js'
@@ -697,11 +698,14 @@ export class SocialService {
         job.userId,
         job.workspaceId,
       )
-      const billing = await this.access.getBillingStatus(job.workspaceId)
+      const billing = member
+        ? await resolveWorkspaceBilling(this.access, job.userId, {
+            workspaceId: job.workspaceId,
+            role: member.role,
+          })
+        : { hasActivePlan: false }
       const active =
-        ['active', 'trialing'].includes(billing) ||
-        (member?.role === 'owner' &&
-          Boolean(await this.access.getActiveBillingWorkspaceId(job.userId))) ||
+        billing.hasActivePlan ||
         (await this.access.getPlatformRole(job.userId)) === 'platform_owner'
       const modeMismatch = Boolean(c) && this.modeMismatch(c!.accountType)
       if (

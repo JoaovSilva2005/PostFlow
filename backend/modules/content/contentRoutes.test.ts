@@ -336,17 +336,53 @@ describe('geração de conteúdo', () => {
     expect(response.body.error).toMatch(/plano ativo/i)
   })
 
-  it('usa a assinatura de outro workspace acessível e cobra nele a franquia', async () => {
+  it.each(['viewer', 'editor', null] as const)(
+    'nega pagador de outra conta com vínculo %s antes de reservar franquia',
+    async (billingRole) => {
+      const workspaceAccess = new InMemoryWorkspaceAccessRepository(
+        'content-workspace',
+        'owner',
+        null,
+        'none',
+      )
+      vi.spyOn(workspaceAccess, 'getMembership').mockImplementation(
+        async (userId, workspaceId) => {
+          if (workspaceId === 'content-workspace')
+            return { workspaceId, userId, role: 'owner' }
+          return billingRole ? { workspaceId, userId, role: billingRole } : null
+        },
+      )
+      const quota = new InMemoryContentQuotaService()
+      const reserve = vi.spyOn(quota, 'reserve')
+      const app = createApp({
+        authService: new AuthService(new InMemoryAuthProvider('editor')),
+        financialRepository: new InMemoryFinancialRepository(),
+        contentService: new ContentService(provider),
+        contentQuotaService: quota,
+        workspaceAccessRepository: workspaceAccess,
+      })
+      const result = await authorize(
+        request(app)
+          .post('/api/content/generate-batch')
+          .set('X-Workspace-Id', 'content-workspace')
+          .set('X-Billing-Workspace-Id', 'foreign-paid-workspace'),
+      ).send(validBatchRequest)
+      expect(result.status).toBe(403)
+      expect(reserve).not.toHaveBeenCalled()
+    },
+  )
+
+  it('usa a assinatura de outra marca própria e cobra nela a franquia', async () => {
     const workspaceAccess = new InMemoryWorkspaceAccessRepository(
       'content-workspace',
-      'editor',
+      'owner',
       null,
       'none',
     )
     vi.spyOn(workspaceAccess, 'getMembership').mockImplementation(
       async (userId, workspaceId) => {
         if (workspaceId === 'content-workspace') {
-          return { workspaceId, userId, role: 'editor' }
+          return { workspaceId, userId, role: 'owner' }
         }
         if (workspaceId === 'paid-workspace') {
           return { workspaceId, userId, role: 'owner' }
@@ -357,6 +393,10 @@ describe('geração de conteúdo', () => {
     vi.spyOn(workspaceAccess, 'getBillingStatus').mockImplementation(
       async (workspaceId) =>
         workspaceId === 'paid-workspace' ? 'active' : 'none',
+    )
+    vi.spyOn(workspaceAccess, 'isWorkspaceOwner').mockImplementation(
+      async (_userId, workspaceId) =>
+        ['content-workspace', 'paid-workspace'].includes(workspaceId),
     )
     const quota = new InMemoryContentQuotaService({ text: 10, image: 0 })
     const app = createApp({

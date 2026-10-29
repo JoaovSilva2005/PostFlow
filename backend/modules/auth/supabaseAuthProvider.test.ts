@@ -4,6 +4,43 @@ import { describe, expect, it, vi } from 'vitest'
 import { SupabaseAuthProvider } from './supabaseAuthProvider.js'
 
 describe('SupabaseAuthProvider', () => {
+  it('verifica um OTP de recovery antes de atualizar a senha', async () => {
+    const verifyOtp = vi.fn(async () => ({
+      data: { session: { access_token: 'verified' } },
+      error: null,
+    }))
+    const updateUser = vi.fn(async () => ({ error: null }))
+    const client = {
+      auth: { verifyOtp, updateUser },
+    } as unknown as SupabaseClient
+    const provider = new SupabaseAuthProvider(() => client)
+    await provider.resetPassword('hash-from-email', 'novaSenha123')
+    expect(verifyOtp).toHaveBeenCalledWith({
+      token_hash: 'hash-from-email',
+      type: 'recovery',
+    })
+    expect(updateUser).toHaveBeenCalledWith({ password: 'novaSenha123' })
+    expect(verifyOtp.mock.invocationCallOrder[0]).toBeLessThan(
+      updateUser.mock.invocationCallOrder[0]!,
+    )
+  })
+
+  it('nunca atualiza a senha quando o OTP de recovery é inválido', async () => {
+    const verifyOtp = vi.fn(async () => ({
+      data: { session: null },
+      error: new Error('expired'),
+    }))
+    const updateUser = vi.fn()
+    const client = {
+      auth: { verifyOtp, updateUser },
+    } as unknown as SupabaseClient
+    const provider = new SupabaseAuthProvider(() => client)
+    await expect(
+      provider.resetPassword('expired', 'novaSenha123'),
+    ).rejects.toThrow('expired')
+    expect(updateUser).not.toHaveBeenCalled()
+  })
+
   it('envia os dados essenciais de onboarding como metadados do cadastro', async () => {
     const signUp = vi.fn(async (input) => ({
       data: {
@@ -46,9 +83,14 @@ describe('SupabaseAuthProvider', () => {
   })
 
   it('restaura os dois tokens da sessão antes de revogar o refresh token local', async () => {
-    const setSession = vi.fn(async () => ({ data: { user: null, session: null }, error: null }))
+    const setSession = vi.fn(async () => ({
+      data: { user: null, session: null },
+      error: null,
+    }))
     const signOut = vi.fn(async () => ({ error: null }))
-    const client = { auth: { setSession, signOut } } as unknown as SupabaseClient
+    const client = {
+      auth: { setSession, signOut },
+    } as unknown as SupabaseClient
     const provider = new SupabaseAuthProvider(() => client)
 
     await provider.logout('access-token', 'refresh-token')
@@ -69,7 +111,9 @@ describe('SupabaseAuthProvider', () => {
       error: new Error('token inválido'),
     }))
     const signOut = vi.fn(async () => ({ error: null }))
-    const client = { auth: { setSession, signOut } } as unknown as SupabaseClient
+    const client = {
+      auth: { setSession, signOut },
+    } as unknown as SupabaseClient
     const provider = new SupabaseAuthProvider(() => client)
 
     await expect(

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { LoginPage } from '../features/auth/LoginPage'
+import { ResetPasswordPage } from '../features/auth/ResetPasswordPage'
 import { BrandPage } from '../features/brand/BrandPage'
 import { CalendarPage } from '../features/calendar/CalendarPage'
 import { ChatPage } from '../features/content/ChatPage'
@@ -21,6 +22,7 @@ export function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
         path="/brand"
         element={

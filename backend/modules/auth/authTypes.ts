@@ -31,6 +31,7 @@ export interface AuthProvider {
   login(email: string, password: string): Promise<AuthSession>
   logout(accessToken: string, refreshToken: string): Promise<void>
   recoverPassword(email: string, redirectUrl: string): Promise<void>
+  resetPassword(tokenHash: string, password: string): Promise<void>
   refresh(refreshToken: string): Promise<AuthSession>
   register(input: RegistrationDetails): Promise<RegistrationResult>
 }

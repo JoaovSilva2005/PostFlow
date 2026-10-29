@@ -70,7 +70,7 @@ export const environment = {
   isProduction,
   allowDemoFallback:
     !isProduction && process.env.POSTFLOW_ALLOW_DEMO_FALLBACK === 'true',
-  passwordResetUrl: `${appUrl}/login`,
+  passwordResetUrl: `${appUrl.replace(/\/+$/, '')}/reset-password`,
   isAllowedOrigin: createOriginPolicy({
     isProduction,
     appUrl: configuredAppUrl ?? (isProduction ? undefined : appUrl),
@@ -103,8 +103,7 @@ export const environment = {
   openAiImageModel:
     process.env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-2.5-flare',
   openAiQualityImageModel:
-    process.env.OPENAI_IMAGE_QUALITY_MODEL?.trim() ||
-    'gpt-image-2.5-sunburst',
+    process.env.OPENAI_IMAGE_QUALITY_MODEL?.trim() || 'gpt-image-2.5-sunburst',
   openAiImageQuality: process.env.OPENAI_IMAGE_QUALITY?.trim() || 'medium',
   openAiImageSize: process.env.OPENAI_IMAGE_SIZE?.trim() || '1024x1024',
   aiCostUsdBrlFallbackRate: Number(

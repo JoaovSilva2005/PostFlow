@@ -28,6 +28,13 @@ O produto precisa permitir que a mesma conta mantenha várias marcas e escolha q
 
 ## Validação
 
+Complemento de autorização — 29/10/2026: o uso de plano entre marcas exige
+membership `owner` na marca de conteúdo e titularidade real (`brands.user_id`)
+nas duas marcas. `viewer`, `editor` e `admin` não delegam cobrança de outra
+marca pelo cabeçalho `X-Billing-Workspace-Id`. Não existe delegação de cobrança
+implementada. API, reserva de franquia e worker compartilham a resolução em
+`workspaceBilling.ts`; a franquia é reservada na marca pagadora resolvida.
+
 - O backend valida o briefing antes de chamar `create_brand_with_owner`, que insere a marca e o membership `owner` na mesma transação SQL.
 - A lista de marcas é derivada de `brand_members`, nunca de IDs enviados pelo cliente sem verificação. A titularidade para aplicar o limite vem de `brands.user_id`.
 - `ensure_default_workspace` usa lock transacional por usuário para que chamadas simultâneas não criem workspaces iniciais duplicados após remover `brands.user_id unique`.

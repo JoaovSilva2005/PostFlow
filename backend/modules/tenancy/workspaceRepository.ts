@@ -14,6 +14,18 @@ export class SupabaseWorkspaceAccessRepository implements WorkspaceAccessReposit
     this.supabase = supabase
   }
 
+  async isWorkspaceOwner(userId: string, workspaceId: string) {
+    const { data, error } = await this.supabase
+      .from('brands')
+      .select('id')
+      .eq('id', workspaceId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (error)
+      throw new Error(`Falha ao consultar titularidade: ${error.message}`)
+    return Boolean(data)
+  }
+
   async getMembership(userId: string, workspaceId: string) {
     const { data, error } = await this.supabase
       .from('brand_members')
@@ -51,22 +63,27 @@ export class SupabaseWorkspaceAccessRepository implements WorkspaceAccessReposit
   async ensureDefaultWorkspace(user: WorkspaceIdentity) {
     const displayName =
       user.displayName.trim() || user.email.split('@')[0] || 'Usuário PostFlow'
-    const { data, error } = await this.supabase.rpc('ensure_default_workspace', {
-      p_user_id: user.id,
-      p_email: user.email,
-      p_display_name: displayName,
-      p_brand_name:
-        user.brandName?.trim().slice(0, 120) ||
-        `Workspace de ${displayName}`.slice(0, 120),
-      p_segment: user.segment?.trim().slice(0, 80) || 'A definir',
-    })
+    const { data, error } = await this.supabase.rpc(
+      'ensure_default_workspace',
+      {
+        p_user_id: user.id,
+        p_email: user.email,
+        p_display_name: displayName,
+        p_brand_name:
+          user.brandName?.trim().slice(0, 120) ||
+          `Workspace de ${displayName}`.slice(0, 120),
+        p_segment: user.segment?.trim().slice(0, 80) || 'A definir',
+      },
+    )
     if (error) {
       throw new Error(`Falha ao provisionar workspace: ${error.message}`)
     }
 
-    const result = (Array.isArray(data) ? data[0] : data) as
-      | { workspace_id?: string; user_id?: string; role?: string }
-      | null
+    const result = (Array.isArray(data) ? data[0] : data) as {
+      workspace_id?: string
+      user_id?: string
+      role?: string
+    } | null
     if (!result?.workspace_id || !result.user_id || !result.role) {
       throw new Error('Provisionamento não retornou o membership do workspace.')
     }
@@ -156,6 +173,10 @@ export class InMemoryWorkspaceAccessRepository implements WorkspaceAccessReposit
     return workspaceId === this.workspaceId
       ? { workspaceId, userId, role: this.workspaceRole }
       : null
+  }
+
+  async isWorkspaceOwner(_userId: string, workspaceId: string) {
+    return workspaceId === this.workspaceId && this.workspaceRole === 'owner'
   }
 
   async getDefaultWorkspace(userId: string) {

@@ -435,8 +435,19 @@ class NoPlanAccess extends InMemoryWorkspaceAccessRepository {
     super(workspace, role, null, 'none')
     this.accountBrand = accountBrand
   }
+  async isWorkspaceOwner(userId: string, workspaceId: string) {
+    return (
+      workspaceId === this.accountBrand ||
+      (await super.isWorkspaceOwner(userId, workspaceId))
+    )
+  }
   async getActiveBillingWorkspaceId() {
     return this.accountBrand
+  }
+  async getBillingStatus(workspaceId: string) {
+    return workspaceId === this.accountBrand
+      ? ('active' as const)
+      : ('none' as const)
   }
 }
 class PlatformOwnerNoPlanAccess extends NoPlanAccess {
@@ -571,6 +582,89 @@ describe('social publishing demo mode', () => {
     expect(
       (await f.service.overview(workspace, userId)).publications[0].simulated,
     ).toBe(true)
+  })
+  it('schedules demo publication for the future, reloads it and processes only the approved snapshot without a browser', async () => {
+    const f = demoFixture()
+    await image(f.repo)
+    const connection = await connectDemo(f)
+    const now = Date.now()
+    const job = await f.service.enqueue(workspace, userId, {
+      ...input,
+      connectionId: connection.id,
+      scheduledAt: new Date(now + 120_000).toISOString(),
+    })
+    expect(
+      (await f.service.overview(workspace, userId)).publications[0],
+    ).toMatchObject({ id: job.id, status: 'queued' })
+    expect(await f.service.runWorker()).toEqual([])
+    // Original draft changes after approval must not change the dispatched image/caption.
+    f.repo.drafts.get(draftId)!.caption = 'Edited after approval'
+    f.repo.images.delete(imagePath)
+    const restarted = new SocialService({
+      repository: f.repo,
+      providers: Object.values(
+        createSocialProviders({
+          demoMode: true,
+          fetch: f.fetchSpy as unknown as typeof fetch,
+        }),
+      ),
+      access: new InMemoryWorkspaceAccessRepository(workspace, 'owner'),
+      crypto: encryption,
+      appUrl: 'https://postflow.test',
+      config: demoConfig,
+    })
+    vi.spyOn(Date, 'now').mockReturnValue(now + 121_000)
+    expect((await restarted.runWorker())[0]).toMatchObject({
+      id: job.id,
+      status: 'published',
+    })
+    const result = (await restarted.overview(workspace, userId)).publications[0]
+    expect(result).toMatchObject({
+      id: job.id,
+      simulated: true,
+      remoteUrl: null,
+    })
+    expect(result.remotePostId).toMatch(/^demo-/)
+    expect(f.repo.publications.get(job.id)!.snapshot.caption).toBe(
+      'Legenda aprovada\n#post',
+    )
+    expect(f.fetchSpy).not.toHaveBeenCalled()
+  })
+  it('cancels a future demo job and keeps cancellation visible on reload', async () => {
+    const f = demoFixture()
+    await image(f.repo)
+    const connection = await connectDemo(f)
+    const job = await f.service.enqueue(workspace, userId, {
+      ...input,
+      connectionId: connection.id,
+      scheduledAt: new Date(Date.now() + 120_000).toISOString(),
+    })
+    expect((await f.service.cancel(workspace, job.id)).status).toBe('cancelled')
+    expect(
+      (await f.service.overview(workspace, userId)).publications[0].status,
+    ).toBe('cancelled')
+    expect(await f.service.runWorker()).toEqual([])
+    expect(f.fetchSpy).not.toHaveBeenCalled()
+  })
+  it('records a demo preparation failure without claiming a simulated success', async () => {
+    const f = demoFixture()
+    await image(f.repo)
+    const connection = await connectDemo(f)
+    const job = await f.service.enqueue(workspace, userId, {
+      ...input,
+      connectionId: connection.id,
+    })
+    vi.spyOn(f.repo, 'loadImage').mockRejectedValue(
+      new ProviderError('Test image unavailable', 'validation'),
+    )
+    await f.service.runWorker()
+    expect(
+      (await f.service.overview(workspace, userId)).publications[0],
+    ).toMatchObject({ status: 'failed', remotePostId: null })
+    expect(f.fetchSpy).not.toHaveBeenCalled()
+    expect(f.repo.publications.get(job.id)!.operation?._dispatched).not.toBe(
+      true,
+    )
   })
   it('still requires the cron secret and the encryption key', async () => {
     const noCron = demoFixture({

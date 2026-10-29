@@ -95,3 +95,14 @@ export const authApi: AuthGateway = {
 
   logout: () => apiRequest<void>('/auth/logout', { method: 'POST' }),
 }
+
+export async function resetPassword(input: {
+  tokenHash: string
+  password: string
+  confirmPassword: string
+}): Promise<void> {
+  await apiRequest<void>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
