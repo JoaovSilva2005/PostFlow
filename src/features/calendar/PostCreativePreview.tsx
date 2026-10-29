@@ -1,4 +1,10 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import {
+  useEffect,
+  useImperativeHandle,
+  useState,
+  type CSSProperties,
+  type Ref,
+} from 'react'
 import { LoaderCircle, Sparkles } from 'lucide-react'
 import type { PostDraft } from '../../domain/models'
 import { SocialPlatformIcon } from '../../components/ui/SocialPlatformIcon'
@@ -10,16 +16,36 @@ const FORMAT_LABELS: Record<string, string> = {
   reels: 'Reels · capa do roteiro',
 }
 
+export interface PostCreativePreviewHandle {
+  generateImage: () => void
+}
+
+export interface ImageGenerationState {
+  /** A geração está disponível (post sem imagem carregada). */
+  available: boolean
+  busy: boolean
+}
+
 interface PostCreativePreviewProps {
   draft: PostDraft
   onRefreshImage?: (draftId: string) => Promise<string | null>
   onGenerateImage?: (draft: PostDraft) => Promise<string | null>
+  /** Quando verdadeiro, o botão de geração fica fora da prévia (ex.: Mais recursos). */
+  hideGenerateButton?: boolean
+  onGenerationStateChange?: (state: ImageGenerationState) => void
+  /** Aviso curto exibido abaixo da nota da imagem (ex.: post publicado). */
+  readOnlyNote?: string
+  ref?: Ref<PostCreativePreviewHandle>
 }
 
 export function PostCreativePreview({
   draft,
   onRefreshImage,
   onGenerateImage,
+  hideGenerateButton = false,
+  onGenerationStateChange,
+  readOnlyNote,
+  ref,
 }: PostCreativePreviewProps) {
   const [imageUrl, setImageUrl] = useState(draft.imageUrl)
   const [imageFailed, setImageFailed] = useState(false)
@@ -91,6 +117,16 @@ export function PostCreativePreview({
   }
 
   const hasImage = Boolean(imageUrl) && !imageFailed
+  const canGenerate = !hasImage && Boolean(onGenerateImage)
+  const generationBusy = isGenerating || isRefreshing
+
+  useImperativeHandle(ref, () => ({
+    generateImage: () => void generateImage(),
+  }))
+
+  useEffect(() => {
+    onGenerationStateChange?.({ available: canGenerate, busy: generationBusy })
+  }, [canGenerate, generationBusy, onGenerationStateChange])
 
   const accentStyle = {
     '--draft-accent': draft.color,
@@ -145,7 +181,7 @@ export function PostCreativePreview({
         )}
       </div>
 
-      {!hasImage && onGenerateImage ? (
+      {canGenerate && !hideGenerateButton ? (
         <button
           className={styles.generateImageButton}
           type="button"
@@ -170,6 +206,9 @@ export function PostCreativePreview({
               ? 'A imagem existe na agenda, mas não foi possível carregá-la.'
               : 'Este post ainda não tem uma imagem. Gerar uma consome 1 imagem da franquia.'}
       </p>
+      {readOnlyNote ? (
+        <p className={styles.readOnlyNote}>{readOnlyNote}</p>
+      ) : null}
       {generationError ? (
         <p className={styles.previewError} role="alert">
           {generationError}
