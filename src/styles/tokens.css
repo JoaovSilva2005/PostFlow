@@ -1,78 +1,123 @@
+/*
+ * PostFlow design tokens (see DESIGN.md).
+ * One neutral scale, one emerald accent, status colors only where they mean
+ * something. Dark is the default theme; light overrides the same names.
+ */
 :root {
   color-scheme: dark;
-  --color-primary: #79e2ae;
-  --color-primary-dark: #a2f0c9;
-  --color-background: #101112;
-  --color-sidebar: #0b0c0d;
-  --color-surface: #171819;
-  --color-elevated: #202224;
-  --color-text: #edeeef;
-  --color-muted: #a0a4a8;
-  --color-border: #2b2e30;
-  --color-danger: #ff999e;
-  --color-success: #79e2ae;
-  --color-warning: #e9c77d;
-  --color-control: #111314;
-  --color-control-border: #35393c;
-  --color-hover: #25292b;
-  --color-focus-ring: #79e2ae38;
-  --color-on-primary: #102419;
-  --color-primary-muted: #203329;
-  --color-success-muted: #1b2b22;
-  --color-success-border: #34523f;
-  --color-danger-muted: #321f24;
-  --color-danger-border: #653b43;
-  --color-warning-muted: #302719;
-  --color-warning-border: #665331;
-  --color-info: #9bc5ff;
-  --color-info-muted: #1b273c;
-  --color-info-border: #394c70;
-  --color-overlay: #00000099;
-  --color-media-overlay: #101112c0;
-  --color-preview-background: #111619;
-  --color-subtle: #8e969f;
-  --shadow-card: 0 1px 2px #00000020;
-  --shadow-overlay: 0 24px 64px #0009;
+
+  /* Neutrals */
+  --color-background: #0a0a0a;
+  --color-sidebar: #0a0a0a;
+  --color-surface: #111111;
+  --color-elevated: #171717;
+  --color-hover: #1f1f1f;
+  --color-border: #262626;
+  --color-border-strong: #333333;
+  --color-text: #ededed;
+  --color-muted: #a1a1a1;
+  --color-subtle: #8f8f8f;
+  --color-control: #111111;
+  --color-control-border: #333333;
+
+  /* Accent (emerald) */
+  --color-primary: #3ecf8e;
+  --color-primary-dark: #5edba2;
+  --color-on-primary: #05261a;
+  --color-primary-muted: #3ecf8e1c;
+  --color-primary-border: #3ecf8e4d;
+  --color-focus-ring: #3ecf8e66;
+
+  /* Status */
+  --color-success: #3ecf8e;
+  --color-success-muted: #3ecf8e17;
+  --color-success-border: #3ecf8e47;
+  --color-warning: #f5a524;
+  --color-warning-muted: #f5a52417;
+  --color-warning-border: #f5a52447;
+  --color-danger: #ff6166;
+  --color-danger-muted: #ff616617;
+  --color-danger-border: #ff616647;
+  --color-info: #52a8ff;
+  --color-info-muted: #52a8ff17;
+  --color-info-border: #52a8ff47;
+
+  /* Overlays and previews */
+  --color-overlay: #000000b3;
+  --color-media-overlay: #0a0a0ac0;
+  --color-preview-background: #111111;
+
+  /* Typography */
+  --font-sans: 'Geist Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:
+    'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --text-title: 24px;
+  --leading-title: 32px;
+  --text-section: 16px;
+  --leading-section: 24px;
+  --text-body: 14px;
+  --leading-body: 20px;
+  --text-label: 13px;
+  --leading-label: 20px;
+  --text-meta: 12px;
+  --leading-meta: 16px;
+
+  /* Shape, depth, motion */
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --sidebar-width: 248px;
-  --duration-feedback: 160ms;
-  --ease-feedback: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-card: none;
+  --shadow-overlay: 0 12px 32px #00000080, 0 2px 6px #00000066;
+  --duration-feedback: 140ms;
+  --ease-feedback: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --topbar-height: 56px;
+  --control-height: 36px;
+  --button-height: 32px;
+  --button-height-lg: 36px;
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --color-primary: #17734f;
-  --color-primary-dark: #105b3e;
-  --color-on-primary: #ffffff;
-  --color-background: #f3f4f5;
-  --color-sidebar: #ffffff;
+
+  --color-background: #fafafa;
+  --color-sidebar: #fafafa;
   --color-surface: #ffffff;
-  --color-elevated: #f6f7f8;
-  --color-text: #20242b;
-  --color-muted: #657080;
-  --color-border: #e4e7eb;
-  --color-control: #f8f9fa;
-  --color-control-border: #dce0e5;
-  --color-hover: #eef1f3;
-  --color-focus-ring: #17734f35;
-  --color-success: #177b50;
-  --color-danger: #b02d36;
-  --color-warning: #946319;
-  --color-primary-muted: #e9f3ed;
-  --color-success-muted: #e8f5ee;
-  --color-success-border: #bde0c9;
-  --color-danger-muted: #fff0f2;
-  --color-danger-border: #ecc7cd;
-  --color-warning-muted: #fff5e2;
-  --color-warning-border: #ead5a6;
-  --color-info: #3568a1;
-  --color-info-muted: #edf3fd;
-  --color-info-border: #c6d8ed;
-  --color-overlay: #1a202b66;
-  --color-preview-background: #edf1f3;
-  --color-subtle: #6b7581;
-  --shadow-card: 0 1px 2px #17202b0a;
-  --shadow-overlay: 0 24px 64px #17202b33;
+  --color-elevated: #f5f5f5;
+  --color-hover: #efefef;
+  --color-border: #e5e5e5;
+  --color-border-strong: #d4d4d4;
+  --color-text: #171717;
+  --color-muted: #666666;
+  --color-subtle: #6b6b6b;
+  --color-control: #ffffff;
+  --color-control-border: #d4d4d4;
+
+  --color-primary: #0a7d4f;
+  --color-primary-dark: #086841;
+  --color-on-primary: #ffffff;
+  --color-primary-muted: #0a7d4f14;
+  --color-primary-border: #0a7d4f40;
+  --color-focus-ring: #0a7d4f66;
+
+  --color-success: #0a7d4f;
+  --color-success-muted: #0a7d4f12;
+  --color-success-border: #0a7d4f3d;
+  --color-warning: #a35200;
+  --color-warning-muted: #f5a5241f;
+  --color-warning-border: #a352004d;
+  --color-danger: #c4262e;
+  --color-danger-muted: #c4262e0f;
+  --color-danger-border: #c4262e40;
+  --color-info: #0062d1;
+  --color-info-muted: #0062d10f;
+  --color-info-border: #0062d140;
+
+  --color-overlay: #17171766;
+  --color-media-overlay: #fafafac0;
+  --color-preview-background: #f5f5f5;
+
+  --shadow-overlay: 0 12px 32px #0000001f, 0 2px 6px #00000014;
 }

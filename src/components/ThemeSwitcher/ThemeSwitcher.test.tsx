@@ -29,7 +29,7 @@ beforeAll(() => {
   }))
   document.head.insertAdjacentHTML(
     'beforeend',
-    '<meta name="theme-color" content="#101112">',
+    '<meta name="theme-color" content="#0a0a0a">',
   )
   initializeTheme()
 })
@@ -56,7 +56,7 @@ describe('application theme preference', () => {
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
     expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
       'content',
-      '#f3f4f5',
+      '#fafafa',
     )
     expect(screen.getAllByLabelText('Tema da aplicação')[1]).toHaveValue(
       'light',

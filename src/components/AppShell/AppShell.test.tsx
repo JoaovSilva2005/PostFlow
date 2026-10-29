@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { authenticateDemo, renderApp } from '../../test/testUtils'
 
@@ -28,5 +28,20 @@ describe('Navegação do workspace', () => {
     renderApp('/brand')
     await user.type(await screen.findByLabelText('Buscar seção'), 'inexistente')
     expect(screen.getByText('Nenhuma seção encontrada.')).toBeInTheDocument()
+  })
+
+  it('fecha o menu em gaveta pelo botão visível e devolve o foco', async () => {
+    authenticateDemo()
+    const user = userEvent.setup()
+    // The toggle and the close button are CSS-hidden on wide screens.
+    renderApp('/brand')
+    const toggle = await screen.findByLabelText('Abrir menu')
+    await user.click(toggle)
+    const drawer = screen.getByRole('dialog', { name: 'Menu principal' })
+    await user.click(within(drawer).getByLabelText('Fechar menu'))
+    expect(
+      screen.queryByRole('dialog', { name: 'Menu principal' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Abrir menu')).toHaveFocus()
   })
 })
